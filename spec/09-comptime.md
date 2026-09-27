@@ -1,0 +1,64 @@
+# 9. Compile-time evaluation
+
+**The only metaprogramming in Égide is running ordinary Égide code during compilation** (ADR-0004). There are no
+macros. Compile-time code receives no capability, so no build can touch the network or the disk.
+
+## 9.1 Evaluation
+
+- **[CT-001]** Any pure function (CAP-040) can be evaluated at compile time. Impure functions cannot.
+- **[CT-002]** `comptime let NAME = expr` evaluates `expr` at compile time. Top-level `let` is implicitly `comptime`
+  (CAP-021).
+- **[CT-003]** Compile-time evaluation is **deterministic** and **bounded**: each top-level evaluation has a budget of
+  10⁸ interpreter steps and 1 GiB of memory by default (configurable per package, PKG-012). Exceeding it is a
+  compile-time error that shows the evaluation stack.
+- **[CT-004]** A panic during compile-time evaluation is a compile-time error pointing at the comptime call site and the
+  panic location.
+- **[CT-005]** The compile-time interpreter is the same engine that runs the REPL and `egide run` (TOOL-010).
+
+## 9.2 Comptime parameters and types as values
+
+- **[CT-010]** A `comptime` parameter's argument MUST be compile-time evaluable. The function is specialised per
+  distinct argument value.
+- **[CT-011]** `type` is the type of types at compile time. A function returning `type` constructs a type:
+
+```egide
+fn Buffer(comptime n: int) -> type:
+    struct:
+        data: Array[u8, n]
+        len: int
+```
+
+- **[CT-012]** Anonymous struct/enum declarations are allowed only as the result of a `-> type` function; the resulting
+  type is nominal and named after the call (`Buffer(4096)`).
+
+## 9.3 Compile-time reflection
+
+- **[CT-020]** `std.meta` provides read-only compile-time reflection: `fields(T)`, `variants(T)`, `name(T)`,
+  `attributes(T)`, `implements(T, Trait)`. It is unavailable at run time; there is no run-time reflection.
+
+## 9.4 Derivation
+
+- **[CT-030]** `@derive(D, …)` on a declaration calls, for each `D`, the comptime function `std.derive.D` (or a
+  user-defined function annotated `@derivation`) with the reflected type; the function returns implementation items
+  that the compiler type-checks as if written by hand.
+
+## 9.5 Templates
+
+- **[CT-040]** A `TEMPLATE` token `p"…"` (LEX-055) is desugared to a call to the comptime function registered for
+  prefix `p` with the literal parts (as `comptime List[str]`) and the interpolated expressions (as run-time arguments).
+  The function returns an expression of the template's result type. Registration uses `@template("p")` on a comptime
+  function; a package may register prefixes only for its own module tree unless it is `std`.
+- **[CT-041]** Standard prefixes: `f` (formatted `str`, format specifiers checked at compile time), `sql` (`Sql`),
+  `html` (`Html`, context-aware escaping), `cmd` (`Cmd`), `url` (`Url`), `path` (`Path`), `re` (`Regex`, compiled and
+  validated at compile time). Their security semantics are defined in chapter 12.
+- **[CT-042]** There are no dynamic format strings: formatting functions accept only `f"…"` templates or explicit
+  builders.
+
+## 9.6 Embedding files
+
+- **[CT-050]** `embed("path")` reads a file at compile time. The path MUST match an `[embed]` pattern of the package
+  manifest (PKG-013); the file's SHA-256 is recorded in `egide.lock`.
+
+## 9.7 Inspection
+
+- **[CT-060]** `egide expand <file>` prints the code produced by derivations and templates.

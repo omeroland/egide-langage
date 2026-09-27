@@ -1,0 +1,155 @@
+(* Égide grammar — version 0.2-draft. Normative together with spec/03-syntax.md.
+   Notation: ISO/IEC 14977 EBNF; { x } = zero or more, [ x ] = optional, "…" = terminal.
+   Terminals in UPPER CASE come from the lexer (spec/02-lexical-structure.md):
+   IDENT INT FLOAT DURATION STRING RAW_STRING BYTES CHAR TEMPLATE NEWLINE INDENT DEDENT EOF.
+   The grammar is designed to be LR(1) and is implemented with Menhir (compiler/lib/syntax/parser.mly).
+   Operator precedence is given by the table in SYN-100 and expressed with %left/%right/%nonassoc in Menhir. *)
+
+file            = [ doc_comment ] module_decl { NEWLINE import_decl } { NEWLINE top_decl } [ NEWLINE ] EOF ;
+
+module_decl     = "module" path ;
+path            = IDENT { "." IDENT } ;
+
+import_decl     = "import" path [ "." "{" import_item { "," import_item } [ "," ] "}" ] [ "as" IDENT ]
+                | "import" "go" STRING "as" IDENT ;
+import_item     = IDENT [ "as" IDENT ] ;
+
+(* ---------- Declarations ---------- *)
+
+top_decl        = { attribute NEWLINE } [ "pub" ] ( fn_decl | struct_decl | enum_decl | trait_decl
+                                                 | impl_decl | type_decl | const_decl ) ;
+attribute       = "@" IDENT [ "(" [ expr_list ] ")" ] ;
+
+fn_decl         = fn_sig ":" block ;
+fn_sig          = "fn" IDENT [ generics ] "(" [ params ] ")" [ "->" type ] [ using_clause ] ;
+params          = param { "," param } [ "," ] ;
+param           = [ "inout" | "take" | "comptime" ] ( "self" | IDENT ":" type [ "=" expr ] ) ;
+using_clause    = "using" cap_param { "," cap_param } ;
+cap_param       = IDENT ":" type ;
+generics        = "[" generic { "," generic } "]" ;
+generic         = [ "comptime" ] IDENT [ ":" bound { "+" bound } ] ;
+bound           = type ;
+
+struct_decl     = "struct" IDENT [ generics ] ":" NEWLINE INDENT field { NEWLINE field } NEWLINE DEDENT ;
+field           = { attribute NEWLINE } [ "pub" ] IDENT ":" type [ "=" expr ] ;
+
+enum_decl       = "enum" IDENT [ generics ] ":" NEWLINE INDENT variant { NEWLINE variant } NEWLINE DEDENT ;
+variant         = IDENT [ "(" variant_fields ")" ] ;
+variant_fields  = type { "," type }                       (* positional *)
+                | IDENT ":" type { "," IDENT ":" type } ;  (* named *)
+
+trait_decl      = "trait" IDENT [ generics ] [ ":" bound { "+" bound } ] ":" NEWLINE INDENT
+                  trait_item { NEWLINE trait_item } NEWLINE DEDENT ;
+trait_item      = fn_sig | fn_decl | "type" IDENT [ ":" bound ] ;
+
+impl_decl       = "impl" [ generics ] [ type "for" ] type ":" NEWLINE INDENT
+                  impl_item { NEWLINE impl_item } NEWLINE DEDENT ;
+impl_item       = { attribute NEWLINE } [ "pub" ] fn_decl | "type" IDENT "=" type ;
+
+type_decl       = "type" IDENT [ generics ] "=" [ "new" ] type [ "where" expr ] ;
+const_decl      = [ "comptime" ] "let" IDENT [ ":" type ] "=" expr ;
+
+(* ---------- Types ---------- *)
+
+type            = base_type [ "?" ] ;
+base_type       = path [ "[" type_args "]" ]
+                | "(" [ type { "," type } [ "," ] ] ")"                 (* unit and tuples *)
+                | "fn" "(" [ type { "," type } ] ")" [ "->" type ] [ "using" type { "," type } ]
+                | "dyn" bound
+                | "Self" ;
+type_args       = type_arg { "," type_arg } ;
+type_arg        = type | expr ;                                       (* comptime values, e.g. Array[u8, 16] *)
+
+(* ---------- Blocks and statements ---------- *)
+
+block           = NEWLINE INDENT stmt { NEWLINE stmt } NEWLINE DEDENT
+                | simple_stmt ;
+
+stmt            = simple_stmt | compound_stmt ;
+simple_stmt     = expr
+                | "let" pattern [ ":" type ] "=" expr [ "else" ":" block ]
+                | "var" IDENT [ ":" type ] "=" expr
+                | "comptime" "let" IDENT [ ":" type ] "=" expr
+                | place assign_op expr
+                | "return" [ expr ] | "break" [ expr ] | "continue"
+                | "defer" expr
+                | "yield" expr ;
+assign_op       = "=" | "+=" | "-=" | "*=" | "/=" | "%=" | "&=" | "|=" | "^=" | "<<=" | ">>=" ;
+place           = IDENT { "." IDENT | "[" expr "]" } ;
+
+compound_stmt   = if_stmt | match_expr | for_stmt | while_stmt | loop_stmt | with_stmt | given_stmt
+                | call_with_trailing_block ;
+if_stmt         = "if" expr ":" block { NEWLINE "elif" expr ":" block } [ NEWLINE "else" ":" block ] ;
+for_stmt        = "for" pattern "in" expr ":" block ;
+while_stmt      = "while" expr ":" block ;
+loop_stmt       = "loop" ":" block ;
+with_stmt       = "with" with_item { "," with_item } ":" block ;
+with_item       = [ IDENT "=" ] expr ;
+given_stmt      = "given" expr { "," expr } ":" block ;
+
+match_expr      = "match" expr ":" NEWLINE INDENT case_arm { NEWLINE case_arm } NEWLINE DEDENT ;
+case_arm        = "case" pattern [ "if" expr ] ":" block ;
+
+call_with_trailing_block = postfix_expr "fn" [ "(" [ lambda_params ] ")" ] ":" block ;
+
+(* ---------- Expressions (precedence climbing per SYN-100) ---------- *)
+
+expr            = lambda | pipe_expr ;
+lambda          = lambda_head "=>" expr
+                | "fn" "(" [ lambda_params ] ")" [ "->" type ] ":" block ;   (* only as let RHS, SYN-064 *)
+lambda_head     = IDENT | "(" [ lambda_params ] ")" ;
+lambda_params   = lambda_param { "," lambda_param } ;
+lambda_param    = [ "inout" | "take" ] IDENT [ ":" type ] ;
+
+pipe_expr       = cond_expr { "|>" cond_expr } ;
+cond_expr       = or_expr [ "if" or_expr "else" cond_expr ] ;
+or_expr         = and_expr { "or" and_expr } ;
+and_expr        = not_expr { "and" not_expr } ;
+not_expr        = "not" not_expr | cmp_expr ;
+cmp_expr        = range_expr { cmp_op range_expr } ;
+cmp_op          = "==" | "!=" | "<" | "<=" | ">" | ">=" ;
+range_expr      = bitor_expr [ ( ".." | "..=" ) [ bitor_expr ] ] | ( ".." | "..=" ) [ bitor_expr ] ;
+bitor_expr      = bitxor_expr { "|" bitxor_expr } ;
+bitxor_expr     = bitand_expr { "^" bitand_expr } ;
+bitand_expr     = shift_expr { "&" shift_expr } ;
+shift_expr      = add_expr { ( "<<" | ">>" ) add_expr } ;
+add_expr        = mul_expr { ( "+" | "-" ) mul_expr } ;
+mul_expr        = unary_expr { ( "*" | "/" | "%" ) unary_expr } ;
+unary_expr      = ( "-" | "~" ) unary_expr | pow_expr ;
+pow_expr        = postfix_expr [ "**" unary_expr ] ;
+
+postfix_expr    = primary { "(" [ args ] ")" | "[" slice_or_index "]" | "." IDENT | "?" } ;
+args            = arg { "," arg } [ "," ] ;
+arg             = [ IDENT ":" ] [ "&" ] expr ;
+slice_or_index  = expr | [ expr ] ( ".." | "..=" ) [ expr ] ;
+
+primary         = literal | path | "self" | "Self"
+                | "(" ")" | "(" expr ")" | "(" expr "," [ expr { "," expr } [ "," ] ] ")"
+                | "(" expr comp_clauses ")"
+                | "[" [ expr_list ] "]" | "[" expr comp_clauses "]"
+                | "{" [ map_entries | expr_list ] "}" | "{" map_entry comp_clauses "}" | "{" expr comp_clauses "}"
+                | if_expr | match_expr
+                | "unsafe" "(" "reason" ":" STRING ")" ":" block ;
+if_expr         = "if" expr ":" block { NEWLINE "elif" expr ":" block } NEWLINE "else" ":" block ;
+expr_list       = expr { "," expr } [ "," ] ;
+map_entries     = map_entry { "," map_entry } [ "," ] ;
+map_entry       = expr ":" expr ;
+comp_clauses    = comp_for { comp_for | "if" or_expr } ;
+comp_for        = "for" pattern "in" or_expr ;
+
+literal         = INT | FLOAT | DURATION | STRING | RAW_STRING | BYTES | CHAR | TEMPLATE | "true" | "false" ;
+
+(* ---------- Patterns ---------- *)
+
+pattern         = or_pattern [ "as" IDENT ] ;
+or_pattern      = simple_pattern { "|" simple_pattern } ;
+simple_pattern  = "_" | IDENT | literal_pattern | range_pattern
+                | path "(" [ field_patterns ] ")"
+                | "(" pattern "," [ pattern { "," pattern } ] ")"
+                | "[" [ list_patterns ] "]" ;
+literal_pattern = [ "-" ] ( INT | FLOAT ) | STRING | CHAR | "true" | "false" ;
+range_pattern   = literal_pattern ( ".." | "..=" ) literal_pattern ;
+field_patterns  = field_pattern { "," field_pattern } [ "," ] ;
+field_pattern   = [ IDENT ":" ] pattern | ".." ;
+list_patterns   = list_pattern { "," list_pattern } ;
+list_pattern    = pattern | ".." [ IDENT ] ;
