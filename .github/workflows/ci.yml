@@ -1,0 +1,62 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  compiler:
+    name: compiler (OCaml ${{ matrix.ocaml }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        ocaml: ["5.2", "5.3"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: ${{ matrix.ocaml }}
+          dune-cache: true
+      - run: opam install . --deps-only --with-test --with-dev-setup -y
+      - run: opam exec -- dune build
+      - name: format check (non-blocking until T-0024 formats the seed)
+        run: opam exec -- dune build @fmt
+        continue-on-error: true
+      - run: opam exec -- dune test
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+      - run: opam exec -- make conformance
+
+  runtime-go:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+      - run: cd runtime/go && test -z "$(gofmt -l .)"
+      - run: cd runtime/go && go vet ./...
+      - run: cd runtime/go && go test -race ./...
+
+  spec:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: ./tools/check-spec.sh
+      - run: ./tools/check-generated.sh
+
+  task-board:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: ./tools/check-tasks.sh
