@@ -1,0 +1,6 @@
+# spec: LEX-061
+# expect: lex-fail
+# diagnostic: E0050 at 6:10
+module tests.lexical.semicolon_rejected
+
+let x = 1;

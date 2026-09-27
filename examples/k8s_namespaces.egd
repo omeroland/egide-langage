@@ -1,0 +1,21 @@
+# phase: 5
+## Go interop: list tenant namespaces with client-go (spec ch. 11).
+module examples.k8s_namespaces
+
+import go "k8s.io/client-go/kubernetes" as kube
+import go "k8s.io/client-go/rest" as rest
+import go "k8s.io/apimachinery/pkg/apis/meta/v1" as metav1
+import go "strings" as strings
+
+fn client() -> Result[kube.Clientset, GoError] using go: Go:
+    let cfg = rest.InClusterConfig()?
+    kube.NewForConfig(cfg)
+
+pub fn main(sys: Sys) -> Result[(), Error]:
+    given sys.go:
+        let cs = client()?
+        scope(timeout: 30.s) fn(s):
+            let list = cs.CoreV1().Namespaces().List(metav1.ListOptions(LabelSelector: "tenant"))?
+            for ns in list.Items:
+                print(strings.ToLower(ns.Name))
+    Ok(())

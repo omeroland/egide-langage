@@ -1,0 +1,8 @@
+# spec: LEX-030, LEX-035
+# expect: lex-pass
+module tests.lexical.layout_brackets_join_lines
+
+let xs = [
+  1,
+      2,
+]

@@ -1,0 +1,7 @@
+# spec: LEX-040, TYP-070
+# expect: compile-fail
+# diagnostic: E0030 at 7:13
+# phase: 1
+module tests.types.overflow_literal
+
+let x: i8 = 300

@@ -1,0 +1,18 @@
+# phase: 4
+## Count lines of .egd files under a directory, with read-only access to that directory only.
+module examples.wc
+
+import std.cli.{Args}
+
+@derive(Args)
+struct Options:
+    path: str
+
+pub fn main(sys: Sys) -> Result[(), Error]:
+    let opts = Args.parse[Options](sys.env.args())?
+    let dir = sys.fs.dir(opts.path, mode: Read)?
+    var total = 0
+    for f in dir.walk(recursive: true)? |> filter(f => f.extension() == Some("egd")):
+        total += dir.read_str(f.path)?.lines().count()
+    print(f"{total} lines")
+    Ok(())

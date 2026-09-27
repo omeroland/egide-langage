@@ -1,0 +1,9 @@
+# spec: SYN-001, SYN-002, SYN-003
+# expect: parse-pass
+module tests.syntax.module_imports_constants
+
+import std.fmt
+import egide.pg as pg
+
+let LIMIT = 10
+let NAME = "egide"

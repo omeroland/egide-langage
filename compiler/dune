@@ -1,0 +1,2 @@
+; egidec — the Égide bootstrap compiler. See docs/architecture.md.
+(dirs bin lib test)

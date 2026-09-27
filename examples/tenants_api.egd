@@ -1,0 +1,44 @@
+# phase: 5
+## HTTP API reading a secret, querying PostgreSQL and validating its inputs (spec ch. 6, 12).
+module examples.tenants_api
+
+import std.http.{Server, Request, Response, Status}
+import egide.pg.{Pool}
+
+@derive(Json)
+struct Tenant:
+    id: TenantId
+    team: TeamName
+    cpu_quota_m: int
+
+type TenantId = new int where self > 0
+type TeamName = new str where re"^[a-z][a-z0-9-]{2,62}$".matches(self)
+
+pub fn main(sys: Sys) -> Result[(), Error]:
+    let password = sys.secrets.file("/var/run/secrets/db/password")?
+    let db = Pool.connect(
+        sys.net.client(hosts: ["pg.internal"], ports: [5432]),
+        user: "api",
+        password: password,
+    )?
+    let tls = sys.fs.dir("/etc/tls", mode: Read)?
+    given db, sys.log.json(level: Info):
+        Server(sys.net.listen(":8443")?, tls: tls)
+            .get("/tenants/{id}", get_tenant)
+            .post("/tenants", create_tenant)
+            .serve()
+
+fn get_tenant(req: Request) -> Response using db: Pool, log: Log:
+    let id = TenantId.parse(req.param("id")) else: return Response(Status.BadRequest)
+    match db.one[Tenant](sql"SELECT * FROM tenants WHERE id = {id}"):
+        case Ok(Some(t)): Response.json(t)
+        case Ok(None): Response(Status.NotFound)
+        case Err(e):
+            log.error("reading tenant", err: e)
+            Response(Status.InternalError)
+
+fn create_tenant(req: Request) -> Response using db: Pool:
+    let t = req.json[Tenant]() else: return Response(Status.BadRequest)
+    match db.exec(sql"INSERT INTO tenants VALUES ({t.id}, {t.team}, {t.cpu_quota_m})"):
+        case Ok(_): Response(Status.Created)
+        case Err(_): Response(Status.Conflict)

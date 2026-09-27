@@ -1,0 +1,4 @@
+(library
+ (name egide_diagnostics)
+ (public_name egide.diagnostics)
+ (libraries egide.source))

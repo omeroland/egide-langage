@@ -1,0 +1,11 @@
+# phase: 1
+## The prelude is imported implicitly by every module (T-0037 fills it in).
+module std.prelude
+
+pub enum Option[T]:
+    Some(T)
+    None
+
+pub enum Result[T, E]:
+    Ok(T)
+    Err(E)

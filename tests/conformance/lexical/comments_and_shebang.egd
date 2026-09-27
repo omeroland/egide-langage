@@ -1,0 +1,8 @@
+#!/usr/bin/env egide run
+# spec: LEX-010, LEX-011, LEX-012
+# expect: lex-pass
+## Module documentation.
+module tests.lexical.comments_and_shebang
+
+# a comment
+let x = 1  # trailing comment

@@ -1,0 +1,8 @@
+# phase: 1
+## The smallest Égide program. `main` receives stdout implicitly (CAP-011).
+module examples.hello
+
+pub fn main(sys: Sys) -> Result[(), Error]:
+    let name = "Égide"
+    print(f"Hello from {name}!")
+    Ok(())

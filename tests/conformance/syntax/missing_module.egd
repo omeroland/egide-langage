@@ -1,0 +1,4 @@
+# spec: SYN-001
+# expect: parse-fail
+# diagnostic: E0100 at 4:1
+let x = 1
