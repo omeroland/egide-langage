@@ -1,3 +1,3 @@
-module github.com/egide-lang/egide/runtime/go
+module github.com/omeroland/egide-langage/runtime/go
 
 go 1.24

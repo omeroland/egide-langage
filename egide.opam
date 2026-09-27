@@ -7,8 +7,8 @@ description:
 maintainer: ["Omeroland"]
 authors: ["Omeroland" "The Égide contributors"]
 license: "Apache-2.0"
-homepage: "https://github.com/egide-lang/egide"
-bug-reports: "https://github.com/egide-lang/egide/issues"
+homepage: "https://github.com/omeroland/egide-langage"
+bug-reports: "https://github.com/omeroland/egide-langage/issues"
 depends: [
   "ocaml" {>= "5.2"}
   "dune" {>= "3.14" & >= "3.14"}
@@ -34,4 +34,4 @@ build: [
     "@doc" {with-doc}
   ]
 ]
-dev-repo: "git+https://github.com/egide-lang/egide.git"
+dev-repo: "git+https://github.com/omeroland/egide-langage.git"

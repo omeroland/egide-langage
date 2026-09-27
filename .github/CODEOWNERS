@@ -1,8 +1,8 @@
-# Replace @OWNER with the GitHub handle of the project owner after creating the repository.
+# Protected paths require the owner's review (AGENTS.md rule 6).
 # The specification and ADRs require the project owner's approval.
-/spec/            @OWNER
-/docs/adr/        @OWNER
-/AGENTS.md        @OWNER
-/CLAUDE.md        @OWNER
-/.claude/         @OWNER
-/agents/          @OWNER
+/spec/            @omeroland
+/docs/adr/        @omeroland
+/AGENTS.md        @omeroland
+/CLAUDE.md        @omeroland
+/.claude/         @omeroland
+/agents/          @omeroland

@@ -5,7 +5,7 @@
 (version 0.0.1)
 (generate_opam_files true)
 
-(source (github egide-lang/egide))
+(source (github omeroland/egide-langage))
 (license Apache-2.0)
 (authors "Omeroland" "The Égide contributors")
 (maintainers "Omeroland")
