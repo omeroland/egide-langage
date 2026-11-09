@@ -1,7 +1,8 @@
 (** Compiler diagnostics (spec/13-toolchain.md TOOL-040..042, catalogue in docs/diagnostics.md, JSON
     schema in docs/diagnostics.schema.json).
 
-    Spans are [start, stop) with 1-based lines and columns counted in Unicode scalar values. *)
+    Spans are half-open: [start] is included, [stop] is not. Lines and columns are 1-based; columns count
+    Unicode scalar values. *)
 
 type severity = Error | Warning
 
