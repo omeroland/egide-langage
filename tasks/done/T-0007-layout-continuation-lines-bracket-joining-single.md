@@ -49,7 +49,7 @@ Anything not listed in the acceptance criteria; create follow-up tasks.
   recovery stream; LEX-034 counts DEDENTs per real block.
 - 2026-11-09 syntax-engineer: SYN-010 and the EBNF (`block = NEWLINE INDENT … NEWLINE DEDENT`) contradict LEX-032
   steps 2/3 and the §2.4 example (`: INDENT`, a single NEWLINE before several DEDENTs). The layout follows LEX-032.
-  Raised as tasks/blocked/Q-0001-layout-tokens-vs-ebnf-block.md (blocks T-0010).
+  Raised as tasks/blocked/Q-0002-layout-tokens-vs-ebnf-block.md (blocks T-0010).
 - 2026-11-09 syntax-engineer: qcheck-core (already a with-test dependency in dune-project) is added to the
   compiler/test/syntax test library. No benchmark added: the change adds O(1) work per line and touches no
   per-character path.
@@ -77,7 +77,7 @@ Tests added:
 
 Rules covered: LEX-030, LEX-031, LEX-032, LEX-033, LEX-034, LEX-035.
 
-Follow-ups: Q-0001 (spec-question, EBNF vs LEX-032 layout tokens, blocks T-0010). No new tasks.
+Follow-ups: Q-0002 (spec-question, EBNF vs LEX-032 layout tokens, blocks T-0010). No new tasks.
 
 Known limitations: E0020 recovery is unchanged from the seed. Each further line at the same unexpected width
 reports E0020 again. Making recovery less noisy is left to T-0013.

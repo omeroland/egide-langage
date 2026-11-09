@@ -1,5 +1,5 @@
 ---
-id: Q-0001
+id: Q-0002
 rule: LEX-032
 raised_by: syntax-engineer/wave1
 blocking: [T-0010]
