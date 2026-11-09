@@ -15,6 +15,10 @@ type state = { buf : Sedlexing.lexbuf; sink : D.Sink.t }
 let span st = let s, e = Sedlexing.lexing_positions st.buf in Egide_source.Span.of_lexing s e
 let report st ~rule ~code msg = D.Sink.report st.sink (D.error ~rule ~code (span st) msg)
 
+(* LEX-004: one diagnostic per run of tabs, spanning the run. *)
+let report_tab st =
+  report st ~rule:"LEX-004" ~code:"E0005" "tab character outside a string literal; indent with 4 spaces"
+
 let ret st tok =
   let startp, _ = Sedlexing.lexing_positions st.buf in
   Some (tok, startp)
@@ -25,10 +29,12 @@ let rec token st =
   | ' ' -> token st
   | '\n' | "\r\n" -> token st (* sedlex tracks line numbers itself *)
   | '\r' -> token st (* lone CR: reported by Source_check (E0003) *)
-  | '\t' ->
-      report st ~rule:"LEX-004" ~code:"E0005" "tab character outside a string literal; indent with 4 spaces";
+  | Plus '\t' ->
+      report_tab st;
       token st
-  | '#', Star (Compl '\n') -> token st (* LEX-010/011/012: comments, doc comments, shebang *)
+  | '#' ->
+      comment st;
+      token st
   | ident_start, Star ident_char -> (
       let s = Sedlexing.Utf8.lexeme buf in
       match Token_table.keyword s with Some kw -> ret st kw | None -> ret st (IDENT s))
@@ -89,10 +95,24 @@ let rec token st =
       token st
   | eof -> None
   | any ->
-      report st ~rule:"LEX-060" ~code:"E0051"
-        (Printf.sprintf "unexpected character `%s`" (Sedlexing.Utf8.lexeme buf));
+      let cp = Uchar.to_int (Sedlexing.lexeme_char buf 0) in
+      (* A forbidden code point or a byte-order mark was already reported by Source_check (E0004/E0002). *)
+      if not (Source_check.is_forbidden cp) then
+        report st ~rule:"LEX-060" ~code:"E0051"
+          (Printf.sprintf "unexpected character `%s`" (Sedlexing.Utf8.lexeme buf));
       token st
   | _ -> None
+
+(* LEX-010/011/012: a comment, doc comment or shebang runs to the end of the line (the LF is left to [token]).
+   LEX-003/004: only string literals may contain HT, so a tab inside a comment is still E0005. *)
+and comment st =
+  let buf = st.buf in
+  match%sedlex buf with
+  | Plus (Compl ('\n' | '\t')) -> comment st
+  | Plus '\t' ->
+      report_tab st;
+      comment st
+  | _ -> () (* at LF or end of file: nothing matched, so nothing is consumed *)
 
 (* LEX-050 (seed subset): plain strings with the escapes backslash, quote, n, t, r and 0. *)
 and string st acc =

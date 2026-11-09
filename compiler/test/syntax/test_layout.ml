@@ -57,7 +57,7 @@ let%expect_test "bidi override in a string is forbidden" =
   [%expect
     {|
     module IDENT("m") NEWLINE let IDENT("s") = STRING("a\226\128\174b") NEWLINE EOF
-    t.egd:2:11: error[E0004]: forbidden character U+202E — risk: hidden or reordered source text (Trojan Source) (LEX-003)
+    t.egd:2:11: error[E0004]: forbidden character U+202E (RIGHT-TO-LEFT OVERRIDE) — risk: hidden or reordered source text (Trojan Source) (LEX-003)
     |}]
 
 (* spec: LEX-004 *)
