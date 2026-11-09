@@ -212,10 +212,14 @@ let%expect_test "tabs expand and CR LF is stripped" =
       |                 ^
     |}]
 
-(* A span outside the available source (stale span) does not crash the renderer. *)
+(* A span outside the available source (stale or malformed) does not crash the renderer nor
+   allocate a marker as wide as its column: it is listed as a location. *)
 let%expect_test "span beyond the end of the source falls back to a location line" =
   render [ ("t.egd", "x\n") ]
-    (D.error ~rule:"SYN-001" ~code:"E0100" ~labels:[ D.label (sp 9 1 9 2) "far away" ] (sp 1 1 1 2) "msg");
+    (D.error ~rule:"SYN-001" ~code:"E0100"
+       ~labels:[ D.label (sp 9 1 9 2) "far away"; D.label (sp 1 1_000_000_000 1 1_000_000_001) "too wide" ]
+       (sp 1 1 1 2) "msg");
+  render [ ("t.egd", "x\n") ] (D.error ~rule:"SYN-001" ~code:"E0100" (sp 1 0 1 1) "column zero");
   [%expect
     {|
     t.egd:1:1: error[E0100]: msg (SYN-001)
@@ -223,6 +227,8 @@ let%expect_test "span beyond the end of the source falls back to a location line
     1 | x
       | ^
       --> t.egd:9:1: far away
+      --> t.egd:1:1000000000: too wide
+    t.egd:1:0: error[E0100]: column zero (SYN-001)
     |}]
 
 (* spec: TOOL-041 — security diagnostics state the risk; fixes are rendered as edits. *)

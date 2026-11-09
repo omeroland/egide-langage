@@ -53,7 +53,7 @@ let%expect_test "strings are escaped safely" =
        "q\" b\\ n\n t\t c\x01 del\x7f bidi\xE2\x80\xAE ls\xE2\x80\xA8 bad\xFF é🎉");
   [%expect
     {|
-    {"code":"E0041","severity":"error","rule":"LEX-050","message":"q\" b\\ n\n t\t c\u0001 del\u007f bidi‮ ls  bad� é🎉","span":{"file":"dir/\"q\".egd","start":{"line":1,"col":1},"end":{"line":1,"col":2}},"labels":[],"notes":[],"fixes":[]}
+    {"code":"E0041","severity":"error","rule":"LEX-050","message":"q\" b\\ n\n t\t c\u0001 del\u007f bidi\u202e ls\u2028 bad\ufffd é🎉","span":{"file":"dir/\"q\".egd","start":{"line":1,"col":1},"end":{"line":1,"col":2}},"labels":[],"notes":[],"fixes":[]}
     schema: ok
     |}]
 
@@ -103,12 +103,13 @@ let gen_diag =
   let text = map (fun s -> "m" ^ s) any_string in
   let pos = map2 (fun line col -> { Span.line; col }) (int_range 1 500) (int_range 1 200) in
   let span = map3 (fun file start stop -> Span.make ~file ~start ~stop) any_string pos pos in
-  let code = map2 (fun ew n -> Printf.sprintf "%c%04d" (if ew then 'E' else 'W') n) bool (int_bound 9999) in
-  let rule = map2 (fun p n -> Printf.sprintf "%s-%03d" p n) (oneofl [ "LEX"; "SYN"; "MEM"; "SEC" ]) (int_bound 999) in
+  let code = int_bound 9999 in
+  let rule = map2 (fun p n -> Printf.sprintf "%s-%03d" p n) (oneof_list [ "LEX"; "SYN"; "MEM"; "SEC" ]) (int_bound 999) in
   let label = map2 D.label span any_string in
   let fix = map2 D.fix text (list_size (int_range 1 3) (map2 D.edit span any_string)) in
   map
-    (fun ((warn, code, rule, msg), (span, labels, notes, fixes)) ->
+    (fun ((warn, n, rule, msg), (span, labels, notes, fixes)) ->
+      let code = Printf.sprintf "%c%04d" (if warn then 'W' else 'E') n in
       (if warn then D.warning else D.error) ~rule ~labels ~notes ~fixes ~code span msg)
     (pair
        (quad bool code rule text)
@@ -121,11 +122,25 @@ let%test "property: to_json is one valid line for arbitrary diagnostics" =
          (not (String.contains s '\n')) && validate_json s = []));
   true
 
+(* Valid UTF-8 text over all scalar values, biased towards ASCII and the escaped ranges. *)
+let utf8_text =
+  let open QCheck.Gen in
+  let scalar =
+    oneof_weighted
+      [ (3, int_range 0 0x7F); (1, int_range 0x80 0x9F); (1, int_range 0x2000 0x206F);
+        (1, map (fun c -> if c >= 0xD800 && c <= 0xDFFF then 0xFFFD else c) (int_range 0xA0 0x10FFFF)) ]
+  in
+  map
+    (fun cps ->
+      let b = Buffer.create 16 in
+      List.iter (fun c -> Buffer.add_utf_8_uchar b (Uchar.of_int c)) cps;
+      Buffer.contents b)
+    (list_size (int_bound 20) scalar)
+
 let%test "property: valid UTF-8 messages round-trip through JSON" =
   QCheck.Test.check_exn
-    (QCheck.Test.make ~count:500 ~name:"message round-trip" QCheck.(string_small_of Gen.char) (fun s ->
+    (QCheck.Test.make ~count:500 ~name:"message round-trip" (QCheck.make utf8_text) (fun s ->
          let msg = "m" ^ s in
-         QCheck.assume (String.is_valid_utf_8 msg);
          match J.parse (D.to_json (D.error ~rule:"LEX-001" ~code:"E0001" (sp 1 1 1 2) msg)) with
          | J.Obj kv -> List.assoc "message" kv = J.Str msg
          | _ -> false));
