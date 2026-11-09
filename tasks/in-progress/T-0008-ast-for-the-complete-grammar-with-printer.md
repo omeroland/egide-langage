@@ -9,9 +9,9 @@ spec: [SYN-001, SYN-012, SYN-050, SYN-060, SYN-062]
 paths: [compiler/lib/syntax/ast.ml, compiler/lib/syntax/ast.mli, compiler/lib/syntax/print.ml, compiler/test/syntax/]
 estimate: M
 labels: []
-status: backlog
-claimed_by:
-claimed_at:
+status: in-progress
+claimed_by: syntax-engineer/wave1
+claimed_at: 2026-11-09T09:31:55Z
 ---
 
 ## Goal
