@@ -46,7 +46,7 @@ Anything not listed in the acceptance criteria; create follow-up tasks.
   compiler bugs, and it guarantees every emitted diagnostic satisfies the schema. There is no `Ice` module yet.
 - `to_human` output is byte-identical to the seed for diagnostics without labels/fixes (existing syntax snapshots and
   the conformance runner's `file:line:col: error[CODE]` match are untouched). The rich renderer is a new function
-  `render_human ~sources` because excerpts need the source text; wiring it into the CLI is T-0025 (compiler/bin is
+  `render_human ~sources` because excerpts need the source text; wiring it into the CLI is T-1000 (compiler/bin is
   outside this task's paths).
 - Span `stop` is exclusive (consistent with `Span.of_lexing` and with the docs/diagnostics.md example, where `&cart`
   is 9..14). Documented in docs/diagnostics.md and the schema.
@@ -66,7 +66,7 @@ Anything not listed in the acceptance criteria; create follow-up tasks.
   Cross-checked locally (not in CI) with Python `jsonschema` 4.26: schema valid against the 2020-12 metaschema, the
   snapshot outputs and the docs example validate, and mutations are rejected identically.
 - Found: an empty file yields E0100 with `Span.dummy` (file "", line 0), which violates TOOL-040 and the schema →
-  T-0026.
+  T-1001.
 
 ## Outcome
 
@@ -83,6 +83,6 @@ of docs/diagnostics.md, validated against the new `docs/diagnostics.schema.json`
   `compiler/test/diagnostics/json_check.ml`.
 - Rules covered: TOOL-040, TOOL-041 (risk text preserved, security fix rendering), TOOL-042; LEX-003 escaping in
   excerpts.
-- Follow-ups: T-0025 (CLI uses `render_human`), T-0026 (dummy span on empty file).
+- Follow-ups: T-1000 (CLI uses `render_human`), T-1001 (dummy span on empty file).
 - Limitations: no colour; wcwidth approximation; TOOL-041's "state the risk" is a message-content convention checked
   by review, not enforced by the type (a `risk` field would need a spec/format change).

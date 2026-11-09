@@ -1,5 +1,5 @@
 ---
-id: T-0026
+id: T-1001
 title: EOF diagnostics of an empty file carry a dummy span
 kind: task
 phase: 0

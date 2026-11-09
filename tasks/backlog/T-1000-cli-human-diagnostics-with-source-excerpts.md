@@ -1,5 +1,5 @@
 ---
-id: T-0025
+id: T-1000
 title: CLI: human diagnostics with source excerpts
 kind: task
 phase: 0
