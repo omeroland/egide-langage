@@ -1,5 +1,5 @@
 ---
-id: Q-0012
+id: Q-0021
 rule: SYN-001, SYN-011, LEX-055, LEX-032, CT-011
 raised_by: language-architect/wave1 (T-0022)
 blocking: [T-0015, T-0017]
@@ -17,10 +17,10 @@ blocks are fragments, not files. What does the extractor expect, and who fixes t
 |-------|---------|----------------|
 | `spec/05-values-and-memory.md` §5.1 | `assert a == [1, 2, 3]`: `assert` is not a keyword; juxtaposition is a syntax error | `assert(a == [1, 2, 3])` |
 | `spec/05-values-and-memory.md` MEM-021 block | contains a deliberately erroneous line (`# error MEM-021`) | tag the block as invalid (below) |
-| `examples/tenants_api.egd` | `re"…{2,62}$"`: `{2,62}` is an interpolation (Q-0005) | `{{2,62}}` |
-| `agents/escalation.md` | trailing block after a continuation line: E0021 (Q-0007) | depends on Q-0007 |
-| `spec/09-comptime.md` CT-011 | `-> type` and `struct:` are not in the grammar (Q-0002) | depends on Q-0002 |
-| README, `examples/tenants_api.egd`, ch. 8 | let-else with an irrefutable pattern (Q-0010) | depends on Q-0010 |
+| `examples/tenants_api.egd` | `re"…{2,62}$"`: `{2,62}` is an interpolation (Q-0014) | `{{2,62}}` |
+| `agents/escalation.md` | trailing block after a continuation line: E0021 (Q-0016) | depends on Q-0016 |
+| `spec/09-comptime.md` CT-011 | `-> type` and `struct:` are not in the grammar (Q-0011) | depends on Q-0011 |
+| README, `examples/tenants_api.egd`, ch. 8 | let-else with an irrefutable pattern (Q-0019) | depends on Q-0019 |
 
 ### Fragments
 

@@ -4,7 +4,8 @@
 - Date: 2026-11-09
 - Deciders: owner
 - Spec chapters affected: 2, 3 (and `spec/grammar/egide.ebnf`)
-- Raised by: T-0022 (spec audit of chapters 2 and 3)
+- Raised by: T-0022 (spec audit of chapters 2 and 3). Answers Q-0002 (layout tokens vs EBNF block, PR #3) and
+  Q-0008 (`place` cannot start with `self`, PR #4), raised in parallel by `syntax-engineer`.
 
 > New rule ids are written with a space (`SYN 015`) because `tools/check-spec.sh` rejects references to ids that do
 > not exist yet in `spec/`. The owner writes them as normal ids when applying the edits.
@@ -90,7 +91,8 @@ expression (SYN 015)."
 **SYN-012**, Assignment row: "the left-hand side MUST be a place: a `var` binding, an `inout` parameter, `self` in
 an `inout self` method, or a field `.f` or element `[i]` of a place; otherwise E0106 'cannot assign to this
 expression'." The current `place = IDENT { … }` production is a reduce/reduce conflict with `primary` on `.` and `[`
-and omits `self` (`self.count += 1` does not parse), so the parser reads a postfix expression and checks it.
+and omits `self` (`self.count += 1` does not parse; Q-0008), so the parser reads a postfix expression and checks it.
+Adding `"self"` as a root of `place` (Q-0008 option A) fixes the omission but keeps the conflict.
 
 **EBNF**: replace the `file`, declaration-body and statement sections with the following, and remove `if_expr`
 and `match_expr` from `primary` and the `fn … : block` alternative from `lambda`:
@@ -142,7 +144,7 @@ Trace of the §2.4 example: `fn_sig ":" suite(INDENT block_stmt(if_expr: "if" ex
 DEDENT) "else" ":" suite(0 NEWLINE)) DEDENT) EOF`.
 
 Checked mechanically: a Menhir transcription of this EBNF with ADR-0014's types (simplified literals, patterns and
-bitwise levels; parenthesised lambda heads left out, see Q-0001) reports 0 conflicts. With the current `place`
+bitwise levels; parenthesised lambda heads left out, see Q-0010) reports 0 conflicts. With the current `place`
 production it reports a reduce/reduce conflict.
 
 Consequences of the grammar, stated so tests can check them: a single-line block cannot contain a let-else, a

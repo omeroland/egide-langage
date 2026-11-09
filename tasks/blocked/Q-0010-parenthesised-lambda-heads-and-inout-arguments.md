@@ -1,5 +1,5 @@
 ---
-id: Q-0001
+id: Q-0010
 rule: SYN-060, SYN-033, MEM-022, SYN-100
 raised_by: language-architect/wave1 (T-0022)
 blocking: [T-0011, T-0008]

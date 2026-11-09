@@ -1,5 +1,5 @@
 ---
-id: T-0025
+id: T-1010
 title: check-spec allows new rule ids in Proposed ADRs
 kind: task
 phase: 0

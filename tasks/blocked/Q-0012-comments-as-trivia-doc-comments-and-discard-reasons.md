@@ -1,5 +1,5 @@
 ---
-id: Q-0003
+id: Q-0012
 rule: LEX-011, LEX-031, SYN-001, ERR-002, TOOL-030
 raised_by: language-architect/wave1 (T-0022)
 blocking: [T-0008, T-0009, T-0006]

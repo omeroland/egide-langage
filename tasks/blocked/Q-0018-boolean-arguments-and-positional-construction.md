@@ -1,5 +1,5 @@
 ---
-id: Q-0009
+id: Q-0018
 rule: SYN-031, SYN-032, TYP-030, ERR-040
 raised_by: language-architect/wave1 (T-0022)
 blocking: [T-0031, T-0052]
@@ -39,6 +39,6 @@ C. Only boolean *literals* passed positionally are errors. This catches `send(ms
 
 1. B. It targets the readability trap (an anonymous `true` among other arguments) without taxing generic code or
    one-argument predicates. Spec edit to SYN-031: "when the parameter's declared type is `bool` and the function has
-   at least two parameters other than `self` and `using` parameters". A piped value counts as positional (Q-0008).
+   at least two parameters other than `self` and `using` parameters". A piped value counts as positional (Q-0017).
 2. Add to SYN-032: "and newtypes (`UserId(42)`, TYP-030)". The ch. 12 `std.http` documentation should say whether
    `Response(status)` is a function. The parser is not affected (both forms parse as calls).

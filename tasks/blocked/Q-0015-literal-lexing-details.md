@@ -1,5 +1,5 @@
 ---
-id: Q-0006
+id: Q-0015
 rule: LEX-040, LEX-041, LEX-042, LEX-050, LEX-051, LEX-053, LEX-054
 raised_by: language-architect/wave1 (T-0022)
 blocking: [T-0003, T-0004]
