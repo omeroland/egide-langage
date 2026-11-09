@@ -9,9 +9,9 @@ spec: [LEX-030, LEX-031, LEX-033, LEX-035]
 paths: [compiler/lib/syntax/layout.ml, compiler/test/syntax/, tests/conformance/lexical/]
 estimate: M
 labels: []
-status: backlog
-claimed_by:
-claimed_at:
+status: in-progress
+claimed_by: syntax-engineer/wave1
+claimed_at: 2026-11-09T09:31:41Z
 ---
 
 ## Goal
