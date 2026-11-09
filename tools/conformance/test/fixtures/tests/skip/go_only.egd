@@ -1,0 +1,5 @@
+# spec: ERR-040
+# expect: run-pass
+# backends: go, native
+module skip.go_only
+#> exit 1

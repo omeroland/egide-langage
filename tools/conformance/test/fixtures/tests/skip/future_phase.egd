@@ -1,0 +1,5 @@
+# spec: LEX-001
+# expect: lex-pass
+# phase: 2
+module skip.future_phase
+#> exit 1

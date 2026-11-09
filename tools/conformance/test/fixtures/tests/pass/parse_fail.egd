@@ -1,0 +1,10 @@
+# spec: SYN-001
+# expect: parse-fail
+# diagnostic: E0100 at 4:1
+# diagnostic: E0101 at 1:1
+module pass.parse_fail
+#> cmd parse
+#> json
+#> diag E0101 1:1
+#> diag E0100 4:1
+#> exit 1

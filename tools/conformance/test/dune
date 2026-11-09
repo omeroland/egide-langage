@@ -1,0 +1,35 @@
+; Tests of the conformance runner itself (T-0014).
+
+(library
+ (name test_conformance)
+ (inline_tests)
+ (libraries egide_conformance unix)
+ (modules test_json test_header test_verdict test_junit test_exec)
+ (preprocess
+  (pps ppx_expect)))
+
+; Stand-in compiler driven by `#> ...` lines of the fixture files (see fake_egide.ml).
+
+(executable
+ (name fake_egide)
+ (modules fake_egide)
+ (libraries unix))
+
+; End-to-end: run the real runner on fixtures/tests with the fake compiler, 4 jobs, phase 1.
+; The JUnit report is checked for its totals (its timings are not deterministic).
+
+(rule
+ (deps
+  (source_tree fixtures)
+  fake_egide.exe
+  ../main.exe)
+ (action
+  (with-stdout-to
+   e2e.output
+   (system
+    "j=$(mktemp); ../main.exe --egide ./fake_egide.exe --phase 1 --spec-dir fixtures/spec --jobs 4 --timeout 1 --junit $j fixtures/tests; echo \"exit=$?\"; grep -o '<testsuites [^>]*>' $j | sed -E 's/ time=\"[^\"]*\"//'; grep -c '<testcase ' $j; rm -f $j"))))
+
+(rule
+ (alias runtest)
+ (action
+  (diff e2e.expected e2e.output)))

@@ -1,0 +1,50 @@
+FAIL fixtures/tests/fail/fail_but_usage_error.egd: expected exit status 1, got 2
+  reported: E0001 at 1:1
+  $ ./fake_egide.exe parse --error-format=json fixtures/tests/fail/fail_but_usage_error.egd
+  stderr| {"code":"E0001","severity":"error","rule":"LEX-001","message":"m","span":{"file":"fixtures/tests/fail/fail_but_usage_error.egd","start":{"line":1,"col":1},"end":{"line":1,"col":2}},"notes":[]}
+FAIL fixtures/tests/fail/ice.egd: compiler crash: internal compiler error (exit status 70)
+  $ ./fake_egide.exe lex --error-format=json fixtures/tests/fail/ice.egd
+  stderr| {"code":"E0001","severity":"error","rule":"LEX-001","message":"m","span":{"file":"fixtures/tests/fail/ice.egd","start":{"line":1,"col":1},"end":{"line":1,"col":2}},"notes":[]}
+  stderr| {"code":"ICE","severity":"error","rule":"LEX-001","message":"m","span":{"file":"fixtures/tests/fail/ice.egd","start":{"line":1,"col":1},"end":{"line":1,"col":2}},"notes":[]}
+FAIL fixtures/tests/fail/late_directive.egd: invalid test header:
+  - line 4: `# phase:` after the header block (headers must precede the first code line)
+FAIL fixtures/tests/fail/missing_spec.egd: invalid test header:
+  - missing `# spec:` header
+FAIL fixtures/tests/fail/missing_spec_future_phase.egd: invalid test header:
+  - missing `# spec:` header
+FAIL fixtures/tests/fail/panic_expected.egd [interp]: expected exit status 101 (panic), got 1
+  $ ./fake_egide.exe run fixtures/tests/fail/panic_expected.egd
+  stderr| error: main returned Err
+FAIL fixtures/tests/fail/pass_but_exit_1.egd: expected exit status 0, got 1
+  reported: E0001 at 1:1
+  $ ./fake_egide.exe lex --error-format=json fixtures/tests/fail/pass_but_exit_1.egd
+  stderr| {"code":"E0001","severity":"error","rule":"LEX-001","message":"m","span":{"file":"fixtures/tests/fail/pass_but_exit_1.egd","start":{"line":1,"col":1},"end":{"line":1,"col":2}},"notes":[]}
+FAIL fixtures/tests/fail/stdout_mismatch.egd [interp]: stdout differs
+  expected: ["hello"]
+  actual:   ["hullo"]
+  $ ./fake_egide.exe run fixtures/tests/fail/stdout_mismatch.egd
+  stdout| hullo
+FAIL fixtures/tests/fail/timeout.egd: timed out after 1s
+  $ ./fake_egide.exe lex --error-format=json fixtures/tests/fail/timeout.egd
+FAIL fixtures/tests/fail/typo_directive.egd: invalid test header:
+  - line 3: unknown header `# diagnostics:` (known: spec, expect, diagnostic, stdout, phase, backends, requires)
+  - `lex-fail` requires at least one `# diagnostic:` header
+FAIL fixtures/tests/fail/uncaught_exception.egd: compiler crash: uncaught OCaml exception
+  $ ./fake_egide.exe lex --error-format=json fixtures/tests/fail/uncaught_exception.egd
+  stderr| Fatal error: exception Not_found
+FAIL fixtures/tests/fail/unknown_rule.egd: invalid test header:
+  - rule LEX-999 is not defined in the spec
+  - rule LEX-099 is not defined in the spec
+FAIL fixtures/tests/fail/wrong_command.egd: expected exit status 1, got 3
+  $ ./fake_egide.exe check --error-format=json fixtures/tests/fail/wrong_command.egd
+  stderr| fake_egide: expected command parse, got check
+FAIL fixtures/tests/fail/wrong_position.egd: missing diagnostic E0022 at 8:3
+  reported: E0022 at 8:4
+  $ ./fake_egide.exe lex --error-format=json fixtures/tests/fail/wrong_position.egd
+  stderr| {"code":"E0022","severity":"error","rule":"LEX-001","message":"m","span":{"file":"fixtures/tests/fail/wrong_position.egd","start":{"line":8,"col":4},"end":{"line":8,"col":5}},"notes":[]}
+SKIP fixtures/tests/skip/future_phase.egd: phase 2 > current phase 1
+SKIP fixtures/tests/skip/go_only.egd: no available backend (test: go, native; runner: interp)
+conformance: 8 passed, 14 failed, 2 skipped (phase 1)
+exit=1
+<testsuites name="egide-conformance" tests="24" failures="14" errors="0" skipped="2">
+24

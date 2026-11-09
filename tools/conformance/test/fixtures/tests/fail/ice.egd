@@ -1,0 +1,7 @@
+# spec: LEX-001
+# expect: lex-fail
+# diagnostic: E0001 at 1:1
+module fail.ice
+#> diag E0001 1:1
+#> diag ICE 1:1
+#> exit 70

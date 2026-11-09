@@ -1,0 +1,8 @@
+# spec: SYN-001
+# expect: compile-fail
+# diagnostic: E0301 at 11:14
+module pass.compile_fail
+#> cmd check
+#> json
+#> diag E0301 11:14
+#> exit 1

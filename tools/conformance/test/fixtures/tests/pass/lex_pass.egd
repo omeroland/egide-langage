@@ -1,0 +1,8 @@
+#!/usr/bin/env egide run
+# spec: LEX-001
+# expect: lex-pass
+## Doc comment.
+module pass.lex_pass
+#> cmd lex
+#> json
+#> stdout 1:1 MODULE

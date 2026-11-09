@@ -1,0 +1,5 @@
+# spec: ERR-040
+# expect: run-pass
+# stdout: hello
+module fail.stdout_mismatch
+#> stdout hullo

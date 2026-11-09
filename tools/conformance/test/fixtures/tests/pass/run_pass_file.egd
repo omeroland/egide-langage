@@ -1,0 +1,6 @@
+# spec: ERR-040
+# expect: run-pass
+# backends: interp, go
+module pass.run_pass_file
+#> cmd run
+#> stdout from the sibling file

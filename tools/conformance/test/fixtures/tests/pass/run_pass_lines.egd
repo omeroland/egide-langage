@@ -1,0 +1,10 @@
+# spec: ERR-040
+# expect: run-pass
+# stdout: hello
+# stdout:
+# stdout:   indented
+module pass.run_pass_lines
+#> cmd run
+#> stdout hello
+#> stdout 
+#> stdout   indented

@@ -1,0 +1,10 @@
+# spec: LEX-032
+# expect: lex-fail
+# diagnostic: E0022 at 8:3
+module pass.lex_fail
+#> cmd lex
+#> json
+#> stderr some human-readable noise
+#> diag E0005 2:1
+#> diag E0022 8:3
+#> exit 1

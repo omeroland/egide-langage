@@ -1,0 +1,2 @@
+# expect: lex-pass
+module fail.missing_spec

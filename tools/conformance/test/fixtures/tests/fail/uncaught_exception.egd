@@ -1,0 +1,4 @@
+# spec: LEX-001
+# expect: lex-pass
+module fail.uncaught_exception
+#> crash

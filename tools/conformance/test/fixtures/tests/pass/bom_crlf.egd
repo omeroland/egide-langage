@@ -1,0 +1,7 @@
+﻿# spec: LEX-001
+# expect: lex-fail
+# diagnostic: E0002 at 1:1
+module pass.bom_crlf
+#> cmd lex
+#> diag E0002 1:1
+#> exit 1
