@@ -9,9 +9,9 @@ spec: [TOOL-040, TOOL-041, TOOL-042]
 paths: [compiler/lib/diagnostics/, compiler/test/diagnostics/]
 estimate: M
 labels: []
-status: backlog
-claimed_by:
-claimed_at:
+status: in-progress
+claimed_by: syntax-engineer/wave1
+claimed_at: 2026-11-09T09:31:36Z
 ---
 
 ## Goal
