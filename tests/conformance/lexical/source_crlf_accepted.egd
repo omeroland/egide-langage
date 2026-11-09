@@ -1,0 +1,9 @@
+# spec: LEX-002
+# expect: lex-pass
+# Every line of this file ends with CR LF (kept by .gitattributes).
+module tests.lexical.source_crlf_accepted
+
+# comment
+let s = "a"
+fn f(x: int) -> int:
+    x

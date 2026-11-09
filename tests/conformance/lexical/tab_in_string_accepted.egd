@@ -1,0 +1,5 @@
+# spec: LEX-004, LEX-003
+# expect: lex-pass
+module tests.lexical.tab_in_string_accepted
+
+let s = "a	b"

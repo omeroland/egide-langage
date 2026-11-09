@@ -1,0 +1,8 @@
+# spec: LEX-020
+# expect: lex-pass
+module tests.lexical.identifier_ascii_accepted
+
+let _x = 1
+let snake_case_9 = _x
+let CamelCase = snake_case_9
+let _ = CamelCase

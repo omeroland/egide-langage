@@ -1,0 +1,41 @@
+# spec: LEX-003
+# expect: lex-fail
+# diagnostic: E0004 at 24:11
+# diagnostic: E0004 at 25:11
+# diagnostic: E0004 at 26:11
+# diagnostic: E0004 at 27:11
+# diagnostic: E0004 at 28:11
+# diagnostic: E0004 at 29:11
+# diagnostic: E0004 at 30:11
+# diagnostic: E0004 at 31:11
+# diagnostic: E0004 at 32:11
+# diagnostic: E0004 at 33:11
+# diagnostic: E0004 at 34:11
+# diagnostic: E0004 at 35:11
+# diagnostic: E0004 at 36:11
+# diagnostic: E0004 at 37:11
+# diagnostic: E0004 at 38:11
+# diagnostic: E0004 at 39:11
+# diagnostic: E0004 at 40:11
+# diagnostic: E0004 at 41:11
+# One code point of every LEX-003 range between tokens; each is E0004 (NUL is covered by unit tests).
+module tests.lexical.forbidden_cp_in_code
+
+let x00 = ؜1
+let x01 = ‎1
+let x02 = ‏1
+let x03 = ‪1
+let x04 = ‮1
+let x05 = ⁦1
+let x06 = ⁩1
+let x07 = ​1
+let x08 = ‍1
+let x09 = ⁠1
+let x10 = ﻿1
+let x11 =  1
+let x12 =  1
+let x13 = 1
+let x14 = 1
+let x15 = 1
+let x16 = 1
+let x17 = 1
