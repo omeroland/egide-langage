@@ -1,10 +1,10 @@
 ---
-id: T-0026
+id: T-1000
 title: Sync the ocamlformat version in the OCaml style guide (governance)
 kind: task
 phase: 0
 role: release-manager
-depends_on: [T-0025]
+depends_on: [T-0028]
 spec: []
 paths: [agents/style-guide-ocaml.md]
 estimate: S
@@ -16,14 +16,14 @@ claimed_at:
 
 ## Goal
 
-`agents/style-guide-ocaml.md` names the same ocamlformat version as `.ocamlformat` and `dune-project`. T-0025 bumped
+`agents/style-guide-ocaml.md` names the same ocamlformat version as `.ocamlformat` and `dune-project`. T-0028 bumped
 the pin from 0.26.2 to 0.28.1 (0.26.2 cannot be installed on OCaml 5.3), but the style guide still says 0.26.2 and
-`agents/` is a protected path, so it could not be changed in T-0025.
+`agents/` is a protected path, so it could not be changed in T-0028.
 
 ## Context
 
-- T-0025 (pin bump), AGENTS.md rule 6: `agents/` changes only on a `governance/*` branch, merged by the owner.
-- Branch: `governance/t-0026-style-guide-ocamlformat`.
+- T-0028 (pin bump), AGENTS.md rule 6: `agents/` changes only on a `governance/*` branch, merged by the owner.
+- Branch: `governance/t-1000-style-guide-ocamlformat`.
 
 ## Acceptance criteria
 
@@ -37,6 +37,6 @@ Any other style-guide change.
 
 ## Log
 
-- 2026-11-09 release-manager: created as a follow-up of T-0025.
+- 2026-11-09 release-manager: created as a follow-up of T-0028.
 
 ## Outcome
