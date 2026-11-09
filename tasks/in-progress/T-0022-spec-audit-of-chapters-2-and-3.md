@@ -9,9 +9,9 @@ spec: []
 paths: [tasks/blocked/, docs/adr/]
 estimate: S
 labels: []
-status: backlog
-claimed_by:
-claimed_at:
+status: in-progress
+claimed_by: language-architect/wave1
+claimed_at: 2026-11-09T09:32:12Z
 ---
 
 ## Goal
