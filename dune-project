@@ -22,4 +22,4 @@
   (ppx_expect :with-test)
   (alcotest :with-test)
   (qcheck-core :with-test)
-  (ocamlformat (and :with-dev-setup (= 0.26.2)))))
+  (ocamlformat (and :with-dev-setup (= 0.28.1)))))
