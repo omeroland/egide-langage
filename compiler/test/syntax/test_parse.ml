@@ -3,7 +3,7 @@ module D = Egide_diagnostics.Diagnostic
 
 let show src =
   let ast, diags = Parse.file ~file:"t.egd" src in
-  Option.iter (fun a -> print_endline (Ast.to_sexp a)) ast;
+  Option.iter (fun a -> print_endline (Print.file a)) ast;
   List.iter (fun d -> print_endline (D.to_human d)) diags
 
 (* spec: SYN-001, SYN-002 *)

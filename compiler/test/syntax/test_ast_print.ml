@@ -167,7 +167,10 @@ let%expect_test "struct, enum, trait, impl and type declarations of spec 3.3" =
   [%expect
     {|
     (struct pub Article (field name str) (field price Money) (field stock int (default (int 0))))
-    (enum pub State (variant Available) (variant OutOfStock) (variant Discontinued (named (reason str))))
+    (enum pub State
+      (variant Available)
+      (variant OutOfStock)
+      (variant Discontinued (named (reason str))))
     (trait pub Display (fn-sig display (params (param self)) (-> str)))
     (impl Article
       (trait Display)
@@ -290,7 +293,10 @@ let%expect_test "trait with supertraits, provided method and associated type; im
       (generics (generic T))
       (assoc-type Item T)
       (fn pub get (doc "Get.") (@ inline) (params (param take self)) (block (path self_value))))
-    (enum Shape (generics (generic N)) (variant Circle (doc "A circle.") (positional N)) (variant Rect (positional N N)))
+    (enum Shape
+      (generics (generic N))
+      (variant Circle (doc "A circle.") (positional N))
+      (variant Rect (positional N N)))
     (struct Point (field pub x (doc "X.") (@ skip) int))
     |}]
 
@@ -336,7 +342,7 @@ let%expect_test "every statement form of SYN-012" =
            });
       s (Var { name = id "n"; ty = None; value = int "0" });
       s (Comptime_let { name = id "K"; ty = Some (tn "int"); value = int "3" });
-      s (Assign { place = place "n" []; op = Assign; value = int "2" });
+      s (Assign { place = place "n" []; op = Simple_assign; value = int "2" });
       s
         (Assign
            {
@@ -468,7 +474,7 @@ let%expect_test "literals, collections and comprehensions" =
     (duration 30 min)
     (string "quote \" backslash \\ newline \n tab \t nul \u{0} é")
     (raw "C:\\dir")
-    (bytes "\u{0}\xff")
+    (bytes "\x00\xff")
     (char "é")
     (char "\n")
     (template sql (text "select {") (path q))
@@ -639,6 +645,17 @@ let%expect_test "spans mode prints the span of every node" =
           (let @3:1-3:10 x@3:5-3:6 (int @3:9-3:10 1))
         |}]
   | _ -> print_endline "parse failed"
+
+(* spec: SYN-012 — span atoms do not displace the subject of a node; a place prints its span on the outermost step *)
+let%expect_test "spans mode on hand-built nodes" =
+  let at l c1 c2 = Egide_source.Span.make ~file:"t.egd" ~start:{ line = l; col = c1 } ~stop:{ line = l; col = c2 } in
+  let ident name sp : ident = { name; span = sp } in
+  let target = { expr = Path { segments = [ ident "f" (at 1 1 2) ]; span = at 1 1 2 }; span = at 1 1 2 } in
+  let callee : expr = { expr = Call { callee = target; args = [] }; span = at 1 1 4 } in
+  let pl : place = { root = ident "t" (at 2 1 2); steps = [ Place_field (ident "n" (at 2 3 4)) ]; span = at 2 1 4 } in
+  let st : stmt = { stmt = Assign { place = pl; op = Add_assign; value = callee }; span = at 2 1 9 } in
+  print_endline (Print.stmt ~spans:true st);
+  [%expect {| (+= @2:1-2:9 (dot @2:1-2:4 t@2:1-2:2 n@2:3-2:4) (call @1:1-1:4 (path @1:1-1:2 f@1:1-1:2))) |}]
 
 let%expect_test "long nodes break after their leading atoms, deterministically" =
   let long = List.init 8 (fun i -> arg (x (Printf.sprintf "argument_number_%d" i))) in

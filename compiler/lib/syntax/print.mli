@@ -7,9 +7,12 @@
 
     {b Format.} Each node is a list whose head names the node kind, followed by its flags ([pub], [comptime], [new],
     [inout], [take]), its name if it has one, and its children. Leaf names, paths and plain types are bare atoms
-    ([x], [api.tenants], [str]). Spans are omitted unless [~spans:true], in which case every node and identifier is
-    suffixed with [@line:col-line:col]. A list that does not fit in 100 columns is broken after its leading atoms,
-    each remaining child on its own line indented by two spaces. A file renders as its [(module …)] line followed by
+    ([x], [api.tenants], [str]). Spans are omitted unless [~spans:true], in which case each node prints its span as
+    an [@line:col-line:col] atom after its head, and each identifier, path and plain type is suffixed with its span.
+    (Spans of wrapper records whose extent equals a printed child, such as a positional argument or a [fn_sig] inside
+    a declaration, are not repeated.) A list longer than 100 bytes at its indentation is broken after its leading
+    atoms (and its subject, such as the callee of a call, if it fits), each remaining child on its own line indented
+    by two spaces. A file renders as its [(module …)] line followed by
     one line per import and declaration, indented by two spaces.
 
     The head of each node kind:

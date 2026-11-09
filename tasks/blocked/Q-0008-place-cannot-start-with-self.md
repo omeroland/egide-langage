@@ -1,5 +1,5 @@
 ---
-id: Q-0001
+id: Q-0008
 rule: SYN-012
 raised_by: syntax-engineer/wave1
 blocking: [T-0010]

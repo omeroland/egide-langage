@@ -57,7 +57,7 @@ type binary_op =
 type cmp_op = Eq | Ne | Lt | Le | Gt | Ge  (** [cmp_op] *)
 
 type assign_op =
-  | Assign  (** [=] *)
+  | Simple_assign  (** [=] *)
   | Add_assign
   | Sub_assign
   | Mul_assign
@@ -183,7 +183,7 @@ and stmt_desc =
   | Given of { caps : expr list; body : block }  (** [given_stmt] (CAP-031) *)
 
 and place = { root : ident; steps : place_step list; span : span }
-(** [place = IDENT { "." IDENT | "[" expr "]" }]. See tasks/blocked/Q-0001 about [self] as a root. *)
+(** [place = IDENT { "." IDENT | "[" expr "]" }]. See tasks/blocked/Q-0008 about [self] as a root. *)
 
 and place_step = Place_field of ident | Place_index of expr
 
