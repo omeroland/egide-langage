@@ -1,0 +1,10 @@
+# spec: LEX-030
+# expect: lex-pass
+module tests.lexical.layout_continuation_method_chain
+
+fn build() -> Request:
+    let req = Request.builder()
+        .method("GET")
+        .header("accept", "text/plain")
+        .build()
+    req

@@ -1,0 +1,6 @@
+# spec: LEX-033, LEX-034
+# expect: lex-fail
+# diagnostic: E0023 at 6:7
+module tests.lexical.layout_colon_at_eof
+
+fn f():

@@ -1,0 +1,10 @@
+# spec: LEX-030, LEX-032
+# expect: lex-pass
+module tests.lexical.layout_continuation_and_or
+
+fn allowed(u: User) -> bool:
+    if u.active
+        and u.verified
+        or u.admin:
+        return true
+    false

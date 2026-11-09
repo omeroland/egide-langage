@@ -39,7 +39,7 @@ let gen_well_indented =
     let stmt = if fuel <= 1 then simple else oneof [ simple; compound ] in
     map List.concat (list_size (int_range 1 3) stmt)
   in
-  let+ ls = sized_size (int_bound 8) (fun n -> block 0 (n + 1)) in
+  let+ ls = sized_size (int_bound 24) (fun n -> block 0 (n + 1)) in
   String.concat "\n" ("module m" :: ls) ^ "\n"
 
 let layout_tokens src = Parse.tokens ~file:"p.egd" src

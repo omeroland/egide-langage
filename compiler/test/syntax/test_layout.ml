@@ -37,12 +37,13 @@ let%expect_test "indentation must grow by exactly 4 spaces" =
     t.egd:3:3: error[E0021]: indentation must increase by exactly 4 spaces (LEX-032)
     |}]
 
-(* spec: LEX-032 step 3 *)
+(* spec: LEX-032 step 3. Recovery (T-0007): the width of the offending line is remembered without an
+   INDENT, so no DEDENT is emitted for it at end of file (LEX-034 counts only real blocks). *)
 let%expect_test "dedent to an unknown column" =
   show "module m\nfn f():\n    a\n  b\n";
   [%expect
     {|
-    module IDENT("m") NEWLINE fn IDENT("f") ( ) : INDENT IDENT("a") NEWLINE DEDENT IDENT("b") NEWLINE DEDENT EOF
+    module IDENT("m") NEWLINE fn IDENT("f") ( ) : INDENT IDENT("a") NEWLINE DEDENT IDENT("b") NEWLINE EOF
     t.egd:4:3: error[E0022]: inconsistent dedent: no enclosing block starts at column 3 (LEX-032)
     |}]
 
