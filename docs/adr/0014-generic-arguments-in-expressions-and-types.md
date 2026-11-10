@@ -1,14 +1,12 @@
 # ADR-0014: Generic arguments in expressions and types
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-11-09
 - Deciders: owner
+- Decided by: owner-delegated (language-architect), 2026-11-10; the owner reviews at the MVP milestone. Spec edits applied in the PR that accepts this ADR.
 - Spec chapters affected: 3, 4, 9 (and `spec/grammar/egide.ebnf`)
 - Raised by: T-0022 (spec audit of chapters 2 and 3). Answers Q-0009 (slice-or-index ambiguity, PR #4) through
-  SYN 043; `slice_or_index` is deleted.
-
-> New rule ids are written with a space (`SYN 042`) because `tools/check-spec.sh` rejects references to ids that do
-> not exist yet in `spec/`.
+  SYN-043; `slice_or_index` is deleted (Q-0009 option A: `xs[a < b .. c]` is `a < (b..c)`).
 
 ## Context
 
@@ -38,7 +36,7 @@ Use Go's approach: **one syntax for `[ … ]` argument lists, disambiguated by n
 This follows from CT-011 ("`type` is the type of types at compile time"): types are already values in comptime
 argument positions.
 
-**New SYN 042 (Generic argument lists).** "A postfix `[ a1, …, an ]` holds *generic arguments*. Each argument is an
+**New SYN-042 (Generic argument lists).** "A postfix `[ a1, …, an ]` holds *generic arguments*. Each argument is an
 expression, or one of the type-only forms `fn(…) [-> T] [using …]` and `dyn B1 + … + Bn`. After name resolution:
 if the operand denotes a generic function, a generic type or a comptime type constructor, the arguments are type
 arguments or comptime value arguments (a generic argument that resolves to a type is a type, otherwise it is a
@@ -54,14 +52,14 @@ let x = xs[i]                                # indexing (xs is a value)
 let y = xs[i, j]                             # error: indexing takes one index
 ```
 
-**New SYN 043 (Slices are indexing with a range).** "`xs[a..b]`, `xs[a..]`, `xs[..b]` and `xs[..]` are indexing with
+**New SYN-043 (Slices are indexing with a range).** "`xs[a..b]`, `xs[a..]`, `xs[..b]` and `xs[..]` are indexing with
 a range expression (SYN-040 is unchanged)." This removes `slice_or_index`.
 
-**New SYN 044 (Types as comptime arguments).** "Outside `[ … ]`, a type passed as an expression argument
+**New SYN-044 (Types as comptime arguments).** "Outside `[ … ]`, a type passed as an expression argument
 (`fields(T)`, CT-020) MUST be a path, optionally with generic arguments, or a tuple of such. Other type forms MUST
 first be named with `type F = …`."
 
-**New TYP 006 (Type syntax disambiguation).** "`(T)` is `T`; a one-element tuple type is `(T,)` (consistent with
+**New TYP-006 (Type syntax disambiguation).** "`(T)` is `T`; a one-element tuple type is `(T,)` (consistent with
 SYN-038). In a return type, `?` binds to the nearest type: `fn() -> int?` returns `Option[int]`; an optional
 function is `(fn() -> int)?`. A function type used as a return type MUST be parenthesised:
 `fn f() -> (fn(int) -> int) using log: Log:`. A function type with several `using` capabilities joins them with
@@ -114,7 +112,7 @@ and read `file.conflicts`. The scratch file used for this ADR (about 110 lines) 
   feature: every form above is already used by the spec or the examples.
 - Security: INT-001..005 are unaffected. A generic argument that resolves to a comptime value is evaluated at build
   time, so it is subject to CT-001, CT-003 and CAP-041 (only pure functions, bounded, no capability). Deciding
-  type-versus-value in the resolver must not create a way to run impure code at build time: SYN 042 adds "a comptime
+  type-versus-value in the resolver must not create a way to run impure code at build time: SYN-042 adds "a comptime
   value argument is evaluated under CT-001..CT-004".
 - Implementation: T-0008 (AST: `Index of expr * gen_arg list`, `gen_arg = Expr | TypeOnly of ty`; types keep their
   own AST with `TyApp of path * gen_arg list`), T-0011 (postfix), T-0009 (types), T-0030 (resolver turns `Index` into
@@ -122,4 +120,12 @@ and read `file.conflicts`. The scratch file used for this ADR (about 110 lines) 
   Diagnostics: E0105 (syntax), plus resolver codes in E02xx for "indexing takes one index" and "type syntax is not a
   value here", allocated by the implementing task.
 - Migration: none.
-- Index: the owner adds a row for this ADR to `docs/adr/README.md` on acceptance.
+- Index: row added to `docs/adr/README.md`.
+
+## Changes made when accepting
+
+- Spec text lives in SYN-042, SYN-043, SYN-044 and TYP-006; E0105 is added to `docs/diagnostics.md`.
+- `dyn` and `fn` types in generic arguments keep the ADR's EBNF. `bound` is `path [ "[" gen_args "]" ]`, as proposed.
+- CT-011 and CT-012 no longer describe `-> type` functions (Q-0011 item 3, ADR-0015), so `Buffer(4096)` in the context
+  above is `Buffer[4096]`.
+- Security: SYN-042 states that comptime value arguments are evaluated under CT-001..CT-004 and CAP-041.

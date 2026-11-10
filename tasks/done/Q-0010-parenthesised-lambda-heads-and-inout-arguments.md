@@ -4,7 +4,7 @@ rule: SYN-060, SYN-033, MEM-022, SYN-100
 raised_by: language-architect/wave1 (T-0022)
 blocking: [T-0011, T-0008]
 severity: high
-status: open
+status: decided
 ---
 ## Question
 
@@ -48,3 +48,11 @@ A. Spec edits: add to the ch. 3 introduction "The EBNF is normative for the acce
 larger *cover* language and reject the excess in post-parse checks, each with a diagnostic". Write `lambda_head` and
 `arg` as above in the EBNF, with a comment that marks the cover. Affects the T-0008 AST (`Arg.Inout of expr`, checked
 place) and T-0011.
+
+## Decision
+
+Decided by: owner-delegated (language-architect), 2026-11-10; the owner reviews at the MVP milestone.
+
+Option A (cover grammar). `( [inout|take] expr [: type], … )` is parsed; with `=>` all items must be lambda parameters, without it none may have a mode or annotation (E0107). `&` takes a `postfix_expr` that must be a place (E0106).
+
+ADR-0015. Rules: SYN-005 (new), SYN-033, SYN-065 (new); EBNF `paren_form`, `cover_item`, `arg`.

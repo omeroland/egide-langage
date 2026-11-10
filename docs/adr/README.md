@@ -29,3 +29,6 @@ requires an accepted ADR.**
 | [0010](0010-english-keywords-ascii-identifiers.md) | English keywords, ASCII identifiers | Accepted |
 | [0011](0011-rule-tagged-spec-and-conformance-first.md) | Rule-tagged specification, conformance-first development | Accepted |
 | [0012](0012-ai-agent-development-model.md) | Development by a coordinated team of AI agents | Accepted |
+| [0013](0013-layout-token-contract-and-block-ended-expressions.md) | Layout token contract and block-ended expressions | Accepted (owner-delegated, review at MVP) |
+| [0014](0014-generic-arguments-in-expressions-and-types.md) | Generic arguments in expressions and types | Accepted (owner-delegated, review at MVP) |
+| [0015](0015-parser-contract-decisions-at-mvp-start.md) | Parser-contract decisions at the start of the MVP | Accepted (owner-delegated, review at MVP) |

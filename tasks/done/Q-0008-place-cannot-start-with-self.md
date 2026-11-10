@@ -3,6 +3,7 @@ id: Q-0008
 rule: SYN-012
 raised_by: syntax-engineer/wave1
 blocking: [T-0010]
+status: decided
 ---
 ## Question
 
@@ -36,3 +37,11 @@ B. Forbidden: `inout self` methods may only mutate `self` by calling other `inou
 A, because SYN-012 and MEM-024 already treat `inout self` as an assignable place; only the EBNF omits it. The AST
 added by T-0008 follows the grammar as written (`place.root : ident`); option A needs one extra constructor for the
 place root, which T-0010 (statements parser) would add together with the grammar fix.
+
+## Decision
+
+Decided by: owner-delegated (language-architect), 2026-11-10; the owner reviews at the MVP milestone.
+
+Option A in a stronger form: `place` is deleted; the assignment target is any `postfix_expr` and the parser checks that it is a place (including `self` in an `inout self` method). Error E0106.
+
+ADR-0013. Rules: SYN-012 (text under the table); EBNF `assign_target`.
