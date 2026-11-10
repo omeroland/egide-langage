@@ -12,8 +12,8 @@ fail=0
 check() { if ! eval "$2"; then echo "FAIL: $1"; fail=1; fi; }
 
 out=$(EGIDE_ROOT="$tmp" "$here/tools/check-spec.sh" --coverage) && rc=0 || rc=$?
-check "coverage exits 0 with uncovered rules first" "[ $rc = 0 ]"
-check "lists the first uncovered rule" "grep -qE '^LEX-001 +02 +0 +0$' <<<\"\$out\""
+check "coverage exits 0 although some rules are uncovered" "[ $rc = 0 ]"
+check "lists an uncovered rule" "grep -qE '^LEX-001 +02 +0 +0$' <<<\"\$out\""
 check "lists the last rule" "grep -qE '^CAP-001 +02 +1 +0$' <<<\"\$out\""
 check "prints the uncovered total" "grep -q '^uncovered rules: 2 / 3\$' <<<\"\$out\""
 

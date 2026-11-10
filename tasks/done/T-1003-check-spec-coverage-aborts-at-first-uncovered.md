@@ -41,12 +41,14 @@ Anything not listed in the acceptance criteria; create follow-up tasks.
 
 - 2026-11-10 release-manager/wave2: claimed. Added `EGIDE_ROOT` override (fixture root for the tool test), a test script
   `tools/tests/check-spec-test.sh` wired into `make spec-check`, and the same `|| true` guard on the undefined-reference
-  scan (it aborted when no rule id is referenced in spec/ or docs/; found while building the fixture). T-0020 will
+  scan. Correction after review: that second guard is defensive only; any spec defining a rule id also matches the
+  reference regex, so `refs` is never empty when `ids` is not, and no test reaches it. The real remaining pitfall is
+  `ids=` exiting 1 silently on a spec with no rule ids (T-1062). T-0020 will
   replace the coverage loop with tools/spec_coverage.py; the regression test stays valid.
 
 ## Outcome
 
-`--coverage` no longer aborts: `grep -rlE` no-match is a count of 0. Same fix for the reference scan. On main now:
+`--coverage` no longer aborts: `grep -rlE` no-match is a count of 0. Same defensive guard on the reference scan (not reachable by a test, see Log). On main now:
 `uncovered rules: 245 / 264`, exit 0. Plain `check-spec.sh` output is unchanged.
 Tests: `tools/tests/check-spec-test.sh` (fixture repo in a temp dir; covers coverage listing, totals, plain run, duplicate ids).
-Follow-ups: none.
+Follow-ups: T-1062.
