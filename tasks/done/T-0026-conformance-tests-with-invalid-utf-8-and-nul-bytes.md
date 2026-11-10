@@ -49,7 +49,7 @@ Changing lexer behaviour.
   Beware: a comment line in the header block that contains `word:` with a lowercase key is parsed as a directive.
 
 Outcome:
-Added 20 binary fixtures `tests/conformance/lexical/bytes_*.egd` (header text first, bytes after) and a
+Added 19 binary fixtures `tests/conformance/lexical/bytes_*.egd` (header text first, bytes after) and a
 `bytes_*.egd binary` rule in `tests/conformance/lexical/.gitattributes` (`-text -diff -merge`: byte-exact, verified with
 `git ls-files --eol` and a blob-vs-worktree compare).
 Rules covered: LEX-001 (E0001: lone continuation, overlong 2/3/4-byte, surrogate, above U+10FFFF, truncated mid-file and
