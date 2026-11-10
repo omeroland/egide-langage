@@ -12,3 +12,5 @@ All notable changes to this project are documented here. The format follows
 - Compiler skeleton (`compiler/`): lexer with layout algorithm, minimal parser, diagnostics, `egide lex|parse` commands.
 - Go runtime skeleton (`runtime/go/`): structured `Scope`, capability roots, `Result`.
 - Conformance test layout and runner.
+- Diagnostics: secondary labels, suggested fixes, source excerpts with carets, and `--error-format=json` output with
+  every field, validated against `docs/diagnostics.schema.json` (T-0002).

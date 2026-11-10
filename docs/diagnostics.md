@@ -63,8 +63,13 @@ pull request**. Codes are never reused.
   "labels": [ { "span": { "file": "src/cart.egd", "start": { "line": 12, "col": 16 }, "end": { "line": 12, "col": 29 } },
                 "message": "used here" } ],
   "notes": [ "an inout argument must be exclusively accessible during the call (MEM-021)" ],
-  "fixes": [ { "message": "copy the element first", "edits": [ { "span": "…", "replacement": "let first = cart.lines[0]\n" } ] } ]
+  "fixes": [ { "message": "copy the element first", "edits": [ { "span": { "file": "src/cart.egd", "start": { "line": 12, "col": 5 }, "end": { "line": 12, "col": 5 } },
+                                                            "replacement": "let first = cart.lines[0]\n" } ] } ]
 }
 ```
 
-Lines and columns are 1-based; columns count Unicode scalar values.
+Lines and columns are 1-based; columns count Unicode scalar values; `end` is exclusive (`&cart` above occupies
+columns 9–13). Every field is always present (`labels`, `notes` and `fixes` may be empty; `rule` is `null` only for
+`ICE`). An edit with an empty span inserts its replacement. The normative schema is
+[`diagnostics.schema.json`](diagnostics.schema.json); `compiler/test/diagnostics/test_json.ml` validates the
+compiler's output against it.
