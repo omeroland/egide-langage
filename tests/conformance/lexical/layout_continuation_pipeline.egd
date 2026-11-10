@@ -1,0 +1,10 @@
+# spec: LEX-030
+# expect: lex-pass
+module tests.lexical.layout_continuation_pipeline
+
+let total = orders
+    |> filter(is_paid)
+
+    # comment lines between continuation lines are ignored (LEX-031)
+    |> map(amount)
+        |> sum()

@@ -1,0 +1,7 @@
+# spec: LEX-030, LEX-032
+# expect: lex-fail
+# diagnostic: E0020 at 7:5
+module tests.lexical.layout_continuation_other_operator
+
+let x = a
+    + b

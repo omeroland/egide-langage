@@ -1,6 +1,6 @@
 (library
  (name test_syntax)
  (inline_tests)
- (libraries egide.syntax egide.diagnostics)
+ (libraries egide.syntax egide.diagnostics qcheck-core)
  (preprocess
   (pps ppx_expect)))
