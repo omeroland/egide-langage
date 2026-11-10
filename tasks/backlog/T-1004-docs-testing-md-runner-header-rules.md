@@ -1,5 +1,5 @@
 ---
-id: T-0027
+id: T-1004
 title: docs/testing.md: header rules enforced by the runner
 kind: task
 phase: 0

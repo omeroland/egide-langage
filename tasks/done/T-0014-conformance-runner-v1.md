@@ -54,6 +54,9 @@ Anything not listed in the acceptance criteria; create follow-up tasks.
   (Goal) and the JSON reader account for ~270. Not split because the Goal lists them; flagged in the PR.
 - 2026-11-09 test-engineer: root `.gitattributes` (`eol=lf`) normalises CR bytes in `.egd` files; the CRLF fixture
   uses a nested `.gitattributes` with `-text`. LEX-002 conformance tests (T-0016) will need the same.
+- 2026-11-10 test-engineer: follow-ups renumbered T-0025/26/27 -> T-1002/1003/1004 (orchestrator id allocation; the old ids belong to PR #1).
+- 2026-11-10 test-engineer: test files are read as bytes (no grep), so tests containing NUL bytes or invalid UTF-8 work;
+  covered by the fixture `pass/binary_bytes.egd`.
 
 ## Outcome
 
@@ -63,12 +66,12 @@ Anything not listed in the acceptance criteria; create follow-up tasks.
   `backends`), phase skipping reported as `SKIP` and as JUnit `<skipped>`, failure on missing `# spec:` (even for
   future-phase tests), parallel runs (`--jobs`, default = cores), per-run `--timeout`, `--junit FILE`.
 - Tests added: `tools/conformance/test/test_{json,header,verdict,junit,exec}.ml` (expect tests) and the end-to-end
-  test `tools/conformance/test/e2e.expected` over `tools/conformance/test/fixtures/` (24 cases: 8 pass, 14 fail,
+  test `tools/conformance/test/e2e.expected` over `tools/conformance/test/fixtures/` (25 cases: 9 pass, 14 fail,
   2 skip) with the scripted stand-in compiler `fake_egide.ml`.
 - Docs: tests/README.md (options, header rules, judging table).
 - Rules covered: none (tooling task; `spec: []`). Exit status 101 for `run-panic` follows ERR-040.
-- Follow-ups: T-0025 (CI publishes the JUnit report; protected `.github/`), T-0026 (check-spec --coverage aborts at
-  the first uncovered rule), T-0027 (docs/testing.md §2 header rules), T-0084 (go/native backends, differential).
+- Follow-ups: T-1002 (CI publishes the JUnit report; protected `.github/`), T-1003 (check-spec --coverage aborts at
+  the first uncovered rule), T-1004 (docs/testing.md §2 header rules), T-0084 (go/native backends, differential).
 - Limitations: only the `interp` backend is driven; diagnostics must be JSON on stderr, one object per line;
   diagnostic file paths are not compared (only code, line, column); timeouts kill only the direct child.
 

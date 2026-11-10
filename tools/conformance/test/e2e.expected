@@ -44,7 +44,7 @@ FAIL fixtures/tests/fail/wrong_position.egd: missing diagnostic E0022 at 8:3
   stderr| {"code":"E0022","severity":"error","rule":"LEX-001","message":"m","span":{"file":"fixtures/tests/fail/wrong_position.egd","start":{"line":8,"col":4},"end":{"line":8,"col":5}},"notes":[]}
 SKIP fixtures/tests/skip/future_phase.egd: phase 2 > current phase 1
 SKIP fixtures/tests/skip/go_only.egd: no available backend (test: go, native; runner: interp)
-conformance: 8 passed, 14 failed, 2 skipped (phase 1)
+conformance: 9 passed, 14 failed, 2 skipped (phase 1)
 exit=1
-<testsuites name="egide-conformance" tests="24" failures="14" errors="0" skipped="2">
-24
+<testsuites name="egide-conformance" tests="25" failures="14" errors="0" skipped="2">
+25

@@ -1,5 +1,5 @@
 ---
-id: T-0025
+id: T-1002
 title: CI: publish the conformance JUnit report
 kind: task
 phase: 0

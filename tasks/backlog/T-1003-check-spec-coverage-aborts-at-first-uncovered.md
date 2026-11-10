@@ -1,5 +1,5 @@
 ---
-id: T-0026
+id: T-1003
 title: check-spec --coverage aborts at the first uncovered rule
 kind: task
 phase: 0
