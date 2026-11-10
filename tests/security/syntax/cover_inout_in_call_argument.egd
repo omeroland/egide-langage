@@ -1,0 +1,8 @@
+# spec: SYN-065
+# expect: parse-fail
+# diagnostic: E0107 at 8:7
+# phase: 1
+module tests.security.cover_inout_in_call_argument
+
+fn f():
+    g((inout x))

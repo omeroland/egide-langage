@@ -1,0 +1,8 @@
+# spec: LEX-055
+# expect: compile-fail
+# diagnostic: E0601 at 8:21
+# phase: 2
+module tests.security.template_sink_rejects_empty_format_spec
+
+fn f(x: str):
+    let q = sql"a {x:} b"

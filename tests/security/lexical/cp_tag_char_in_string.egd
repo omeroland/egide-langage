@@ -1,0 +1,7 @@
+# spec: LEX-003
+# expect: lex-fail
+# diagnostic: E0004 at 7:10
+# phase: 1
+module tests.security.cp_tag_char_in_string
+
+let k = "󠁁"

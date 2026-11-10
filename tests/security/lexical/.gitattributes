@@ -6,3 +6,6 @@ lone_cr_in_doc_comment.egd -text
 nul_in_comment.egd -text
 overlong_bidi_override_in_comment.egd -text
 encoded_surrogate_in_string.egd -text
+
+# Raw invisible / forbidden code point fixtures (LEX-003, T-1038 review): the bytes must reach the lexer unchanged.
+cp_*.egd -text

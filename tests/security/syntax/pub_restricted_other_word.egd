@@ -1,0 +1,7 @@
+# spec: SYN-003
+# expect: parse-fail
+# diagnostic: E0111 at 7:5
+# phase: 1
+module tests.security.pub_restricted_other_word
+
+pub(crate) fn f(): ()

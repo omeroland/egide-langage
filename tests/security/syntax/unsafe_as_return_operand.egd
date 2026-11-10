@@ -1,0 +1,9 @@
+# spec: SYN-015, SYN-017
+# expect: parse-fail
+# diagnostic: E0104 at 8:12
+# phase: 1
+module tests.security.unsafe_as_return_operand
+
+fn f() -> int:
+    return unsafe(reason: "x"):
+        1

@@ -1,0 +1,6 @@
+# spec: LEX-003
+# expect: lex-fail
+# diagnostic: E0004 at 6:11
+module tests.security.cp_zwnj_in_string_no_allowlist
+
+let k = "a‌b"

@@ -1,0 +1,8 @@
+# spec: LEX-050, LEX-003
+# expect: lex-pass
+# phase: 1
+module tests.security.escape_forbidden_scalars_accepted
+
+let a = "\u{202E}"
+let b = "\u{2764}\u{FE0F}"
+let c = "\u{E0041}"

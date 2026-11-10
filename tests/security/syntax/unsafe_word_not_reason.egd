@@ -1,0 +1,9 @@
+# spec: SYN-017
+# expect: parse-fail
+# diagnostic: E0110 at 8:12
+# phase: 1
+module tests.security.unsafe_word_not_reason
+
+fn f():
+    unsafe(why: "x"):
+        ()

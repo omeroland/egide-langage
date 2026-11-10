@@ -1,0 +1,7 @@
+# spec: LEX-055
+# expect: parse-pass
+# phase: 1
+module tests.security.keyword_is_not_template_prefix
+
+fn f() -> str:
+    return"x"

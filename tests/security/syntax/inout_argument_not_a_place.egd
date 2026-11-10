@@ -1,0 +1,8 @@
+# spec: SYN-033
+# expect: parse-fail
+# diagnostic: E0106 at 8:7
+# phase: 1
+module tests.security.inout_argument_not_a_place
+
+fn f():
+    g(&make())

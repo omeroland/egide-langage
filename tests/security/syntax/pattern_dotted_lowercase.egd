@@ -1,0 +1,10 @@
+# spec: SYN-053
+# expect: parse-fail
+# diagnostic: E0112 at 9:14
+# phase: 1
+module tests.security.pattern_dotted_lowercase
+
+fn f(s: State):
+    match s:
+        case State.available: 1
+        case _: 0

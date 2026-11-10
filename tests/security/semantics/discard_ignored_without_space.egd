@@ -1,0 +1,15 @@
+# spec: ERR-002
+# expect: compile-fail
+# diagnostic: E0304 at 14:5
+# phase: 2
+module tests.security.discard_ignored_without_space
+
+enum E:
+    Bad
+
+fn g(s: str = "") -> Result[(), E]:
+    Ok(())
+
+fn f() -> Result[(), E]:
+    let _ = g()  #ignored: because
+    Ok(())
