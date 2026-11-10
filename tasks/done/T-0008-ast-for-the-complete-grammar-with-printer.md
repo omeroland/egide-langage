@@ -55,15 +55,24 @@ Anything not listed in the acceptance criteria; create follow-up tasks.
   - `if_stmt` and `if_expr` share `If` with an optional `else_`; `if_stmt`, `match_expr` and
     `call_with_trailing_block` as statements are `Expr` statements (SYN-011: everything that can produce a value is
     an expression).
-  - Slices: the EBNF alternative `[ expr ] (".." | "..=") [ expr ]` of `slice_or_index` is already derivable from
-    `expr` via `range_expr`, so a slice is `Index` with a `Range` index; the parser (T-0011) needs no choice.
+  - Slices: `Index` with a `Range` index represents both alternatives of `slice_or_index`. Correction (code-review
+    of PR #4): the slice alternative is derivable from `expr` via `range_expr` only when both bounds are
+    `bitor_expr`s. With `xs[a < b .. c]` or `xs[a or b .. c]` the two alternatives give different trees, so the EBNF
+    is ambiguous (despite its LR(1) claim) and T-0011 does have to choose. Raised as **Q-0009** (blocks T-0011). No
+    AST change needed.
   - `type_arg = type | expr` overlaps for paths; both constructors exist, the parser (T-0009/T-0011) decides.
   - Doc comments (LEX-011) are an optional field on file, top-level decls, fields, variants, trait and impl items.
     The lexer does not produce them yet (always `None` from the seed parser).
   - Spec-question **Q-0008**: `place = IDENT {…}` excludes `self`, contradicting SYN-012/MEM-024 (`inout self`).
     The AST follows the grammar as written; option A of Q-0008 would add one constructor. Blocks T-0010 only.
-  - Observation for T-0012 (no question raised): `simple_pattern` has no bare `path` alternative, so
-    `case State.Available:` (qualified unit variant) is not derivable; `case Available:` parses as `Pat_bind`.
+  - Bare-path patterns (`case State.Available:` is not derivable, `simple_pattern` has no bare `path`): spec gap
+    already raised as **Q-0013** (T-0022 spec audit, PR #6); not duplicated here. Blocks T-0012.
+- 2026-11-10 syntax-engineer/wave1: review follow-ups. (1) Added `import after a declaration is rejected` in
+  test_parse.ml (SYN-002). Today's diagnostic is the generic `E0100 ... (SYN-001)`; **T-0013** should make it cite
+  SYN-002 with an import-specific message. (2) Slice reasoning corrected (above), Q-0009 raised. (3) Node ids:
+  follow-up **T-1006**; the earlier "side tables can key on spans" advice was wrong (an `Expr` statement and its
+  expression share a span) and is dropped. Operator spans (`op_span` on `Binary`/`Compare`/`Assign`) suggested by
+  the reviewer for T-0011.
 - 2026-11-09 syntax-engineer/wave1: PR size. ~1130 non-test lines vs the ~400 target (AGENTS.md rule 9). The AST is
   one mutually recursive type group (expr ↔ block ↔ stmt ↔ pattern ↔ ty ↔ literal) and the printer must be
   exhaustive over it (warning 8 is an error), so neither can land in halves. About 310 lines of ast.ml are the
@@ -179,11 +188,12 @@ Anything not listed in the acceptance criteria; create follow-up tasks.
 - **Tests added.** `compiler/test/syntax/test_ast_print.ml` (16 expect tests: every declaration, type, statement,
   expression, literal and pattern form, built by hand since the parser is still the seed; span mode on a parsed
   file and on hand-built nodes; line breaking; `pp_*`; equality positive and negative cases).
-  `compiler/test/syntax/test_parse.ml` snapshots unchanged.
+  `compiler/test/syntax/test_parse.ml`: existing snapshots unchanged; one negative test added (SYN-002).
 - **Rules covered.** SYN-001, SYN-002, SYN-003, SYN-012, SYN-013, SYN-020..023, SYN-030, SYN-033..041, SYN-050,
   SYN-051, SYN-060, SYN-062, SYN-064, SYN-100 (representation and printing only; parsing them is T-0009..T-0012).
-- **Follow-ups.** T-0029 (ppx_deriving show, eq). Spec-question Q-0008 (`self` as an assignment place, blocks T-0010).
-- **Limitations.** Doc comments are representable but not produced by the lexer yet. No node ids
-  (architecture §2.3); side tables can key on spans until a pass needs ids.
+- **Follow-ups.** T-0029 (ppx_deriving show, eq), T-1006 (node ids). Spec-questions Q-0008 (`self` as an assignment
+  place, blocks T-0010) and Q-0009 (slice ambiguity, blocks T-0011); Q-0013 (bare-path patterns) is from PR #6.
+- **Limitations.** Doc comments are representable but not produced by the lexer yet. The AST has no node ids
+  (architecture §2 invariant 3); spans are not unique keys, so T-1006 must add ids before resolve/types start.
 
 

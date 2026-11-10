@@ -113,8 +113,10 @@ and expr_desc =
   | Call of { callee : expr; args : arg list }  (** [postfix_expr = primary "(" [ args ] ")"] (SYN-030) *)
   | Index of { target : expr; index : expr }
       (** [postfix_expr = primary "[" slice_or_index "]"]. A slice (SYN-040) is an [Index] whose [index] is a
-          [Range]: the EBNF alternative [[ expr ] ( ".." | "..=" ) [ expr ]] is already derivable from [expr]
-          through [range_expr], so the two are not distinguished. *)
+          [Range]. The EBNF alternative [[ expr ] ( ".." | "..=" ) [ expr ]] of [slice_or_index] is only
+          equivalent to [expr] when both bounds are [bitor_expr]s; otherwise the two alternatives give different
+          trees for the same input ([xs[a < b .. c]] is [a < (b..c)] or [(a < b)..c]), so the grammar is ambiguous
+          there and the parser must choose (tasks/blocked/Q-0009). Either tree is representable by this node. *)
   | Field of { target : expr; name : ident }  (** [postfix_expr = primary "." IDENT] *)
   | Try of expr  (** [postfix_expr = primary "?"] (SYN-034) *)
   | Unary of { op : unary_op; operand : expr }  (** [not_expr], [unary_expr] *)
