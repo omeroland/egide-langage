@@ -27,6 +27,13 @@
 | `()` | the unit type |
 | `Never` | the type of diverging expressions (`return`, `panic`, infinite `loop`) |
 
+- **[TYP-006] Type syntax disambiguation.** `(T)` is `T`; a one-element tuple type is `(T,)` (as `(x,)` in SYN-038).
+  In a return type, `?` binds to the nearest type: `fn() -> int?` returns `Option[int]`; an optional function type is
+  `(fn() -> int)?`. A function type used as a return type MUST be parenthesised:
+  `fn f() -> (fn(int) -> int) using log: Log:`; the unparenthesised form is E0105 "parenthesise a function type used
+  as a return type". A function type with several `using` capabilities joins them with `+`:
+  `fn(Config) using Client + Log`.
+
 - **[TYP-010] Integer overflow.** `+ - * ** <<` and unary `-` on integer types panic on overflow **in all build
   modes**. Explicit alternatives: `wrapping_add`, `checked_add` (→ `T?`), `saturating_add`, and the same for the
   other operators. Division by zero panics. `int.MIN / -1` panics.

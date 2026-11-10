@@ -4,7 +4,7 @@ rule: SYN-050, SYN-051, TYP-060, TYP-061, LEX-023
 raised_by: language-architect/wave1 (T-0022)
 blocking: [T-0012, T-0032, T-0008]
 severity: high
-status: open
+status: decided
 ---
 ## Question
 
@@ -53,3 +53,11 @@ constant; other identifiers bind". The EBNF gets `simple_pattern = … | path [ 
 For item 3: positional sub-patterns are allowed for single-field variants (mirror SYN-032). For item 4: add
 `DURATION` and `BYTES` literals and keep ranges closed. The pattern AST in T-0008 needs `PConst of path` distinct
 from `PBind of ident`.
+
+## Decision
+
+Decided by: owner-delegated (language-architect), 2026-11-10; the owner reviews at the MVP milestone.
+
+Option B (case-based). Uppercase lone names and any dotted or constructor name are variants/constants and MUST resolve; lowercase lone names bind; variant and constant names must start uppercase (E0113). Item 3: positional sub-patterns follow SYN-032. Item 4: add duration, raw string and bytes literal patterns; ranges stay closed.
+
+ADR-0015. Rules: SYN-050, SYN-053 (new), SYN-024 (new); EBNF `simple_pattern`, `literal_pattern`.

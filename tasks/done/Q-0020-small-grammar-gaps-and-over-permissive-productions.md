@@ -4,7 +4,7 @@ rule: SYN-002, SYN-003, SYN-010, SYN-021, SYN-061, TYP-031, CT-002, LEX-022, LEX
 raised_by: language-architect/wave1 (T-0022)
 blocking: [T-0009, T-0010]
 severity: low
-status: open
+status: decided
 ---
 ## Question
 
@@ -47,3 +47,11 @@ the right parse-fail tests.
    none, `inout`, `take`". Use a new E01xx diagnostic.
 10. Accept and document: "no top-level module may be named `go`".
 11. Simplify LEX-060 to plain maximal munch.
+
+## Decision
+
+Decided by: owner-delegated (language-architect), 2026-11-10; the owner reviews at the MVP milestone.
+
+1 single-line block holds expression, assignment, return, break, continue, defer, yield (bindings are E0109). 2 the empty block is `()`. 3 `struct Name` and `impl T for U` may omit the body. 4 `as` only on single imports. 5 `pub impl` is an error. 6 `where` requires `new`. 7 no top-level `comptime let`. 8 `..=` needs an upper bound. 9 `self` first parameter in trait/impl only (E0114). 10 no module named `go` (E0116). 11 LEX-060 is plain maximal munch.
+
+ADR-0015. Rules: SYN-001, SYN-002, SYN-003, SYN-010, SYN-021, SYN-024 (new), SYN-040, SYN-061, LEX-060; EBNF.

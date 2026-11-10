@@ -33,6 +33,8 @@ Anything not listed in the acceptance criteria; create follow-up tasks.
 
 ## Log
 
+2026-11-10 language-architect (owner-delegated): spec/grammar/egide.ebnf is v0.3 (ADR-0013, ADR-0014, ADR-0015 accepted). Read `docs/adr/attachments/0013-menhir-check.mly` (0 conflicts) as the starting point for parser.mly, and do T-1030 (AST) first. Here: Q-0002 and Q-0008 are decided (ADR-0013): terminator layout model, `place` replaced by a postfix expression checked as a place (E0106). Statements: `single_stmt` vs `simple_stmt` vs `block_stmt` (SYN-015, SYN-061; E0109 for bindings in one-line blocks), `loop` values (SYN-016). Post-parse checks are T-1031.
+
 ## Outcome
 
 

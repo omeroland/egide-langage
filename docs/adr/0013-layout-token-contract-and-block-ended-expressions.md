@@ -1,14 +1,12 @@
 # ADR-0013: Layout token contract and block-ended expressions
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-11-09
 - Deciders: owner
+- Decided by: owner-delegated (language-architect), 2026-11-10; the owner reviews at the MVP milestone. Spec edits applied in the PR that accepts this ADR.
 - Spec chapters affected: 2, 3 (and `spec/grammar/egide.ebnf`)
 - Raised by: T-0022 (spec audit of chapters 2 and 3). Answers Q-0002 (layout tokens vs EBNF block, PR #3) and
   Q-0008 (`place` cannot start with `self`, PR #4), raised in parallel by `syntax-engineer`.
-
-> New rule ids are written with a space (`SYN 015`) because `tools/check-spec.sh` rejects references to ids that do
-> not exist yet in `spec/`. The owner writes them as normal ids when applying the edits.
 
 ## Context
 
@@ -44,7 +42,7 @@ outlier. T-0009..T-0012 cannot be written against the current EBNF without guess
 
 ## Decision
 
-**Keep the LEX-032 token stream unchanged** and make the EBNF match it. (Q-0016 proposes two separate amendments to
+**Keep the LEX-032 token stream unchanged** (Q-0016's separate amendments to LEX-032 are decided in ADR-0016) and make the EBNF match it. (Q-0016 proposes two separate amendments to
 LEX-032, body width after a continuation line and the first line of a file; they do not alter the token contract
 below, and this ADR does not depend on them.) The layout produces a *terminator* model, like Python's,
 except that a block header is terminated by `INDENT` instead of `NEWLINE INDENT`:
@@ -61,12 +59,12 @@ on the same logical line.
 **LEX-033**: replace the second sentence with: "Whether a `:` that is followed by more tokens introduces a single-line
 block is decided by the grammar (SYN-010); the lexer only checks the first sentence."
 
-**New LEX 036 (Token contract).** "The layout algorithm terminates every logical line with `NEWLINE`, except a line
+**New LEX-036 (Token contract).** "The layout algorithm terminates every logical line with `NEWLINE`, except a line
 ending with a block `:`, which is terminated by `INDENT`. A `DEDENT` is never followed by `NEWLINE`."
 Positive example: the §2.4 example. Negative example: none (this rule describes the lexer output; conformance tests
 compare `egide lex` output).
 
-**New SYN 015 (Block-ended expressions).** "`if`/`elif`/`else`, `match`, `loop`, `with`, `given`, `unsafe`, the `fn`
+**New SYN-015 (Block-ended expressions).** "`if`/`elif`/`else`, `match`, `loop`, `with`, `given`, `unsafe`, the `fn`
 lambda (SYN-064) and a call with a trailing block (SYN-062) are block-ended expressions. A block-ended expression may
 appear only (a) as a statement, (b) as the whole right-hand side of `let`, `var`, top-level `let` or an assignment.
 Anywhere else, including as an operand, an argument, inside brackets or after `return`, it is a syntax error E0104
@@ -81,14 +79,14 @@ let m = 1 + match c:      # error E0104
     case _: 0
 ```
 
-**New SYN 016 (`if` and `loop` values).** "There is one `if` construct. An `if` without `else` has type `()`
+**New SYN-016 (`if` and `loop` values).** "There is one `if` construct. An `if` without `else` has type `()`
 (SYN-013 is unchanged). `loop` is an expression whose value is given by `break expr`; `break` with a value inside
 `for` or `while` is a compile-time error."
 
 **SYN-062**: replace "after the closing parenthesis of a call" with "after a call expression (the last postfix
 operation before `fn` MUST be `( … )`)". Add: "The trailing lambda may declare a return type: `f(a) fn(x) -> T:`."
 **SYN-064**: "A `fn` lambda (`fn(params) [-> T]: block`, or `fn: block` without parameters) is a block-ended
-expression (SYN 015)."
+expression (SYN-015)."
 
 **SYN-012**, Assignment row: "the left-hand side MUST be a place: a `var` binding, an `inout` parameter, `self` in
 an `inout self` method, or a field `.f` or element `[i]` of a place; otherwise E0106 'cannot assign to this
@@ -172,15 +170,26 @@ and read `file.conflicts`. The scratch file used for this ADR (about 110 lines) 
 
 ## Consequences
 
-- Complexity budget: removes the stmt/expr duplication of `if`/`match`; adds one positional rule (SYN 015) with one
+- Complexity budget: removes the stmt/expr duplication of `if`/`match`; adds one positional rule (SYN-015) with one
   diagnostic. Users gain `let x = retry() fn: …`, `let v = loop: …` and `with`/`given` values, which the examples
   already assume.
-- Security: INT-001..005 are unaffected, with one tightening. The EBNF makes `unsafe(reason: …): block` (MEM-070,
-  MEM-071, PKG-030) a `primary`, so it can be an operand (`f(unsafe(reason: "x"): …)`). SYN 015 restricts it to a
+- Security: INT-001..005 are unaffected, with one tightening (`unsafe`, MEM-070; see SYN-017). The EBNF makes `unsafe(reason: …): block` (MEM-070,
+  MEM-071, PKG-030) a `primary`, so it can be an operand (`f(unsafe(reason: "x"): …)`). SYN-015 restricts it to a
   statement or a whole right-hand side, so an `unsafe` block is always visible at the start of a line, which helps
-  review and `egide audit`. Q-0011 item 6 asks `security-reviewer` to confirm that no intended use is lost.
+  review and `egide audit`. SYN-017 cites MEM-070/MEM-071 for what `unsafe` permits and does not restate it. `security-reviewer` should confirm at the MVP review that no intended use is lost (for example `return unsafe(…): …` must now be bound with `let` first).
 - Implementation: T-0008 (AST: one `If` node, `Match`/`Loop`/`With`/`Given`/`Lambda`/`TrailingCall` are expressions;
   a `Stmt.Expr` wrapper), T-0009/T-0010/T-0011/T-0012 use this EBNF, T-0013 recovers at `NEWLINE` or `DEDENT`.
-  T-0007 (layout) is unaffected. Add E0104 and E0106 to `docs/diagnostics.md`. Add `egide lex` conformance tests for LEX 036.
+  T-0007 (layout) is unaffected. Add E0104 and E0106 to `docs/diagnostics.md`. Add `egide lex` conformance tests for LEX-036.
 - Migration: none (pre-1.0, no released code).
-- Index: the owner adds a row for this ADR to `docs/adr/README.md` on acceptance.
+- Index: row added to `docs/adr/README.md`.
+
+## Changes made when accepting (differences from the Proposed text)
+
+- `[ doc_comment ]` is dropped from `file`; comments produce no token (EBNF header). How `##` attaches is Q-0012,
+  decided in ADR-0016.
+- `suite` uses `single_stmt` (no `let`/`var`) as the single-line form, per Q-0020 item 1 (ADR-0015).
+- Spec text lives in SYN-005, SYN-010, SYN-012, SYN-015, SYN-016, SYN-017, SYN-061, SYN-062, SYN-064, LEX-033, LEX-036.
+- Diagnostics E0104 (SYN-015), E0106 (SYN-012, SYN-033) and E0110 (SYN-017) are added to `docs/diagnostics.md`.
+- The Menhir transcription was re-run on the final EBNF (see ADR-0015, `attachments/0013-menhir-check.mly`): 0 conflicts.
+- Found while transcribing: `primary = … | path` and the postfix `.` IDENT were ambiguous; `primary` now has `IDENT`
+  and `a.b` is always a postfix expression, resolved by name resolution (module path or field).

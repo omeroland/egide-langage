@@ -42,6 +42,19 @@ pull request**. Codes are never reused.
 | E0101 | SYN-001 | missing `module` declaration | allocated |
 | E0102 | SYN-031 | boolean argument must be named: `{param}: {value}` | allocated |
 | E0103 | SYN-101 | mixing bitwise and comparison operators requires parentheses | allocated |
+| E0104 | SYN-015 | this block-ended expression must stand alone; bind it with `let` first | allocated |
+| E0105 | TYP-006 | parenthesise a function type used as a return type | allocated |
+| E0106 | SYN-012, SYN-033 | cannot assign to this expression / cannot take `&` of this expression (not a place) | allocated |
+| E0107 | SYN-065 | invalid lambda parameter / type annotation outside a lambda parameter list | allocated |
+| E0108 | SYN-037 | the right side of `\|>` must be a function or a call; parenthesise: `(x \|> f) == 0` | allocated |
+| E0109 | SYN-061 | binding is immediately out of scope in a single-line block | allocated |
+| E0110 | SYN-017 | expected `unsafe(reason: "…")` | allocated |
+| E0111 | SYN-003 | only `pub(package)` is a valid restricted visibility | allocated |
+| E0112 | SYN-053 | constructor or dotted pattern must end in an UpperCamelCase name | allocated |
+| E0113 | SYN-024 | variant and constant names must start with an uppercase letter | allocated |
+| E0114 | SYN-021 | `self` is allowed only as the first parameter of a method (never `comptime`) | allocated |
+| E0116 | SYN-001 | a module path must not start with `go` | allocated |
+| E0117 | SYN-023 | unknown attribute, or attribute `@{name}` not allowed on this item | allocated |
 | E0301 | MEM-021 | `{place}` is passed as inout and also used by another argument of the same call | allocated |
 | E0302 | MEM-023 | use of `{name}` after it was moved by `take` | allocated |
 | E0303 | ERR-032 | resource `{name}` may leak: close it with `with` or move it with `take` | allocated |
