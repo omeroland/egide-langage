@@ -64,10 +64,16 @@ so the grammar (ch. 3) is context-free.
      if no stack entry equals *w*, compile-time error "inconsistent dedent".
 - **[LEX-033] Block colon.** A `:` that is the last token of a logical line MUST be followed by an `INDENT`
   (otherwise compile-time error "expected an indented block"). A `:` followed by more tokens on the same logical line
-  introduces a **single-line block** containing exactly one simple statement (SYN-061); no `INDENT` is emitted.
+  introduces a **single-line block** containing exactly one simple statement (SYN-061); no `INDENT` is emitted. The lexer
+  does not decide whether a `:` followed by more tokens opens a block (the same token is also a type annotation, a named
+  argument and a map entry separator); the grammar does (SYN-010).
 - **[LEX-034] End of file.** At end of file the lexer emits `NEWLINE` (if the last logical line was not empty), then
   one `DEDENT` per stack entry above `0`, then `EOF`.
 - **[LEX-035]** Inside brackets (LEX-030 a), indentation is not significant and no layout tokens are produced.
+- **[LEX-036] Token contract.** The layout algorithm terminates every logical line with `NEWLINE`, except a line that
+  ends with a block `:`, which is terminated by `INDENT`. A `DEDENT` is never followed by `NEWLINE`. The grammar
+  (ch. 3) is written against exactly this stream: a block ends with `DEDENT`, a single-line block with the `NEWLINE`
+  of its line. Conformance tests compare `egide lex` output with the §2.4 example.
 
 Example (tokens on the right):
 
@@ -114,7 +120,6 @@ fn f(x: int) -> int:          # FN IDENT ( IDENT : IDENT ) -> IDENT :
 ->  =>  |>  ?   .   ..  ..= ,   :   ;   @   (   )   [   ]   {   }
 ```
 
-- **[LEX-060]** Tokens are formed by maximal munch, with one exception: `..` followed by `=` is `..=` only when the
-  next character is not `=` (`a..==b` is invalid).
+- **[LEX-060]** Tokens are formed by maximal munch (`a..==b` lexes as `a`, `..=`, `=` and is a syntax error).
 - **[LEX-061]** `;` is reserved and currently a compile-time error with the hint "statements end at line breaks".
 - **[LEX-062]** `**` is exponentiation on numeric types; it is right-associative (SYN-100).

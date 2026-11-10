@@ -33,7 +33,9 @@ let%expect_test "captures stdout, stderr and exit status, in job order" =
     |}]
 
 let%expect_test "large outputs do not deadlock" =
-  let outs, _ = Exec.run_all ~jobs:2 ~timeout:10. [| sh "head -c 1000000 /dev/zero | tr '\\0' x" |] in
+  let outs, _ =
+    Exec.run_all ~jobs:2 ~timeout:10. [| sh "head -c 1000000 /dev/zero | tr '\\0' x" |]
+  in
   Printf.printf "%d\n" (String.length outs.(0).stdout);
   [%expect {| 1000000 |}]
 

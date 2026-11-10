@@ -3,6 +3,7 @@ id: Q-0009
 rule: SYN-040
 raised_by: syntax-engineer/wave1
 blocking: [T-0011]
+status: decided
 ---
 ## Question
 
@@ -30,3 +31,11 @@ B. Keep the slice alternative and state in the grammar and SYN-040 that inside `
 
 A: it is simpler, matches the precedence table (SYN-100 level 10 puts `..` above comparisons), and keeps one meaning
 for `..` everywhere. The AST (`Index` with a `Range` index) represents both options, so T-0008 is unaffected.
+
+## Decision
+
+Decided by: owner-delegated (language-architect), 2026-11-10; the owner reviews at the MVP milestone.
+
+Option A: `slice_or_index` is deleted; `xs[a..b]` is indexing with a range expression, `..` keeps SYN-100 level 10, so `xs[a < b .. c]` is `a < (b..c)`.
+
+ADR-0014. Rules: SYN-040, SYN-043 (new); EBNF `postfix_expr`, `gen_args`.

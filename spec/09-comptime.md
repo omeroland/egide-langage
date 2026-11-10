@@ -19,17 +19,21 @@ macros. Compile-time code receives no capability, so no build can touch the netw
 
 - **[CT-010]** A `comptime` parameter's argument MUST be compile-time evaluable. The function is specialised per
   distinct argument value.
-- **[CT-011]** `type` is the type of types at compile time. A function returning `type` constructs a type:
+- **[CT-011]** Types are values only in comptime argument positions: generic arguments (SYN-042) and the arguments of
+  `std.meta` functions (SYN-044, CT-020). There is no type of types in the syntax and no function returns a type. A
+  parametric type is a generic declaration whose parameters may be `comptime` values; it is instantiated like any
+  generic type:
 
 ```egide
-fn Buffer(comptime n: int) -> type:
-    struct:
-        data: Array[u8, n]
-        len: int
+struct Buffer[comptime n: int]:
+    data: Array[u8, n]
+    len: int
+
+let b: Buffer[4096] = Buffer()
 ```
 
-- **[CT-012]** Anonymous struct/enum declarations are allowed only as the result of a `-> type` function; the resulting
-  type is nominal and named after the call (`Buffer(4096)`).
+- **[CT-012]** Types are declared only by `struct`, `enum` and `type`. Anonymous struct and enum declarations do not
+  exist (TYP-022); a generic declaration (CT-011) is the way to build a type from compile-time values.
 
 ## 9.3 Compile-time reflection
 

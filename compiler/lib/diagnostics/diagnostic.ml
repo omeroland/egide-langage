@@ -24,14 +24,19 @@ let is_digit c = c >= '0' && c <= '9'
 let is_upper c = c >= 'A' && c <= 'Z'
 
 let valid_code c =
-  c = "ICE" || (String.length c = 5 && (c.[0] = 'E' || c.[0] = 'W') && String.for_all is_digit (String.sub c 1 4))
+  c = "ICE"
+  || String.length c = 5
+     && (c.[0] = 'E' || c.[0] = 'W')
+     && String.for_all is_digit (String.sub c 1 4)
 
 (* Rule ids are [A-Z]+-[0-9]{3}, e.g. LEX-032 (every id in spec/ has this shape). *)
 let valid_rule r =
   match String.index_opt r '-' with
   | Some i when i > 0 ->
       let digits = String.sub r (i + 1) (String.length r - i - 1) in
-      String.for_all is_upper (String.sub r 0 i) && String.length digits = 3 && String.for_all is_digit digits
+      String.for_all is_upper (String.sub r 0 i)
+      && String.length digits = 3
+      && String.for_all is_digit digits
   | _ -> false
 
 let make severity ~rule ?(labels = []) ?(notes = []) ?(fixes = []) ~code span message =
@@ -63,10 +68,12 @@ let loc (s : Span.t) = Printf.sprintf "%s:%d:%d" (Text.sanitize s.file) s.start.
 
 let header d =
   let rule = match d.rule with Some r -> Printf.sprintf " (%s)" r | None -> "" in
-  Printf.sprintf "%s: %s[%s]: %s%s" (loc d.span) (severity_to_string d.severity) d.code (Text.sanitize d.message) rule
+  Printf.sprintf "%s: %s[%s]: %s%s" (loc d.span) (severity_to_string d.severity) d.code
+    (Text.sanitize d.message) rule
 
 let location_line (l : label) =
-  if l.message = "" then "  --> " ^ loc l.span else Printf.sprintf "  --> %s: %s" (loc l.span) (Text.sanitize l.message)
+  if l.message = "" then "  --> " ^ loc l.span
+  else Printf.sprintf "  --> %s: %s" (loc l.span) (Text.sanitize l.message)
 
 let edit_line (e : edit) =
   let s = e.span in
@@ -98,7 +105,10 @@ let prepare_line raw =
   { text = Buffer.contents b; cells }
 
 let length l = Array.length l.cells - 1
-let cell l col = if col - 1 <= length l then l.cells.(max 0 (col - 1)) else l.cells.(length l) + (col - 1 - length l)
+
+let cell l col =
+  if col - 1 <= length l then l.cells.(max 0 (col - 1))
+  else l.cells.(length l) + (col - 1 - length l)
 
 let first_non_blank l =
   let rec go i = if i >= String.length l.text || l.text.[i] <> ' ' then i + 1 else go (i + 1) in
@@ -108,8 +118,8 @@ let first_non_blank l =
 let split_lines src =
   String.split_on_char '\n' src
   |> List.map (fun l ->
-         let n = String.length l in
-         if n > 0 && l.[n - 1] = '\r' then String.sub l 0 (n - 1) else l)
+      let n = String.length l in
+      if n > 0 && l.[n - 1] = '\r' then String.sub l 0 (n - 1) else l)
   |> Array.of_list
 
 (* A marked range on one line, in scalar columns [c0, c1). *)
@@ -134,9 +144,12 @@ let marks_of lines ~primary (span : Span.t) msg =
   else
     (* A span ending at column 1 of a later line ends at the end of the previous line. *)
     let b, stop_col =
-      if b0 > a && span.stop.col <= 1 then (b0 - 1, length (line (b0 - 1)) + 1) else (b0, span.stop.col)
+      if b0 > a && span.stop.col <= 1 then (b0 - 1, length (line (b0 - 1)) + 1)
+      else (b0, span.stop.col)
     in
-    let mk k c0 c1 = { line = k; c0; c1 = max c1 (c0 + 1); primary; msg = (if k = b then msg else "") } in
+    let mk k c0 c1 =
+      { line = k; c0; c1 = max c1 (c0 + 1); primary; msg = (if k = b then msg else "") }
+    in
     if a = b then Some [ mk a span.start.col stop_col ]
     else
       let first = mk a span.start.col (length (line a) + 1) in
@@ -150,8 +163,8 @@ let marks_of lines ~primary (span : Span.t) msg =
         else
           List.init (b - a - 1) (fun i -> a + 1 + i)
           |> List.filter_map (fun k ->
-                 let l = line k in
-                 if length l = 0 then None else Some (mk k (first_non_blank l) (length l + 1)))
+              let l = line k in
+              if length l = 0 then None else Some (mk k (first_non_blank l) (length l + 1)))
       in
       Some ((first :: middle) @ [ last ])
 
@@ -167,7 +180,10 @@ let render_block buf lines marks =
   let out s = Buffer.add_string buf (rtrim s ^ "\n") in
   let shown = List.sort_uniq compare (List.map (fun m -> m.line) marks) in
   (* Show a single skipped line rather than an ellipsis standing for one line. *)
-  let rec fill = function x :: (y :: _ as rest) -> if y - x = 2 then x :: (x + 1) :: fill rest else x :: fill rest | l -> l in
+  let rec fill = function
+    | x :: (y :: _ as rest) -> if y - x = 2 then x :: (x + 1) :: fill rest else x :: fill rest
+    | l -> l
+  in
   let shown = fill shown in
   let w = String.length (string_of_int (List.fold_left max 0 shown)) in
   let pad = String.make (w + 1) ' ' in
@@ -258,7 +274,8 @@ let render ~sources d =
     d.labels;
   List.iteri
     (fun i (file, ms) ->
-      if not (i = 0 && primary_shown) then Buffer.add_string buf ("  --> " ^ Text.sanitize file ^ "\n");
+      if not (i = 0 && primary_shown) then
+        Buffer.add_string buf ("  --> " ^ Text.sanitize file ^ "\n");
       match lines file with Some ls -> render_block buf ls !ms | None -> ())
     !blocks;
   List.iter (fun l -> Buffer.add_string buf (location_line l ^ "\n")) !fallbacks;
@@ -278,21 +295,30 @@ let to_human d = render ~sources:(fun _ -> None) d
 
 let json_span (s : Span.t) =
   let pos (p : Span.pos) = Printf.sprintf {|{"line":%d,"col":%d}|} p.line p.col in
-  Printf.sprintf {|{"file":%s,"start":%s,"end":%s}|} (Text.json_string s.file) (pos s.start) (pos s.stop)
+  Printf.sprintf {|{"file":%s,"start":%s,"end":%s}|} (Text.json_string s.file) (pos s.start)
+    (pos s.stop)
 
 let json_list f l = "[" ^ String.concat "," (List.map f l) ^ "]"
 
 let to_json d =
-  let label (l : label) = Printf.sprintf {|{"span":%s,"message":%s}|} (json_span l.span) (Text.json_string l.message) in
-  let edit (e : edit) =
-    Printf.sprintf {|{"span":%s,"replacement":%s}|} (json_span e.span) (Text.json_string e.replacement)
+  let label (l : label) =
+    Printf.sprintf {|{"span":%s,"message":%s}|} (json_span l.span) (Text.json_string l.message)
   in
-  let fix (f : fix) = Printf.sprintf {|{"message":%s,"edits":%s}|} (Text.json_string f.message) (json_list edit f.edits) in
-  Printf.sprintf {|{"code":%s,"severity":%s,"rule":%s,"message":%s,"span":%s,"labels":%s,"notes":%s,"fixes":%s}|}
+  let edit (e : edit) =
+    Printf.sprintf {|{"span":%s,"replacement":%s}|} (json_span e.span)
+      (Text.json_string e.replacement)
+  in
+  let fix (f : fix) =
+    Printf.sprintf {|{"message":%s,"edits":%s}|} (Text.json_string f.message)
+      (json_list edit f.edits)
+  in
+  Printf.sprintf
+    {|{"code":%s,"severity":%s,"rule":%s,"message":%s,"span":%s,"labels":%s,"notes":%s,"fixes":%s}|}
     (Text.json_string d.code)
     (Text.json_string (severity_to_string d.severity))
     (match d.rule with Some r -> Text.json_string r | None -> "null")
-    (Text.json_string d.message) (json_span d.span) (json_list label d.labels) (json_list Text.json_string d.notes)
+    (Text.json_string d.message) (json_span d.span) (json_list label d.labels)
+    (json_list Text.json_string d.notes)
     (json_list fix d.fixes)
 
 module Sink = struct

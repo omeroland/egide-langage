@@ -1,0 +1,6 @@
+# spec: LEX-001, LEX-003
+# expect: lex-fail
+# diagnostic: E0004 at 6:4
+# A U+FEFF in code, on a later line, is E0004.
+module tests.lexical.bytes_bom_mid_file_code
+let﻿x = 1

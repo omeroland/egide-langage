@@ -32,6 +32,8 @@ Anything not listed in the acceptance criteria; create follow-up tasks.
 
 ## Log
 
+2026-11-10 language-architect (owner-delegated): spec/grammar/egide.ebnf is v0.3 (ADR-0013, ADR-0014, ADR-0015 accepted). Read `docs/adr/attachments/0013-menhir-check.mly` (0 conflicts) as the starting point for parser.mly, and do T-1030 (AST) first. Here: Q-0013 (SYN-053: uppercase or dotted names are constants/variants, lowercase binds; `PConst` vs `PBind`; literal patterns incl. duration/raw/bytes; closed ranges only).
+
 ## Outcome
 
 

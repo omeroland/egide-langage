@@ -12,8 +12,8 @@ type t =
   | Object of (string * t) list
 
 val parse : string -> (t, string) result
-(** [parse s] parses exactly one JSON value; surrounding whitespace is allowed, trailing data is
-    an error. *)
+(** [parse s] parses exactly one JSON value; surrounding whitespace is allowed, trailing data is an
+    error. *)
 
 val objects_in_lines : string -> t list
 (** [objects_in_lines text] returns, in order, every line of [text] that is a complete JSON object

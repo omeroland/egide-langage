@@ -29,5 +29,8 @@ let file ~file src =
         | None -> Egide_source.Span.dummy
       in
       let found = match !last with Some t -> token_to_string t.tok | None -> "end of file" in
-      let d = D.error ~rule:"SYN-001" ~code:"E0100" sp (Printf.sprintf "syntax error: unexpected %s" found) in
+      let d =
+        D.error ~rule:"SYN-001" ~code:"E0100" sp
+          (Printf.sprintf "syntax error: unexpected %s" found)
+      in
       (None, diags @ [ d ])

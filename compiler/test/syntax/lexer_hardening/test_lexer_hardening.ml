@@ -13,8 +13,8 @@ let utf8 cp =
   Buffer.contents b
 
 let show_diag (d : D.t) =
-  Printf.sprintf "%s %d:%d-%d:%d %s" d.code d.span.start.line d.span.start.col d.span.stop.line d.span.stop.col
-    d.message
+  Printf.sprintf "%s %d:%d-%d:%d %s" d.code d.span.start.line d.span.start.col d.span.stop.line
+    d.span.stop.col d.message
 
 let show_tokens toks =
   String.concat " "
@@ -30,7 +30,9 @@ let show src =
   print_endline (show_tokens toks);
   List.iter (fun d -> print_endline (show_diag d)) diags
 
-let hex s = String.concat " " (List.map (fun c -> Printf.sprintf "%02X" (Char.code c)) (List.of_seq (String.to_seq s)))
+let hex s =
+  String.concat " "
+    (List.map (fun c -> Printf.sprintf "%02X" (Char.code c)) (List.of_seq (String.to_seq s)))
 
 (* ---------------------------------------------------------------------------------------------------------- *)
 (* LEX-001: invalid UTF-8 (E0001). One diagnostic per run of ill-formed bytes; each maximal subpart of an
@@ -227,26 +229,30 @@ let%expect_test "every forbidden code point is E0004 in code, comments and strin
           let good =
             match diags with
             | [ d ] ->
-                d.code = "E0004" && d.rule = Some "LEX-003" && d.span.start = Egide_source.Span.{ line; col }
-                && d.span.stop = Egide_source.Span.{ line; col = col + 1 }
+                d.code = "E0004" && d.rule = Some "LEX-003"
+                && (d.span.start = Egide_source.Span.{ line; col })
+                && (d.span.stop = Egide_source.Span.{ line; col = col + 1 })
                 && String.starts_with ~prefix:expected_prefix d.message
             | _ -> false
           in
           (* Outside strings the forbidden character must not disturb the token stream (no extra E0051). *)
-          let (_, clean, _, _) = List.find (fun (c, _, _, _) -> c = ctx) (contexts "") in
+          let _, clean, _, _ = List.find (fun (c, _, _, _) -> c = ctx) (contexts "") in
           let good =
-            good && (ctx = "string" || List.map (fun (t : Lexer.located) -> t.tok) toks = toks_only clean)
+            good
+            && (ctx = "string" || List.map (fun (t : Lexer.located) -> t.tok) toks = toks_only clean)
           in
           if good then Hashtbl.replace ok ctx (1 + Option.value ~default:0 (Hashtbl.find_opt ok ctx))
           else
-            Printf.printf "FAIL U+%04X in %s: %s\n" cp ctx (String.concat "; " (List.map show_diag diags)))
+            Printf.printf "FAIL U+%04X in %s: %s\n" cp ctx
+              (String.concat "; " (List.map show_diag diags)))
         (contexts (utf8 cp)))
     forbidden_cps;
   Printf.printf "forbidden code points: %d\n" (List.length forbidden_cps);
   List.iter
     (fun ctx -> Printf.printf "%s: %d ok\n" ctx (Option.value ~default:0 (Hashtbl.find_opt ok ctx)))
     [ "code"; "comment"; "string" ];
-  [%expect {|
+  [%expect
+    {|
     forbidden code points: 81
     code: 81 ok
     comment: 81 ok
@@ -260,8 +266,30 @@ let%expect_test "E0004 messages name the forbidden character" =
       match snd (lex ("# " ^ utf8 cp ^ "\n")) with
       | [ d ] -> print_endline d.message
       | ds -> Printf.printf "U+%04X: %d diagnostics\n" cp (List.length ds))
-    [ 0x061C; 0x200B; 0x200C; 0x200D; 0x200E; 0x200F; 0x202A; 0x202B; 0x202C; 0x202D; 0x202E; 0x2028; 0x2029;
-      0x2060; 0x2066; 0x2067; 0x2068; 0x2069; 0x00; 0x1B; 0x7F; 0x85 ];
+    [
+      0x061C;
+      0x200B;
+      0x200C;
+      0x200D;
+      0x200E;
+      0x200F;
+      0x202A;
+      0x202B;
+      0x202C;
+      0x202D;
+      0x202E;
+      0x2028;
+      0x2029;
+      0x2060;
+      0x2066;
+      0x2067;
+      0x2068;
+      0x2069;
+      0x00;
+      0x1B;
+      0x7F;
+      0x85;
+    ];
   [%expect
     {|
     forbidden character U+061C (ARABIC LETTER MARK) — risk: hidden or reordered source text (Trojan Source)
@@ -292,8 +320,24 @@ let%expect_test "E0004 messages name the forbidden character" =
    strings. (Whether further invisible characters should be forbidden is spec-question Q-0001.) *)
 let%expect_test "code points next to the forbidden ranges are accepted in comments and strings" =
   let allowed =
-    [ 0x20; 0x7E; 0xA0; 0xE9; 0x061B; 0x061D; 0x200A; 0x2010; 0x2027; 0x202F; 0x2030; 0x2065; 0xFEFE; 0xFF01;
-      0x1F600; 0x10FFFF ]
+    [
+      0x20;
+      0x7E;
+      0xA0;
+      0xE9;
+      0x061B;
+      0x061D;
+      0x200A;
+      0x2010;
+      0x2027;
+      0x202F;
+      0x2030;
+      0x2065;
+      0xFEFE;
+      0xFF01;
+      0x1F600;
+      0x10FFFF;
+    ]
   in
   let bad =
     List.filter
@@ -334,7 +378,9 @@ let%expect_test "a run of tabs is one E0005" =
     |}]
 
 (* spec: LEX-004, LEX-010, LEX-011, LEX-012 — comments are not string literals. *)
-let%expect_test "a tab inside a comment, doc comment or shebang is E0005 and the comment still ends at the line end" =
+let%expect_test
+    "a tab inside a comment, doc comment or shebang is E0005 and the comment still ends at the \
+     line end" =
   show "#!/bin/egide\trun\nx # a\tb c\n## doc\tcomment\ny\n";
   [%expect
     {|
@@ -424,8 +470,9 @@ let property src =
   let toks, diags = lex src in
   let valid = String.is_valid_utf_8 src in
   List.for_all well_formed_span diags
-  && (count "E0001" diags > 0) = not valid
-  && ((not valid) || (count "E0004" diags = count_forbidden src && count "E0003" diags = count_lone_cr src))
+  && count "E0001" diags > 0 = not valid
+  && ((not valid)
+     || (count "E0004" diags = count_forbidden src && count "E0003" diags = count_lone_cr src))
   && (valid || toks = [])
 
 let seed = 0x0E61DE
@@ -447,15 +494,72 @@ let%expect_test "property: the lexer never raises on 10 000 arbitrary byte strin
 (* Fragments chosen to reach every lexer state: keywords, layout-relevant whitespace, comments, strings and their
    escapes, numbers, operators, forbidden and ill-formed sequences. *)
 let fragments =
-  [| "module"; "fn"; "let"; "x"; "_"; " "; "    "; "\n"; "\r\n"; "\r"; "\t"; "#"; "##"; "#!"; "\""; "\\"; "\\n";
-     "\\u{"; "1"; "0x"; "1.5"; "e9"; "_1"; ":"; "("; ")"; "["; "]"; "{"; "}"; ";"; ".."; "..="; "**"; "|>"; "->";
-     "=="; "<<="; "é"; "日本"; "\xF0\x9F\x98\x80"; "\xE2\x80\xAE"; "\xEF\xBB\xBF"; "\xE2\x80\xA8"; "\x00"; "\x1B";
-     "\x7F"; "\xC2\x85"; "\xFF"; "\xE2\x82"; "\xED\xA0\x80"; "\xF4\x90\x80\x80"; "\xC0\xAF"; "\xD0\xB0" |]
+  [|
+    "module";
+    "fn";
+    "let";
+    "x";
+    "_";
+    " ";
+    "    ";
+    "\n";
+    "\r\n";
+    "\r";
+    "\t";
+    "#";
+    "##";
+    "#!";
+    "\"";
+    "\\";
+    "\\n";
+    "\\u{";
+    "1";
+    "0x";
+    "1.5";
+    "e9";
+    "_1";
+    ":";
+    "(";
+    ")";
+    "[";
+    "]";
+    "{";
+    "}";
+    ";";
+    "..";
+    "..=";
+    "**";
+    "|>";
+    "->";
+    "==";
+    "<<=";
+    "é";
+    "日本";
+    "\xF0\x9F\x98\x80";
+    "\xE2\x80\xAE";
+    "\xEF\xBB\xBF";
+    "\xE2\x80\xA8";
+    "\x00";
+    "\x1B";
+    "\x7F";
+    "\xC2\x85";
+    "\xFF";
+    "\xE2\x82";
+    "\xED\xA0\x80";
+    "\xF4\x90\x80\x80";
+    "\xC0\xAF";
+    "\xD0\xB0";
+  |]
 
 (* spec: LEX-001, LEX-002, LEX-003, LEX-004 *)
 let%expect_test "property: the lexer never raises on 10 000 strings of lexer fragments" =
-  let gen = QCheck.Gen.(map (String.concat "") (list_size (int_range 0 64) (oneof_array fragments))) in
-  run (QCheck.Test.make ~count:10_000 ~name:"fragments" (QCheck.make ~print:String.escaped gen) property);
+  let gen =
+    QCheck.Gen.(map (String.concat "") (list_size (int_range 0 64) (oneof_array fragments)))
+  in
+  run
+    (QCheck.Test.make ~count:10_000 ~name:"fragments"
+       (QCheck.make ~print:String.escaped gen)
+       property);
   [%expect {| ok |}]
 
 (* spec: LEX-001, LEX-003 — every Unicode scalar value, so that the sedlex decoder sees the whole range. *)
@@ -470,6 +574,12 @@ let%expect_test "property: the lexer never raises on 10 000 strings of arbitrary
           (1, int_range 0x10000 0x10FFFF);
         ])
   in
-  let gen = QCheck.Gen.(map (fun cps -> String.concat "" (List.map utf8 cps)) (list_size (int_range 0 128) scalar)) in
-  run (QCheck.Test.make ~count:10_000 ~name:"scalar values" (QCheck.make ~print:String.escaped gen) property);
+  let gen =
+    QCheck.Gen.(
+      map (fun cps -> String.concat "" (List.map utf8 cps)) (list_size (int_range 0 128) scalar))
+  in
+  run
+    (QCheck.Test.make ~count:10_000 ~name:"scalar values"
+       (QCheck.make ~print:String.escaped gen)
+       property);
   [%expect {| ok |}]

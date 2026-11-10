@@ -137,13 +137,40 @@ class Header(unittest.TestCase):
         return out
 
     def test_unicode_line_separator_is_not_a_line_break(self):
-        for sep in ("\t", "\u2028", "\u2029", "\u0085", "\x0b", "\x0c", "\x1c"):
+        for sep in ("\u2028", "\u2029", "\u0085", "\x0b", "\x1c"):
             out = self.rows(f"# spec: LEX-001{sep}# expect: lex-pass\nx\n")
             self.assertRegex(out, r"(?m)^LEX-001 +02 +0 +0", repr(sep))  # runner rejects the id: not counted
             self.assertIn("malformed rule ids", out, repr(sep))
             # a separator glued to an id makes the id invalid for the runner, so the test must not count
             out = self.rows(f"# spec: LEX-001{sep}\n# expect: lex-pass\nx\n")
             self.assertRegex(out, r"(?m)^LEX-001 +02 +0 +0", repr(sep))
+
+    def test_expect_trailing_unicode_whitespace_is_not_trimmed(self):
+        # runner: String.trim is ASCII only, so `lex-pass<U+2028>` / `lex-pass<NBSP>` is an unknown expectation
+        for ws in ("\u2028", "\u00a0", "\u2003", "\x1c"):
+            out = self.rows(f"# spec: LEX-001\n# expect: lex-pass{ws}\nx\n")
+            self.assertRegex(out, r"(?m)^LEX-001 +02 +0 +0", repr(ws))
+
+    def test_ascii_whitespace_is_trimmed_around_values(self):
+        # runner trims space, \t, \r, \x0c around the value of a directive
+        for ws in ("\t", " ", "\x0c", " \t "):
+            out = self.rows(f"# spec:{ws}LEX-001{ws}\n# expect:{ws}lex-pass{ws}\nx\n")
+            self.assertRegex(out, r"(?m)^LEX-001 +02 +1 +0", repr(ws))
+            self.assertNotIn("malformed", out, repr(ws))
+
+    def test_tab_between_ids_is_not_a_separator(self):
+        out = self.rows("# spec: LEX-001\tLEX-002\n# expect: lex-pass\nx\n")
+        self.assertRegex(out, r"(?m)^LEX-001 +02 +0 +0")
+        self.assertIn("malformed rule ids", out)
+
+    def test_nbsp_around_id_is_not_trimmed(self):
+        out = self.rows("# spec: LEX-001\u00a0\n# expect: lex-pass\nx\n")
+        self.assertRegex(out, r"(?m)^LEX-001 +02 +0 +0")
+        self.assertIn("malformed rule ids", out)
+
+    def test_bom_at_file_start_is_ignored(self):
+        out = self.rows("\ufeff# spec: LEX-001\n# expect: lex-pass\nx\n")
+        self.assertRegex(out, r"(?m)^LEX-001 +02 +1 +0")
 
     def test_crlf_is_accepted(self):
         out = self.rows("# spec: LEX-001\r\n# expect: lex-pass\r\nx\r\n")
@@ -175,6 +202,11 @@ class BadInput(unittest.TestCase):
     def test_bad_phase(self):
         for bad in ("-1", "9", "x"):
             self.fails(make_repo(SPEC, TESTS), "--strict", "--phase", bad)
+
+    def test_phase_or_chapters_without_strict(self):
+        for args in (("--phase", "2"), ("--chapters", "4")):
+            err = self.fails(make_repo(SPEC, TESTS), *args)
+            self.assertIn("--strict", err)
 
     def test_bad_phase_file(self):
         r = make_repo(SPEC, TESTS, "banana")

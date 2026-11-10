@@ -31,8 +31,7 @@ let%expect_test "every header, shebang, doc comments, blank lines, requires" =
   p
     "#!/usr/bin/env egide run\n\
      # spec: LEX-010, LEX-011 LEX-012\n\
-     # spec: SYN-001,LEX-010\n\
-     \n\
+     # spec: SYN-001,LEX-010\n\n\
      ## Doc comment.\n\
      # requires: egide.k8s = \"1.2\"\n\
      # expect: run-pass\n\
@@ -58,8 +57,13 @@ let%expect_test "repeated diagnostics are kept in order; W codes are accepted" =
   [%expect
     {| spec=[LEX-032] expect=lex-fail diags=[E0022 at 8:3; W0001 at 1:1; E0022 at 8:3] stdout=- phase=0 backends=[interp,go,native] |}]
 
-let%expect_test "a UTF-8 byte-order mark and CRLF line ends do not hide the header (LEX-001, LEX-002)" =
-  p "\xEF\xBB\xBF# spec: LEX-001\r\n# expect: lex-fail\r\n# diagnostic: E0002 at 1:1\r\nmodule m\r\n";
+let%expect_test
+    "a UTF-8 byte-order mark and CRLF line ends do not hide the header (LEX-001, LEX-002)" =
+  p
+    "\xEF\xBB\xBF# spec: LEX-001\r\n\
+     # expect: lex-fail\r\n\
+     # diagnostic: E0002 at 1:1\r\n\
+     module m\r\n";
   [%expect
     {| spec=[LEX-001] expect=lex-fail diags=[E0002 at 1:1] stdout=- phase=0 backends=[interp,go,native] |}]
 
@@ -124,7 +128,13 @@ let%expect_test "a misspelt directive is an error, not a silent comment" =
     |}]
 
 let%expect_test "headers that do not fit the expectation are errors" =
-  p "# spec: LEX-001\n# expect: lex-pass\n# diagnostic: E0001 at 1:1\n# stdout: x\n# backends: go\nmodule m\n";
+  p
+    "# spec: LEX-001\n\
+     # expect: lex-pass\n\
+     # diagnostic: E0001 at 1:1\n\
+     # stdout: x\n\
+     # backends: go\n\
+     module m\n";
   [%expect
     {|
     error: `# diagnostic:` is only allowed with lex-fail, parse-fail or compile-fail

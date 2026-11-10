@@ -4,7 +4,7 @@ rule: SYN-037, SYN-100, SYN-031, SYN-033
 raised_by: language-architect/wave1 (T-0022)
 blocking: [T-0011, T-0033]
 severity: medium
-status: open
+status: decided
 ---
 ## Question
 
@@ -35,3 +35,11 @@ B. Allow any expression that evaluates to a function and call it with `x` (F#/El
 A. It keeps SYN-037 a purely syntactic desugaring, which T-0033 implements in HIR. `xs |> len == 0` then gets E0108
 with the hint "parenthesise: `(xs |> len) == 0`", which is better than a type error. The AST (T-0008) keeps a `Pipe`
 node. The parser (T-0011) or the desugarer checks the shape. The spec should say which.
+
+## Decision
+
+Decided by: owner-delegated (language-architect), 2026-11-10; the owner reviews at the MVP milestone.
+
+Option A. The right side of `|>` is a path or a call, optionally followed by `?`; the value is inserted as the first positional argument; anything else is E0108. The parser checks the shape (cover).
+
+ADR-0015. Rules: SYN-037.

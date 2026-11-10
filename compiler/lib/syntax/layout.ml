@@ -11,7 +11,6 @@ type level = { width : int; phantom : bool }
 
 (* LEX-030 (b): tokens that may start a continuation line. *)
 let is_continuation_start = function PIPEGT | DOT | KW_AND | KW_OR -> true | _ -> false
-
 let column (t : Lexer.located) = t.startp.pos_cnum - t.startp.pos_bol
 
 let run (toks : Lexer.located list) =

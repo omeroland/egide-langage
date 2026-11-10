@@ -67,7 +67,8 @@ types** and **auditable**.
   error "never happens".
 - **[GO-031]** Go methods with pointer receivers are callable on `GoRef[T]`.
 - **[GO-032]** `GoRef[T]` has reference semantics like `Shared[T]` and is not `Send`, unless a bridge module declares
-  `@go_threadsafe` for `T` (e.g. `@go_threadsafe kube.Clientset`); such declarations are listed by `egide audit`.
+  it with the attribute `@go_threadsafe` on a `type` alias of `T` (SYN-023), e.g.
+  `@go_threadsafe` on the line above `type Clientset = kube.Clientset`; such declarations are listed by `egide audit`.
 
 ## 11.4 Purity classification of Go functions
 

@@ -2,9 +2,10 @@
 """Rule coverage report (T-0020). Normally invoked through `tools/check-spec.sh --coverage|--strict`.
 
 Reads rule ids from spec/ (no id is hardcoded) and `# spec:` headers of tests under tests/conformance and
-tests/security (tests/quarantine is ignored). Only the leading comment block of a test counts, as in the conformance
-runner (tools/conformance/header.ml). A test is positive when its `# expect:` ends in `-pass`, negative when it ends
-in `-fail` or is `run-panic`; tests with another or no expectation count for neither column.
+tests/security (tests/quarantine is ignored). Only the leading comment block of a test counts. It is parsed like the
+conformance runner (tools/conformance/header.ml) for what the report needs: where the block ends, `# spec:` ids and
+`# expect:`; see header() for what is deliberately not validated. A test is positive when its `# expect:` ends in
+`-pass`, negative when it ends in `-fail` or is `run-panic`; tests with another or no expectation count for neither.
 
 Output (stable, one rule per line, in spec order):
     RULE  CH  POS  NEG
@@ -38,6 +39,7 @@ PHASE_CHAPTERS = {
     6: ["10", "13"],
 }
 LAST_PHASE = 8
+TRIM = " \t\n\r\x0c"  # OCaml String.trim: ASCII whitespace only (not Python's Unicode-aware str.strip())
 SCOPE_TOKEN = re.compile(r"^(\d{1,2}(\.\d{1,2})?|A)$")
 HEADING = re.compile(r"^#{2,6} (\d+)\.(\d+)\b")
 TEST_DIRS = ["tests/conformance", "tests/security"]
@@ -69,7 +71,10 @@ def spec_rules(root):
 
 def header(path):
     """(cited tokens, expect) from the leading block of blank/`#` lines, read as tools/conformance/header.ml does:
-    lines end at LF only (a trailing CR is dropped), a leading BOM is ignored, ids are separated by `,` and space."""
+    lines end at LF only (a trailing CR is dropped), a leading BOM is ignored, values are trimmed of ASCII whitespace
+    only (TRIM), ids are separated by `,` and space. Deliberately NOT validated: the other header rules of the runner
+    (duplicate or missing `# expect:`, bad `# diagnostic:`, `# spec:` after the first code line...), so a file the
+    runner rejects for those reasons can still be counted; the runner suite reports them."""
     ids, expect = [], None
     text = path.read_bytes().decode("utf-8", errors="replace").removeprefix("\ufeff")
     for line in text.split("\n"):
@@ -78,9 +83,9 @@ def header(path):
             break
         m = re.match(r"# (spec|expect):(.*)$", line)
         if m and m.group(1) == "spec":
-            ids += [t for t in re.split(r"[, ]+", m.group(2).strip(" ")) if t]
+            ids += [t for t in re.split(r"[, ]+", m.group(2).strip(TRIM)) if t]
         elif m and expect is None:
-            expect = m.group(2).strip()
+            expect = m.group(2).strip(TRIM)
     return ids, expect
 
 
@@ -221,6 +226,9 @@ def main(argv):
     ap.add_argument("--chapters")
     ap.add_argument("--coverage", action="store_true", help="accepted for symmetry with check-spec.sh")
     a = ap.parse_args(argv)  # exits 2 with `spec_coverage: error: ...` on bad option values
+    if (a.chapters is not None or a.phase is not None) and not a.strict:
+        print("spec_coverage: error: --phase and --chapters only apply with --strict", file=sys.stderr)
+        return 2
     try:
         return run(a)
     except Usage as e:

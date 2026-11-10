@@ -45,7 +45,7 @@ fn main(sys: Sys) -> Result[(), Error]:
 ## 13.3 Testing
 
 - **[TOOL-030]** `egide test` runs functions annotated `@test` (signature `fn() -> Result[(), E]` or `fn()`), doctests
-  from `##` comments (LEX-011) and property tests (`@property fn(x: T)` with generators derived via `@derive(Arbitrary)`).
+  from `##` comments (LEX-011) and property tests (functions annotated `@property` whose parameters have generators derived via `@derive(Arbitrary)`).
 - **[TOOL-031]** Tests receive fake capabilities only (CAP-060) unless annotated `@integration`, which receives a real
   `Sys` and runs only with `egide test --integration`.
 

@@ -2,3 +2,8 @@
 # `text=auto eol=lf` normalisation that would turn CR LF into LF.
 source_crlf_accepted.egd -text
 source_lone_cr_rejected.egd -text
+
+# Binary fixtures (T-0026): invalid UTF-8, NUL, U+FEFF and lone CR must reach the lexer byte for byte. `binary` is
+# `-diff -merge -text`: no eol conversion and no text diff, whatever git's content sniffing would decide. The
+# leading `# spec:` header block is plain ASCII, so the runner reads it normally.
+bytes_*.egd binary

@@ -1,13 +1,6 @@
 type job = { prog : string; args : string list }
 type outcome = { exit : Verdict.exit; stdout : string; stderr : string; time : float }
-
-type running = {
-  index : int;
-  pid : int;
-  out_file : string;
-  err_file : string;
-  started : float;
-}
+type running = { index : int; pid : int; out_file : string; err_file : string; started : float }
 
 let read_and_remove path =
   let s = try In_channel.with_open_bin path In_channel.input_all with Sys_error _ -> "" in
@@ -45,9 +38,7 @@ let rec waitpid_nohang pid =
 let rec waitpid_block pid =
   try snd (Unix.waitpid [] pid) with Unix.Unix_error (EINTR, _, _) -> waitpid_block pid
 
-let to_exit = function
-  | Unix.WEXITED n -> Verdict.Exited n
-  | WSIGNALED s | WSTOPPED s -> Signaled s
+let to_exit = function Unix.WEXITED n -> Verdict.Exited n | WSIGNALED s | WSTOPPED s -> Signaled s
 
 let run_all ~jobs ~timeout js =
   let jobs = max 1 jobs in

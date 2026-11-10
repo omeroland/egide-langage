@@ -3,6 +3,7 @@ id: Q-0002
 rule: LEX-032
 raised_by: syntax-engineer/wave1
 blocking: [T-0010]
+status: decided
 ---
 ## Question
 
@@ -44,3 +45,11 @@ B. The EBNF is normative. Change LEX-032 step 2 to emit `NEWLINE INDENT`, and st
 A. The lexical rules come with a worked token-by-token example and are already implemented and tested
 (`compiler/test/syntax/test_layout.ml`). The fix is confined to the grammar productions, which the parser tasks
 (T-0009..T-0012) have to write anyway. Until this is answered, `layout.ml` follows LEX-032 literally.
+
+## Decision
+
+Decided by: owner-delegated (language-architect), 2026-11-10; the owner reviews at the MVP milestone.
+
+Option A (LEX-032/034 normative), generalised to a terminator model: every logical line ends with `NEWLINE` except a block-header line, which ends with `INDENT`; `DEDENT` is never followed by `NEWLINE`. The EBNF is rewritten (`suite`, `stmt`, no `NEWLINE` before `else`/`elif`).
+
+ADR-0013 (accepted). Rules: LEX-033 (reworded), LEX-036 (new), SYN-010; EBNF `file`, `suite`, declaration bodies.

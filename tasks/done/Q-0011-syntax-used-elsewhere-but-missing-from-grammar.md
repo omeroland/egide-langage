@@ -4,7 +4,7 @@ rule: SYN-023, CAP-032, PKG-003, CT-011, CT-012, TYP-022, GO-032, LEX-023
 raised_by: language-architect/wave1 (T-0022)
 blocking: [T-0009, T-0011, T-0008]
 severity: high
-status: open
+status: decided
 ---
 ## Question
 
@@ -50,3 +50,11 @@ support it or reject it, and the spec says neither.
    (ADR-0013, SYN 015), so it cannot be an operand; the identifier before the string MUST be `reason`. Its effect,
    the non-empty reason, the manifest entry and the audit listing stay in MEM-070/MEM-071 and are not restated.
    Ask `security-reviewer` to confirm that moving `unsafe` out of `primary` loses no use that MEM-070 intends.
+
+## Decision
+
+Decided by: owner-delegated (language-architect), 2026-11-10; the owner reviews at the MVP milestone.
+
+Item 1: add `using name: expr` argument. 2: `pub(package)`, `package` contextual (E0111). 3: option (b), type-returning functions and anonymous `struct:` removed; use generic declarations with `comptime` parameters. 4: `@go_threadsafe` is an attribute on a `type` alias of an imported Go type. 5: closed attribute table in ch. 3, own line, E0117. 6: `unsafe(reason: "…"): block` is a block-ended expression; `reason` checked (E0110); effect stays MEM-070/071. 7: covered by ADR-0014.
+
+ADR-0015 (items 1-6), ADR-0014 (7). Rules: SYN-017 (new), SYN-023 (table), SYN-003, SYN-030, CT-011, CT-012, GO-032, TOOL-030. Security-relevant, for `security-reviewer`: items 3, 4, 6.

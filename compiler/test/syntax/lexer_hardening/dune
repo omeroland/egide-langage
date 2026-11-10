@@ -1,5 +1,6 @@
 ; T-0006: lexer hardening tests (LEX-001..004, LEX-020) and the "never raises" property.
 ; A separate test library so that qcheck-core is not added to the shared test_syntax library.
+
 (library
  (name test_lexer_hardening)
  (inline_tests)

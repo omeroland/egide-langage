@@ -1,0 +1,6 @@
+# spec: LEX-003
+# expect: lex-fail
+# diagnostic: E0004 at 6:14
+module tests.security.delete_in_string
+
+let key = "admin"
