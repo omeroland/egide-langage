@@ -30,5 +30,5 @@ val check : Header.t -> exit -> stdout:string -> stderr:string -> (unit, string)
     Otherwise [Error msg] explains the first mismatch on one or more lines. *)
 
 val lines : string -> string list
-(** [lines s] splits on ['\n'], dropping one final empty element so that ["a\nb\n"] and
-    ["a\nb"] both give [["a"; "b"]]. A trailing ['\r'] is kept: CRLF output is a mismatch. *)
+(** [lines s] splits on ['\n'], dropping one final empty element so that ["a\nb\n"] and ["a\nb"]
+    both give [["a"; "b"]]. A trailing ['\r'] is kept: CRLF output is a mismatch. *)

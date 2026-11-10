@@ -52,11 +52,10 @@ let%expect_test "objects_in_lines skips non-JSON lines" =
   in
   Json.objects_in_lines text
   |> List.iter (fun o ->
-         print_endline (show o);
-         print_endline
-           (match Json.path [ "span"; "start"; "line" ] o with Some v -> show v | None -> "-"));
-  [%expect
-    {|
+      print_endline (show o);
+      print_endline
+        (match Json.path [ "span"; "start"; "line" ] o with Some v -> show v | None -> "-"));
+  [%expect {|
     {code="E0001"}
     -
     {code="E0002",span={start={line=1}}}

@@ -35,8 +35,8 @@ type t = {
 }
 
 val parse : ?stdout_file:string -> string -> (t, string list) result
-(** [parse ?stdout_file source] reads the header of a test whose text is [source]. [stdout_file]
-    is the content of the sibling [.stdout] file when it exists. On error, every problem found is
+(** [parse ?stdout_file source] reads the header of a test whose text is [source]. [stdout_file] is
+    the content of the sibling [.stdout] file when it exists. On error, every problem found is
     returned, each prefixed with its line number when it has one. *)
 
 val is_rule_id : string -> bool
@@ -45,5 +45,6 @@ val is_rule_id : string -> bool
 val expect_to_string : expect -> string
 val backend_to_string : backend -> string
 val backend_of_string : string -> backend option
+
 val diagnostic_to_string : diagnostic -> string
 (** [diagnostic_to_string d] is ["E0022 at 8:3"]. *)

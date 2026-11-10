@@ -55,8 +55,10 @@ type run = { file : string; name : string; header : Header.t; job : Exec.job }
 type planned = Decided of Junit.case | Run of run
 
 let base file = Filename.remove_extension (Filename.basename file)
+
 let read path =
   try Ok (In_channel.with_open_bin path In_channel.input_all) with Sys_error m -> Error m
+
 let fail file m = Decided { file; name = base file; status = Fail m; time = 0. }
 let skip file m = Decided { file; name = base file; status = Skip m; time = 0. }
 
@@ -94,9 +96,11 @@ let plan cfg file =
               let names bs = String.concat ", " (List.map Header.backend_to_string bs) in
               match List.filter (fun b -> List.mem b h.backends) cfg.backends with
               | [] ->
-                  [ skip file
+                  [
+                    skip file
                       (Printf.sprintf "no available backend (test: %s; runner: %s)"
-                         (names h.backends) (names cfg.backends)) ]
+                         (names h.backends) (names cfg.backends));
+                  ]
               | bs ->
                   List.map
                     (fun (b : Header.backend) ->
@@ -148,9 +152,7 @@ let run cfg files =
   in
   let decided = List.filter_map (function Decided c -> Some c | Run _ -> None) planned in
   let cases =
-    List.sort
-      (fun (a : Junit.case) b -> compare (a.file, a.name) (b.file, b.name))
-      (decided @ ran)
+    List.sort (fun (a : Junit.case) b -> compare (a.file, a.name) (b.file, b.name)) (decided @ ran)
   in
   (cases, peak)
 
