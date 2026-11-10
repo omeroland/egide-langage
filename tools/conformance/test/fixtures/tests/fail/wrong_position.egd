@@ -1,0 +1,6 @@
+# spec: LEX-032
+# expect: lex-fail
+# diagnostic: E0022 at 8:3
+module fail.wrong_position
+#> diag E0022 8:4
+#> exit 1

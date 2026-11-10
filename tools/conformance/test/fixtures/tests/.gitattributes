@@ -1,0 +1,3 @@
+# Keep CR bytes and the BOM exactly as written (the root .gitattributes normalises to LF).
+pass/bom_crlf.egd -text
+pass/binary_bytes.egd -text

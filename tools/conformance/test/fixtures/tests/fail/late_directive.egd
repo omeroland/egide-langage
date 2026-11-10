@@ -1,0 +1,4 @@
+# spec: LEX-001
+# expect: lex-pass
+module fail.late_directive
+# phase: 3

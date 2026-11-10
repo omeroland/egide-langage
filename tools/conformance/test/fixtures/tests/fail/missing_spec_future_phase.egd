@@ -1,0 +1,3 @@
+# expect: lex-pass
+# phase: 9
+module fail.missing_spec_future_phase

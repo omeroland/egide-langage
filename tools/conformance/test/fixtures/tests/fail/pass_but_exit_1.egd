@@ -1,0 +1,5 @@
+# spec: LEX-001
+# expect: lex-pass
+module fail.pass_but_exit_1
+#> diag E0001 1:1
+#> exit 1

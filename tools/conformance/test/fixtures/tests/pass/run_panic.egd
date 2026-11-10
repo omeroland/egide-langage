@@ -1,0 +1,6 @@
+# spec: ERR-040
+# expect: run-panic
+module pass.run_panic
+#> cmd run
+#> stderr panic: index out of bounds
+#> exit 101

@@ -1,0 +1,13 @@
+; Conformance runner (docs/testing.md §2). Invoked through tools/run-conformance.sh.
+; Private: neither the library nor the executable is installed with the `egide` package.
+
+(library
+ (name egide_conformance)
+ (modules text json header verdict exec junit suite)
+ (private_modules text)
+ (libraries unix))
+
+(executable
+ (name main)
+ (modules main)
+ (libraries egide_conformance unix))

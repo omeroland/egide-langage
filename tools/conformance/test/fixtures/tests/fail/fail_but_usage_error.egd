@@ -1,0 +1,6 @@
+# spec: LEX-001
+# expect: parse-fail
+# diagnostic: E0001 at 1:1
+module fail.fail_but_usage_error
+#> diag E0001 1:1
+#> exit 2

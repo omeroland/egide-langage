@@ -1,0 +1,5 @@
+# spec: ERR-040
+# expect: run-panic
+module fail.panic_expected
+#> stderr error: main returned Err
+#> exit 1

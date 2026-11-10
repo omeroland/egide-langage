@@ -1,0 +1,7 @@
+# spec: SYN-001
+# expect: compile-fail
+# diagnostic: E0301 at 11:14
+module fail.wrong_command
+#> cmd parse
+#> diag E0301 11:14
+#> exit 1
