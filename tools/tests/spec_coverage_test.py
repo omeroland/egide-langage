@@ -85,21 +85,112 @@ class Strict(unittest.TestCase):
         rc, _, _ = run(make_repo(SPEC, t, "0"), "--strict")
         self.assertEqual(rc, 0)
 
-    def test_strict_phase_option_widens_scope(self):
-        rc, out, _ = run(make_repo(SPEC, TESTS, "0"), "--strict", "--phase", "2")
-        self.assertEqual(rc, 1)
+    def test_cumulative_scope(self):
+        # LEX-002 (ch. 2, phase 0) lacks a positive test and must stay in scope at --phase 2 (union of phases <= N)
+        _, out, _ = run(make_repo(SPEC, TESTS, "0"), "--strict", "--phase", "2")
+        self.assertIn("LEX-002", out.split("strict")[-1])
         self.assertIn("TYP-001", out.split("strict")[-1])
 
     def test_chapters_override(self):
-        rc, _, _ = run(make_repo(SPEC, TESTS), "--strict", "--chapters", "4")
+        rc, out, _ = run(make_repo(SPEC, TESTS), "--strict", "--chapters", "4")
         self.assertEqual(rc, 1)  # TYP-001 has only a positive test
-        rc, _, _ = run(make_repo(SPEC, TESTS), "--strict", "--chapters", "")
+        self.assertNotIn("LEX-002", out.split("strict")[-1])
+        rc, _, _ = run(make_repo(SPEC, TESTS), "--strict", "--chapters", "2,04")
+        self.assertEqual(rc, 1)
+        t = dict(TESTS, **{"conformance/d.egd": "# spec: LEX-002, TYP-001\n# expect: lex-pass\n",
+                           "conformance/e.egd": "# spec: TYP-001\n# expect: lex-fail\n"})
+        rc, _, _ = run(make_repo(SPEC, t), "--strict", "--chapters", "2,04")
         self.assertEqual(rc, 0)
 
+    def test_section_scope(self):
+        spec = {"08-err.md": "# 8\n## 8.1 A\n- **[ERR-001]** a.\n## 8.4 R\n- **[ERR-040]** b.\n",
+                "02-lex.md": "- **[LEX-001]** x.\n"}
+        _, out, _ = run(make_repo(spec, {}), "--strict", "--phase", "2")
+        tail = out.split("strict")[-1]
+        self.assertIn("ERR-001", tail)       # 8.1-8.3 are phase 2
+        self.assertNotIn("ERR-040", tail)    # 8.4 is phase 3
+        _, out, _ = run(make_repo(spec, {}), "--strict", "--phase", "3")
+        self.assertIn("ERR-040", out.split("strict")[-1])
+        _, out, _ = run(make_repo(spec, {}), "--strict", "--chapters", "8.4")
+        tail = out.split("strict")[-1]
+        self.assertIn("ERR-040", tail)
+        self.assertNotIn("ERR-001", tail)
+
     def test_strict_fails_on_unknown_ids(self):
-        t = {"conformance/x.egd": "# spec: LEX-999\n# expect: lex-pass\n"}
-        rc, _, _ = run(make_repo({"02-x.md": "- **[LEX-001]** a.\n"}, t), "--strict", "--chapters", "")
+        t = dict(TESTS, **{"conformance/x.egd": "# spec: LEX-999\n# expect: lex-pass\n",
+                           "conformance/d.egd": "# spec: LEX-002\n# expect: lex-pass\n"})
+        rc, _, _ = run(make_repo(SPEC, t), "--strict", "--chapters", "2")
         self.assertEqual(rc, 1)
+
+    def test_strict_fails_on_malformed_ids(self):
+        t = dict(TESTS, **{"conformance/d.egd": "# spec: LEX-002, LEX-01\n# expect: lex-pass\n"})
+        rc, out, _ = run(make_repo(SPEC, t), "--strict", "--chapters", "2")
+        self.assertEqual(rc, 1)
+        self.assertIn("LEX-01", out)
+
+
+class Header(unittest.TestCase):
+    """Headers are read as the conformance runner does (tools/conformance/header.ml): lines split on LF only."""
+
+    def rows(self, text):
+        _, out, _ = run(make_repo({"02-x.md": "- **[LEX-001]** a.\n"}, {"conformance/h.egd": text}))
+        return out
+
+    def test_unicode_line_separator_is_not_a_line_break(self):
+        for sep in ("\t", "\u2028", "\u2029", "\u0085", "\x0b", "\x0c", "\x1c"):
+            out = self.rows(f"# spec: LEX-001{sep}# expect: lex-pass\nx\n")
+            self.assertRegex(out, r"(?m)^LEX-001 +02 +0 +0", repr(sep))  # runner rejects the id: not counted
+            self.assertIn("malformed rule ids", out, repr(sep))
+            # a separator glued to an id makes the id invalid for the runner, so the test must not count
+            out = self.rows(f"# spec: LEX-001{sep}\n# expect: lex-pass\nx\n")
+            self.assertRegex(out, r"(?m)^LEX-001 +02 +0 +0", repr(sep))
+
+    def test_crlf_is_accepted(self):
+        out = self.rows("# spec: LEX-001\r\n# expect: lex-pass\r\nx\r\n")
+        self.assertRegex(out, r"(?m)^LEX-001 +02 +1 +0")
+
+    def test_lone_cr_is_not_a_line_break(self):
+        out = self.rows("# spec: LEX-001\r# expect: lex-pass\nx\n")
+        self.assertRegex(out, r"(?m)^LEX-001 +02 +0 +0")
+
+    def test_malformed_ids_reported(self):
+        for bad in ("LEX-01", "lex-001", "LEX-0011", "LEX001"):
+            out = self.rows(f"# spec: LEX-001, {bad}\n# expect: lex-pass\n")
+            self.assertRegex(out, r"(?m)^LEX-001 +02 +1 +0")
+            self.assertIn("malformed rule ids in test headers", out)
+            self.assertIn(bad, out.split("malformed rule ids in test headers")[1])
+
+
+class BadInput(unittest.TestCase):
+    def fails(self, root, *args):
+        rc, out, err = run(root, *args)
+        self.assertEqual(rc, 2, (args, out, err))
+        self.assertIn("spec_coverage: error:", err)
+        return err
+
+    def test_bad_chapters(self):
+        for bad in ("abc", "", "2,,4", "2.x", "100", "-1"):
+            self.fails(make_repo(SPEC, TESTS), "--strict", "--chapters", bad)
+
+    def test_bad_phase(self):
+        for bad in ("-1", "9", "x"):
+            self.fails(make_repo(SPEC, TESTS), "--strict", "--phase", bad)
+
+    def test_bad_phase_file(self):
+        r = make_repo(SPEC, TESTS, "banana")
+        self.fails(r, "--strict")
+
+    def test_missing_root(self):
+        self.fails("/nonexistent/egide-root")
+
+    def test_no_rules_in_spec(self):
+        self.fails(make_repo({"02-x.md": "no rules here\n"}, {}))
+        self.fails(make_repo({}, {}), "--strict")
+
+    def test_empty_scope(self):
+        err = self.fails(make_repo(SPEC, TESTS), "--strict", "--chapters", "09")
+        self.assertIn("no rule", err)
+        self.fails(make_repo({"04-t.md": "- **[TYP-001]** x.\n"}, {}), "--strict", "--phase", "0")
 
 
 class Wrapper(unittest.TestCase):
@@ -116,6 +207,16 @@ class Wrapper(unittest.TestCase):
     def test_strict_flag_propagates_exit_status(self):
         rc, _ = self.sh(make_repo(SPEC, TESTS), "--strict")
         self.assertEqual(rc, 1)
+
+    def test_phase_and_chapters_are_passed_through(self):
+        r = make_repo(SPEC, TESTS, "0")
+        _, out = self.sh(r, "--strict", "--phase", "2")
+        self.assertIn("strict check (phase 2)", out)
+        self.assertIn("TYP-001", out.split("strict")[-1])
+        _, out = self.sh(r, "--strict", "--chapters", "4")
+        self.assertIn("strict check (chapters 04)", out)
+        rc, _ = self.sh(r, "--strict", "--chapters", "abc")
+        self.assertEqual(rc, 2)
 
 
 if __name__ == "__main__":

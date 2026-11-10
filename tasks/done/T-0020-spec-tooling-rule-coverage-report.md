@@ -36,6 +36,11 @@ Anything not listed in the acceptance criteria; create follow-up tasks.
   phase-to-chapter scope table (`PHASE_CHAPTERS`) comes from docs/roadmap.md and is the only phase knowledge in the tool.
   A test counts only through its leading header block (as the runner does), tests/quarantine/ is ignored, tests/security/
   counts. Unknown cited ids are reported (and fail `--strict`) rather than crashing, so spec renames do not break the report.
+- 2026-11-10 release-manager/wave2, review round 1 (PR #10): header read LF-only and CR-trimmed like the runner
+  (was `splitlines()`); ids split on `,` and space only; malformed header ids reported and fail `--strict`; usage errors
+  (bad `--chapters`/`--phase`, missing root or PHASE, spec without rules, empty scope) exit 2 with a message instead of
+  passing; phase table now section-granular (`NN.M` entries): 8.1-8.3 in phase 2, 8.4-8.5 in phase 3, 10.1 and 13.1/13.4
+  in phase 1, the rest of ch. 10 and 13 in phase 6. Still inferred from the roadmap Scope column: owner to confirm.
 
 ## Outcome
 
@@ -44,6 +49,6 @@ Implemented `tools/spec_coverage.py`; `check-spec.sh --coverage|--strict` delega
 both. `--strict` exits 1 when a rule of the chapters in scope for the current phase (tasks/PHASE) lacks a positive or a
 negative test, or when a test cites an unknown id. Currently `--strict` exits 1 on main (phase 0, ch. 2-3), so it is not in
 `make ci`.
-Tests: `tools/tests/spec_coverage_test.py` (11 cases, fixture repos), `tools/tests/check-spec-test.sh` updated; both run by
+Tests: `tools/tests/spec_coverage_test.py` (24 cases, fixture repos), `tools/tests/check-spec-test.sh` updated; both run by
 `make spec-check`. Rules covered: n/a (tooling).
 Follow-ups: T-1060 (docs/testing.md), T-1061 (strict in the gate/CI).
