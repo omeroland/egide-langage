@@ -43,7 +43,7 @@ let () =
             end
             else begin
               let ast, diags = Egide_syntax.Parse.file ~file:path src in
-              Option.iter (fun a -> print_endline (Egide_syntax.Ast.to_sexp a)) ast;
+              Option.iter (fun a -> print_endline (Egide_syntax.Print.file a)) ast;
               diags
             end
           in
