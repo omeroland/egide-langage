@@ -1,0 +1,8 @@
+# Attack files carry raw CR, NUL and invalid UTF-8 bytes: store them exactly, without the repository-wide
+# `text=auto eol=lf` normalisation.
+cr_overwrite_in_comment.egd -text
+lone_cr_in_string.egd -text
+lone_cr_in_doc_comment.egd -text
+nul_in_comment.egd -text
+overlong_bidi_override_in_comment.egd -text
+encoded_surrogate_in_string.egd -text
