@@ -28,9 +28,8 @@ jobs:
           dune-cache: true
       - run: opam install . --deps-only --with-test --with-dev-setup -y
       - run: opam exec -- dune build
-      - name: format check (non-blocking until T-0024 formats the seed)
+      - name: format check
         run: opam exec -- dune build @fmt
-        continue-on-error: true
       - run: opam exec -- dune test
       - uses: actions/setup-go@v5
         with:
