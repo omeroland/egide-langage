@@ -9,9 +9,9 @@ spec: []
 paths: [tools/check-spec.sh]
 estimate: S
 labels: [bug]
-status: backlog
-claimed_by:
-claimed_at:
+status: in-progress
+claimed_by: release-manager/wave2
+claimed_at: 2026-11-10
 ---
 
 ## Goal
