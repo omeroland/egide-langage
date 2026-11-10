@@ -4,7 +4,7 @@ title: Format the seed with ocamlformat and make the CI format check blocking
 kind: task
 phase: 0
 role: release-manager
-depends_on: [T-0001]
+depends_on: [T-0001, T-0028]
 spec: []
 paths: [compiler/, .github/workflows/ci.yml]
 estimate: S
