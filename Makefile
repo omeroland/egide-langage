@@ -29,6 +29,7 @@ fmt-check:
 spec-check:
 	./tools/check-spec.sh
 	./tools/tests/check-spec-test.sh
+	python3 -I tools/tests/spec_coverage_test.py
 
 tasks-check:
 	./tools/check-tasks.sh
