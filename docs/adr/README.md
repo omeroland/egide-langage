@@ -32,3 +32,4 @@ requires an accepted ADR.**
 | [0013](0013-layout-token-contract-and-block-ended-expressions.md) | Layout token contract and block-ended expressions | Accepted (owner-delegated, review at MVP) |
 | [0014](0014-generic-arguments-in-expressions-and-types.md) | Generic arguments in expressions and types | Accepted (owner-delegated, review at MVP) |
 | [0015](0015-parser-contract-decisions-at-mvp-start.md) | Parser-contract decisions at the start of the MVP | Accepted (owner-delegated, review at MVP) |
+| [0016](0016-lexical-and-semantic-decisions-at-mvp-start.md) | Lexical and semantic decisions at the start of the MVP | Accepted (owner-delegated, review at MVP) |

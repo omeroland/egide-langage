@@ -89,7 +89,7 @@
 - **[TYP-060]** A `match` MUST cover all values of the scrutinee type. The compiler reports the missing patterns
   (with an example value) in the diagnostic.
 - **[TYP-061]** An unreachable `case` arm is a compile-time error.
-- **[TYP-062]** `let` with a refutable pattern MUST use the `else` form (SYN-012).
+- **[TYP-062]** `let` with a refutable pattern MUST use the `else` form (SYN-012, ERR-012); `let … else` with an irrefutable pattern is an error (the `else` could never run).
 
 ## 4.8 Type inference details
 

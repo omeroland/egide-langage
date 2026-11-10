@@ -4,7 +4,7 @@ rule: LEX-030, LEX-032, LEX-033, LEX-031
 raised_by: language-architect/wave1 (T-0022)
 blocking: [T-0007]
 severity: medium
-status: open
+status: decided
 ---
 ## Question
 
@@ -50,3 +50,11 @@ C. Forbid a block `:` on a continuation line (E0024): chains with trailing block
 3. Add to LEX-030: "A line break inside a token (multi-line string or template) does not end a physical line for
    layout purposes. Only the first token of each physical line is measured."
 4. Add to LEX-032: "The first logical line MUST have width 0 (E0020)."
+
+## Decision
+
+Decided by: owner-delegated (language-architect), 2026-11-10; the owner reviews at the MVP milestone.
+
+Item 1 option B (body = last continuation line + 4, only for LEX-030 b continuation lines). Item 2: a line after a block `:` is never a continuation. Item 3: multi-line tokens do not affect layout. Item 4: the first logical line has width 0 (E0020). The escalation example is valid as written, the `if … and …:` example with the body at the continuation column is now an error (E0021).
+
+ADR-0016. Rules: LEX-030, LEX-032. Task T-1035 changes `layout.ml`.

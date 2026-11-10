@@ -35,6 +35,8 @@ Anything not listed in the acceptance criteria; create follow-up tasks.
 
 ## Log
 
+2026-11-10 language-architect (owner-delegated, ADR-0016): Q-0015 decided: no `1__0`, no leading zeros (`0755` is E0030 with octal hint), lowercase `0x 0o 0b e` only, a numeric literal directly followed by an identifier character is an error (E0030/E0031), `.5` is not a float, `_` allowed in fraction/exponent, `1e+9` ok, DURATION needs a decimal integer and a unit not followed by an identifier character (`5.msg` is `INT . IDENT`), no `t.0` (LEX-040..042).
+
 ## Outcome
 
 

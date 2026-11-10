@@ -34,6 +34,8 @@ Anything not listed in the acceptance criteria; create follow-up tasks.
 
 ## Log
 
+2026-11-10 language-architect (owner-delegated, ADR-0016): Q-0016 decided: LEX-032 step 2 uses the last continuation line + 4 as body width, a line after a block colon is never a continuation, multi-line tokens do not affect layout, the first logical line has width 0. Layout follow-up is T-1035. The token contract (LEX-036, ADR-0013) is the existing behaviour; no change needed for it (T-1032 adds tests).
+
 - 2026-11-09 syntax-engineer: LEX-030 (b) is implemented literally. A physical line at bracket depth 0 is a
   continuation when its width is **greater than the width of the first physical line of the current logical
   line** (not the stack top, not the previous physical line) and its first token is `|>`, `.`, `and` or `or`.

@@ -4,7 +4,7 @@ rule: SYN-031, SYN-032, TYP-030, ERR-040
 raised_by: language-architect/wave1 (T-0022)
 blocking: [T-0031, T-0052]
 severity: medium
-status: open
+status: decided
 ---
 ## Question
 
@@ -42,3 +42,11 @@ C. Only boolean *literals* passed positionally are errors. This catches `send(ms
    at least two parameters other than `self` and `using` parameters". A piped value counts as positional (Q-0017).
 2. Add to SYN-032: "and newtypes (`UserId(42)`, TYP-030)". The ch. 12 `std.http` documentation should say whether
    `Response(status)` is a function. The parser is not affected (both forms parse as calls).
+
+## Decision
+
+Decided by: owner-delegated (language-architect), 2026-11-10; the owner reviews at the MVP milestone.
+
+Item 1 option B: SYN-031 applies to declared type exactly `bool` with at least two parameters other than `self` and `using`; generics and one-parameter functions are exempt; a piped value counts as positional. Item 2: SYN-032 adds newtypes and variants declared with positional fields (the original text would have made `Pair(int, int)` unconstructible).
+
+ADR-0016. Rules: SYN-031, SYN-032. Type checker: T-0031, T-0052.

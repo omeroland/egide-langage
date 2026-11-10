@@ -6,7 +6,7 @@ the Go backend compiles to the same runtime: an Égide task is a goroutine and a
 
 ## 11.1 Importing Go
 
-```egide
+```egide decls
 import go "k8s.io/client-go/kubernetes" as kube
 import go "k8s.io/client-go/rest" as rest
 import go "k8s.io/apimachinery/pkg/apis/meta/v1" as metav1

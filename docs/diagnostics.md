@@ -36,6 +36,9 @@ pull request**. Codes are never reused.
 | E0031 | LEX-041 | malformed float literal | allocated |
 | E0040 | LEX-050 | unterminated string literal | allocated |
 | E0041 | LEX-050 | invalid escape sequence `\{c}` | allocated |
+| E0042 | LEX-054 | character literal must contain exactly one character | allocated |
+| E0043 | LEX-053 | byte string accepts only printable ASCII and the escapes `\\ \" \n \t \r \0 \xHH` | allocated |
+| E0044 | LEX-055 | unterminated or malformed interpolation in template | allocated |
 | E0050 | LEX-061 | `;` is not used in Égide; statements end at line breaks | allocated |
 | E0051 | LEX-060 | unexpected character `{c}` | allocated |
 | E0100 | SYN-* | syntax error: {menhir message} | allocated |
@@ -63,6 +66,9 @@ pull request**. Codes are never reused.
 | E0402 | CAP-034 | public function `{fn}` uses capabilities but declares no `using` clause | allocated |
 | E0410 | SEC-017 | `{Sink}` cannot be built from `str` — risk: {risk}. Use the `{prefix}"…"` template | allocated |
 | E0412 | SEC-002 | `Untrusted[{T}]` passed where `{T}` is required — risk: injection. Validate it first | allocated |
+| E0601 | LEX-055, CT-041 | template prefix `{prefix}` does not accept a format specifier (`:spec`) — sinks take none, risk: unreviewed channel into `{Sink}` | allocated |
+| W0001 | LEX-005 | right-to-left text in a string or comment may display the rest of the line in a different order; bind the string with `let` on its own line | allocated |
+| W0002 | LEX-011 | doc comment is not attached to a declaration | allocated |
 
 ## JSON format (`--error-format=json`)
 

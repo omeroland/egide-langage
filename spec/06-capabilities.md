@@ -56,7 +56,7 @@ write to standard output.
 
 Passing capabilities through deep call chains is noisy; `using` makes them implicit **but still visible in signatures**.
 
-```egide
+```egide decls
 fn sync(cfg: Config) -> Result[(), Error] using api: Client, log: Log:
     log.info(f"syncing {cfg.tenants.len()} tenants")
     for t in cfg.tenants:

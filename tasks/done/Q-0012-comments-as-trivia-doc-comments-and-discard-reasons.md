@@ -4,7 +4,7 @@ rule: LEX-011, LEX-031, SYN-001, ERR-002, TOOL-030
 raised_by: language-architect/wave1 (T-0022)
 blocking: [T-0008, T-0009, T-0006]
 severity: medium
-status: open
+status: decided
 ---
 ## Question
 
@@ -54,3 +54,11 @@ C. Replace the ERR-002 comment with syntax, e.g. `let _ = f()  # ignored: â€¦` â
 A, plus keep ERR-002 as written: the side table makes it implementable, and it does not grow the grammar. T-0008
 (AST: `doc: string option` on attachable nodes, comment table in `Ast.file`), T-0009 (attachment), and T-0006 or a
 follow-up lexer task (keep comments instead of skipping them) are affected.
+
+## Decision
+
+Decided by: owner-delegated (language-architect), 2026-11-10; the owner reviews at the MVP milestone.
+
+Option A. Comments are recorded in a side table; a run of `##` lines directly above (no blank line) a module, top-level declaration, field, variant, trait item or impl item documents it; any other `##` is W0002. ERR-002: `# ignored: <reason>` on the statement's last line, non-empty reason, else E0304.
+
+ADR-0016. Rules: LEX-011, LEX-031, ERR-002; EBNF has no `doc_comment`. Work: T-1036.

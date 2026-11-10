@@ -32,6 +32,8 @@ Anything not listed in the acceptance criteria; create follow-up tasks.
 
 ## Log
 
+2026-11-10 language-architect (owner-delegated, ADR-0016): Q-0021: spec blocks are tagged; see T-0015. New syntax rules to cover: SYN-005, 015, 016, 017, 024, 042, 043, 044, 053, 065 and the checks of T-1031.
+
 ## Outcome
 
 

@@ -24,7 +24,7 @@ macros. Compile-time code receives no capability, so no build can touch the netw
   parametric type is a generic declaration whose parameters may be `comptime` values; it is instantiated like any
   generic type:
 
-```egide
+```egide decls
 struct Buffer[comptime n: int]:
     data: Array[u8, n]
     len: int
@@ -49,12 +49,13 @@ let b: Buffer[4096] = Buffer()
 ## 9.5 Templates
 
 - **[CT-040]** A `TEMPLATE` token `p"…"` (LEX-055) is desugared to a call to the comptime function registered for
-  prefix `p` with the literal parts (as `comptime List[str]`) and the interpolated expressions (as run-time arguments).
+  prefix `p` with the literal parts as written (raw, LEX-055; as `comptime List[str]`) and the interpolated expressions (as run-time arguments).
   The function returns an expression of the template's result type. Registration uses `@template("p")` on a comptime
   function; a package may register prefixes only for its own module tree unless it is `std`.
 - **[CT-041]** Standard prefixes: `f` (formatted `str`, format specifiers checked at compile time), `sql` (`Sql`),
   `html` (`Html`, context-aware escaping), `cmd` (`Cmd`), `url` (`Url`), `path` (`Path`), `re` (`Regex`, compiled and
-  validated at compile time). Their security semantics are defined in chapter 12.
+  validated at compile time). Their security semantics are defined in chapter 12. The sink prefixes (`sql`, `html`,
+  `cmd`, `url`, `path`) reject a `:spec` in an interpolation (LEX-055, E0601).
 - **[CT-042]** There are no dynamic format strings: formatting functions accept only `f"…"` templates or explicit
   builders.
 

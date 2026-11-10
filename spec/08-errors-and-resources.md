@@ -5,7 +5,8 @@
 - **[ERR-001]** Recoverable errors are values of type `Result[T, E]`. There are no exceptions.
 - **[ERR-002]** A value of type `Result` MUST be used: binding it, matching it, propagating it with `?`, returning it
   or passing it on. Discarding it is a compile-time error. The explicit discard is
-  `let _ = f()  # ignored: <reason>`; the comment is mandatory and `egide audit` lists these sites.
+  `let _ = f()  # ignored: <reason>`; the comment MUST end the statement's last line, start with `# ignored:` and give a non-empty reason (E0304
+  otherwise), and `egide audit` lists these sites.
 
 ## 8.2 Propagation
 
@@ -13,12 +14,15 @@
   enclosing function, whose return type MUST be `Result[_, F]` with `impl From[E] for F`.
 - **[ERR-011]** `e?` on `Option[T]` inside a function returning `Option[_]` returns `None` early. Mixing
   `Option` and `Result` requires `opt.or(err)?` / `res.ok()?`.
-- **[ERR-012]** `let pattern = expr else: block` unwraps `Option`/`Result`/any refutable pattern; the block MUST
-  diverge (SYN-012).
+- **[ERR-012]** `let pattern = expr else: block` matches `pattern` against the value of `expr`; when it does not match,
+  the block runs and MUST diverge (SYN-012). It is the form for unwrapping: `let Some(port) = cfg.port else: …`,
+  `let Ok(id) = TenantId.parse(s) else: …`. There is no implicit unwrap: `let id = TenantId.parse(s) else: …` binds the
+  whole `Result`, the `else` is unreachable (TYP-061) and the compiler rejects it. The error value is not bound; use
+  `match`, or `?` with `.context(…)`, to read it.
 - **[ERR-013]** `res.context("while loading config")` wraps an error with a message, keeping the cause chain;
   `Error` (the dynamic application error type in `std.error`) prints the chain.
 
-```egide
+```egide decls
 enum ConfigError:
     Read(cause: IoError)
     Format(line: int, message: str)
@@ -28,7 +32,7 @@ fn load_config(dir: Dir[Read]) -> Result[Config, ConfigError]:
     with f = dir.open("app.toml").map_err(ConfigError.Read)?:
         let cfg = toml.parse[Config](f.read_all()?)
             .map_err(e => ConfigError.Format(line: e.line, message: e.msg))?
-        let port = cfg.port else: return Err(ConfigError.Missing("port"))
+        let Some(port) = cfg.port else: return Err(ConfigError.Missing("port"))
         Ok(cfg.replace(port: port))
 ```
 

@@ -3,6 +3,7 @@ id: Q-0001
 rule: LEX-003
 raised_by: syntax-engineer/wave1
 blocking: []
+status: decided
 ---
 ## Question
 
@@ -48,3 +49,11 @@ C, or at least B for the TAG characters and the Hangul fillers. The rationale of
 confusion") covers them, string literals can still contain them through `\u{…}` escapes (LEX-050), and the cost
 is one more range check in `Source_check`. The decision belongs to the language-architect (and an ADR if accepted),
 as it changes the spec. T-0006 implements LEX-003 exactly as written and does not depend on the answer.
+
+## Decision
+
+Decided by: owner-delegated (language-architect), 2026-11-10; the owner reviews at the MVP milestone.
+
+Option C without an allowlist. LEX-003 forbids every `Cf` character, the variation selectors, U+034F and the Hangul fillers, everywhere, as E0004. Strings write such characters with `\u{…}`, which LEX-050 now accepts for any scalar value. ZWJ/ZWNJ/U+FE0F get no exception (cost and reasons in ADR-0016). RTL letters in strings: explicit non-goal, warning W0001 (LEX-005). Zs spaces stay allowed.
+
+ADR-0016. Rules: LEX-003, LEX-005 (new), LEX-050. Lexer work: T-1033; flood cap T-1034; warning T-1037.

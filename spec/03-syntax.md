@@ -65,10 +65,13 @@ checks this; anything else is E0106 "cannot assign to this expression". Positive
   `return`, `break`, `defer`, `yield`, as a lambda body) it is E0104 "this block-ended expression must stand alone;
   bind it with `let` first". For a two-way value inside an expression use `a if c else b` (SYN-035).
 
-  ```egide
+  ```egide fragment
   let n = match c:          # OK: whole right-hand side of let
       case Red: 1
       case _: 0
+  ```
+
+  ```egide invalid
   let m = 1 + match c:      # error E0104
       case Red: 1
       case _: 0
@@ -84,7 +87,7 @@ checks this; anything else is E0106 "cannot assign to this expression". Positive
 
 ## 3.3 Declarations
 
-```egide
+```egide decls
 pub struct Article:
     name: str
     price: Money
@@ -136,10 +139,15 @@ type Headers = Map[str, List[str]]                  # transparent alias
 
 - **[SYN-030] Calls.** `f(a, b, name: c)`. Positional arguments precede named ones. Named arguments may appear in any
   order. Explicit capability arguments, `using name: expr` (CAP-032), come last.
-- **[SYN-031] Boolean arguments MUST be named** at call sites when the parameter type is `bool`:
-  `send(msg, urgent: true)`. Passing a boolean positionally is a compile-time error.
+- **[SYN-031] Boolean arguments MUST be named** at call sites when the parameter's *declared* type is exactly `bool`
+  and the function has at least two parameters other than `self` and `using` parameters: `send(msg, urgent: true)`.
+  Passing such a boolean positionally is E0102. Not affected: generic parameters instantiated to `bool`
+  (`Some(true)`, `xs.push(true)`) and single-parameter functions (`assert(a == b)`, `set_enabled(flag)`). A piped value
+  counts as positional (SYN-037).
 - **[SYN-032] Construction.** A struct or variant is constructed by calling its name with named arguments:
-  `Article(name: "pen", price: p)`. Positional construction is allowed only for single-field variants and tuples.
+  `Article(name: "pen", price: p)`. Positional construction is allowed only for newtypes (`UserId(42)`, TYP-030), variants declared with positional
+  fields (`Circle(float)`), single-field variants, and tuples; structs and multi-field named variants take named
+  arguments.
 - **[SYN-033] Inout arguments.** An argument passed to an `inout` parameter is written `&place` (MEM-021). The
   operand of `&` MUST be a place (SYN-012), otherwise E0106 "cannot take `&` of this expression"; `&xs[i] + 1` and
   `&make()` are errors.
@@ -152,7 +160,8 @@ type Headers = Map[str, List[str]]                  # transparent alias
   a function or a call; parenthesise: `(xs |> len) == 0`". A piped value counts as a positional argument for SYN-031.
   Piping into an `inout` first parameter is an error: write `f(&x)`.
 - **[SYN-038] Collection literals.** Lists `[1, 2]`, maps `{"a": 1}`, sets `{1, 2}`, tuples `(1, "a")`.
-  `{}` is an empty map; an empty set is `Set()`. A one-element tuple is `(x,)`.
+  `{}` is an empty map; an empty set is `Set()`. A one-element tuple is `(x,)`. Tuples are read only by
+  destructuring (`let (a, b) = t`, patterns); there is no `t.0`.
 - **[SYN-039] Comprehensions.** `[e for p in xs if c]`, `{k: v for p in xs}`, `{e for p in xs}`; several `for` and `if`
   clauses may follow each other. A parenthesised comprehension `(e for p in xs)` is a lazy `Iter[T]`.
 - **[SYN-040] Slices.** `xs[a..b]`, `xs[a..]`, `xs[..b]`, `xs[..]`. Negative bounds count from the end. Out-of-range
@@ -166,7 +175,7 @@ type Headers = Map[str, List[str]]                  # transparent alias
   argument, and a type-only form or a second argument is a compile-time error. Inside a generic argument a postfix `?`
   applied to a type is `Option` (SYN-041).
 
-  ```egide
+  ```egide fragment
   let t = req.json[Tenant]()?                  # instantiation
   let m = decode[Map[str, List[int]]](raw)?    # nested
   let c = cache[Key, fn(int) -> int?]()        # type-only form; `int?` is Option[int]
@@ -182,7 +191,7 @@ type Headers = Map[str, List[str]]                  # transparent alias
 
 ## 3.5 Pattern matching
 
-```egide
+```egide fragment
 match shape:
     case Circle(radius: r) if r > 100.0: "large circle"
     case Circle(_): "circle"
@@ -217,7 +226,7 @@ match shape:
 - **[SYN-062] Trailing blocks.** A multi-line function literal is written **after** the closing parenthesis of a call
   (the last postfix operation before `fn` MUST be `( … )`), and may declare a return type, `f(a) fn(x) -> T:`:
 
-  ```egide
+  ```egide fragment
   server.get("/health") fn(req):
       let ok = db.ping().is_ok()
       Response.json({"ok": ok})

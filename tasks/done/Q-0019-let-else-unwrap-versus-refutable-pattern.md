@@ -4,7 +4,7 @@ rule: SYN-012, ERR-012, TYP-062
 raised_by: language-architect/wave1 (T-0022)
 blocking: [T-0032, T-0051]
 severity: medium
-status: open
+status: decided
 ---
 ## Question
 
@@ -52,3 +52,11 @@ Note for `security-reviewer`: the choice decides what a validated unwrap means. 
 else: …` on an `Option[Option[int]]` could silently bind `x: int` or `x: Option[int]` depending on types, and a
 `let` that unwraps a `Result[TenantId, ValidationError]` (the TYP-031 constructor) must not be readable as a match
 on the `Result` itself. Option A has one reading in every case, which is the safer one.
+
+## Decision
+
+Decided by: owner-delegated (language-architect), 2026-11-10; the owner reviews at the MVP milestone.
+
+Option A. `let pattern = expr else: block` is pattern matching only: `let Ok(id) = TenantId.parse(s) else: …`. No implicit unwrap; an irrefutable pattern with `else` is an error. README, `examples/tenants_api.egd` (2 sites) and ch. 8 are rewritten. Security note (for `security-reviewer`): one reading in every case; a validated unwrap cannot be mistaken for a match on the `Result`.
+
+ADR-0016. Rules: ERR-012, TYP-062 (SYN-012 unchanged). Security-relevant: T-1038.
