@@ -1,9 +1,16 @@
 (** Whole-file checks performed on raw bytes before tokenising (LEX-001..003). *)
 
 val check : file:string -> string -> Egide_diagnostics.Diagnostic.t list
-(** Reports invalid UTF-8 (E0001), a byte-order mark (E0002), lone CR (E0003) and forbidden code
-    points (E0004) anywhere in the file, including comments and string literals. *)
+(** Reports, anywhere in the file including comments and string literals:
+    - invalid UTF-8 (E0001, LEX-001): one diagnostic per run of ill-formed bytes; overlong forms, surrogates
+      and values above U+10FFFF are ill-formed. Each maximal ill-formed subpart counts as one column;
+    - a leading byte-order mark (E0002, LEX-001);
+    - a CR not followed by LF (E0003, LEX-002);
+    - each forbidden code point (E0004, LEX-003), with its Unicode name.
+
+    Never raises. HT is not reported here: it is legal in string literals and the lexer reports it elsewhere
+    (E0005, LEX-004). *)
 
 val is_forbidden : int -> bool
-(** LEX-003: bidirectional controls, invisible characters, separators and C0/C1 controls except LF
-    and HT. (HT outside strings is rejected by the lexer, LEX-004.) *)
+(** LEX-003: bidirectional controls, zero-width and invisible characters, line/paragraph separators and
+    general category Cc, except LF, HT (LEX-004) and CR (LEX-002), which have their own rules. *)

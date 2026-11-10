@@ -1,0 +1,10 @@
+#!/usr/bin/env egide	run
+# spec: LEX-004, LEX-003
+# expect: lex-fail
+# diagnostic: E0005 at 1:21
+# diagnostic: E0005 at 9:7
+# diagnostic: E0005 at 10:21
+module tests.lexical.tab_in_comment
+
+## doc	comment
+let x = 1 # trailing	comment

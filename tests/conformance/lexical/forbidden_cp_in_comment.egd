@@ -1,0 +1,41 @@
+# spec: LEX-003
+# expect: lex-fail
+# diagnostic: E0004 at 24:4
+# diagnostic: E0004 at 25:4
+# diagnostic: E0004 at 26:4
+# diagnostic: E0004 at 27:4
+# diagnostic: E0004 at 28:4
+# diagnostic: E0004 at 29:4
+# diagnostic: E0004 at 30:4
+# diagnostic: E0004 at 31:4
+# diagnostic: E0004 at 32:4
+# diagnostic: E0004 at 33:4
+# diagnostic: E0004 at 34:4
+# diagnostic: E0004 at 35:4
+# diagnostic: E0004 at 36:4
+# diagnostic: E0004 at 37:4
+# diagnostic: E0004 at 38:4
+# diagnostic: E0004 at 39:4
+# diagnostic: E0004 at 40:4
+# diagnostic: E0004 at 41:4
+# One code point of every LEX-003 range in a comment; each is E0004 (NUL is covered by unit tests).
+module tests.lexical.forbidden_cp_in_comment
+
+# a؜b
+# a‎b
+# a‏b
+# a‪b
+# a‮b
+# a⁦b
+# a⁩b
+# a​b
+# a‍b
+# a⁠b
+# a﻿b
+# a b
+# a b
+# ab
+# ab
+# ab
+# ab
+# ab

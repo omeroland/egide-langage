@@ -1,0 +1,7 @@
+# spec: LEX-001, LEX-003
+# expect: lex-pass
+# Non-ASCII text that LEX-003 does not forbid is allowed in comments and strings.
+module tests.lexical.unicode_text_accepted
+
+# Égide, 日本語, Ελληνικά, emoji 🛡, no-break space
+let s = "Égide — 日本語 — 🛡 —  "

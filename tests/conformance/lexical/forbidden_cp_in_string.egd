@@ -1,0 +1,41 @@
+# spec: LEX-003
+# expect: lex-fail
+# diagnostic: E0004 at 24:13
+# diagnostic: E0004 at 25:13
+# diagnostic: E0004 at 26:13
+# diagnostic: E0004 at 27:13
+# diagnostic: E0004 at 28:13
+# diagnostic: E0004 at 29:13
+# diagnostic: E0004 at 30:13
+# diagnostic: E0004 at 31:13
+# diagnostic: E0004 at 32:13
+# diagnostic: E0004 at 33:13
+# diagnostic: E0004 at 34:13
+# diagnostic: E0004 at 35:13
+# diagnostic: E0004 at 36:13
+# diagnostic: E0004 at 37:13
+# diagnostic: E0004 at 38:13
+# diagnostic: E0004 at 39:13
+# diagnostic: E0004 at 40:13
+# diagnostic: E0004 at 41:13
+# One code point of every LEX-003 range in a string literal; each is E0004 (NUL is covered by unit tests).
+module tests.lexical.forbidden_cp_in_string
+
+let s00 = "a؜b"
+let s01 = "a‎b"
+let s02 = "a‏b"
+let s03 = "a‪b"
+let s04 = "a‮b"
+let s05 = "a⁦b"
+let s06 = "a⁩b"
+let s07 = "a​b"
+let s08 = "a‍b"
+let s09 = "a⁠b"
+let s10 = "a﻿b"
+let s11 = "a b"
+let s12 = "a b"
+let s13 = "ab"
+let s14 = "ab"
+let s15 = "ab"
+let s16 = "ab"
+let s17 = "ab"

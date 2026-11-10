@@ -1,0 +1,4 @@
+# These tests are about raw line terminators (LEX-002): store their bytes exactly, without the repository-wide
+# `text=auto eol=lf` normalisation that would turn CR LF into LF.
+source_crlf_accepted.egd -text
+source_lone_cr_rejected.egd -text
