@@ -28,6 +28,7 @@ fmt-check:
 
 spec-check:
 	./tools/check-spec.sh
+	./tools/tests/check-spec-test.sh
 
 tasks-check:
 	./tools/check-tasks.sh
