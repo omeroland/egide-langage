@@ -1,0 +1,6 @@
+# spec: LEX-001
+# expect: lex-fail
+# diagnostic: E0001 at 6:3
+# U+110000 is above the Unicode range and is one E0001.
+module tests.lexical.bytes_invalid_above_10ffff
+# ô€€ z
