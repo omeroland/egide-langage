@@ -1,7 +1,7 @@
 # 12. Security types of the standard library
 
 These protections are ordinary `std` types. They are sound because capabilities are unforgeable (CAP-002), sink types
-can be built only by comptime templates (CT-040), and there is no reflection or global state to bypass them.
+can be built only by the `std` templates (CT-040, CT-041), and there is no reflection or global state to bypass them.
 
 ## 12.1 Untrusted data
 
@@ -10,7 +10,7 @@ can be built only by comptime templates (CT-040), and there is no reflection or 
   `Untrusted[T]`.
 - **[SEC-002]** `Untrusted[T]` exposes no operation that returns `T` except:
   validation into a validated type or through a parser (`Port.parse(u)`, `json.parse[T](u)` which validates every
-  field), and `u.trust(reason: "…")`, listed by `egide audit`.
+  field), and `u.trust(reason: "…")` (the reason satisfies SYN-018), listed by `egide audit`.
 - **[SEC-003]** `Untrusted[T]` may be interpolated into sink templates (§12.2), which escape or parameterise it.
 - **[SEC-004]** `Display` of `Untrusted[str]` prints an escaped, length-limited representation (log injection defence).
 

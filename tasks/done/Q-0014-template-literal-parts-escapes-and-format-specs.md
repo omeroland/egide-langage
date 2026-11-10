@@ -4,7 +4,7 @@ rule: LEX-055, LEX-050, LEX-003, CT-040, CT-041
 raised_by: language-architect/wave1 (T-0022)
 blocking: [T-0005, T-0055]
 severity: high
-status: open
+status: decided
 ---
 ## Question
 
@@ -49,3 +49,13 @@ lexer, but every regex becomes harder to read and the example still breaks on `{
 
 Security note for `security-reviewer`: with (a), the `sql`, `html`, `cmd`, `url` and `path` template functions
 (ch. 12) receive exactly the source text, which keeps their escaping decisions in one place.
+
+## Decision
+
+Decided by: owner-delegated (language-architect), 2026-11-10; the owner reviews at the MVP milestone.
+
+(a) literal parts raw, `{{`/`}}` the only lexer escapes, backslash protects the next character; (b) `{expr[:spec]}` ends at the first `:` or `}` outside brackets, spec is raw without `{ } "` or line break, line breaks inside `{}` only in triple-quoted templates, **sink templates (`sql`, `html`, `cmd`, `url`, `path`) reject `:spec` (E0601)**; (c) a keyword is never a prefix; (d) triple-quoted templates are dedented first, no raw form. `re"…{{2,62}}…"` in the example.
+
+ADR-0016. Rules: LEX-055, CT-040, CT-041. Security-relevant: for `security-reviewer` (T-1038).
+
+Amended 2026-11-10 by ADR-0017 (security review, owner-delegated): see the ADR for the changed rules (LEX-055 end rule, E0601 keyed by result type, reserved std prefixes).

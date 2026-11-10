@@ -4,7 +4,7 @@ rule: SYN-001, SYN-011, LEX-055, LEX-032, CT-011
 raised_by: language-architect/wave1 (T-0022)
 blocking: [T-0015, T-0017]
 severity: low
-status: open
+status: decided
 ---
 ## Question
 
@@ -43,3 +43,11 @@ A. Tags are explicit, are checked by CI, and make invalid examples visible. B wo
 pass through a different wrapping. The spec edits (tags plus the `assert` fix) are mechanical, and the owner can apply
 them in the same PR as ADR-0013. `examples/` and `agents/escalation.md` fixes go to their owners (`docs-writer`; the
 owner for `agents/`).
+
+## Decision
+
+Decided by: owner-delegated (language-architect), 2026-11-10; the owner reviews at the MVP milestone.
+
+Option A. `spec/README.md` defines the info strings `egide`, `egide decls`, `egide fragment`, `egide invalid`; all blocks of chapters 2, 3, 5, 6, 7, 8, 9, 11 are tagged; `assert a == …` is `assert(a == …)`; the MEM-021 block is split into a `decls` and a `fragment` (its error line is semantic and parses); the SYN-015 negative example is an `invalid` block; `{2,62}` is `{{2,62}}` (Q-0014); let-else sites use `let Ok(…)`/`let Some(…)` (Q-0019); CT-011 no longer uses `-> type` (ADR-0015); the `agents/escalation.md` example is valid under Q-0016 B and needs no change.
+
+ADR-0016. Files: spec/README.md, spec chapters, README.md, examples/tenants_api.egd. Tasks T-0015, T-0017 updated.

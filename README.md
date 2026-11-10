@@ -22,7 +22,7 @@ pub fn main(sys: Sys) -> Result[(), Error]:
         Server(sys.net.listen(":8443")?).get("/tenants/{id}", get_tenant).serve()
 
 fn get_tenant(req: Request) -> Response using db: Pool:
-    let id = TenantId.parse(req.param("id")) else: return Response(Status.BadRequest)
+    let Ok(id) = TenantId.parse(req.param("id")) else: return Response(Status.BadRequest)
     match db.one[Tenant](sql"SELECT * FROM tenants WHERE id = {id}"):
         case Ok(Some(t)): Response.json(t)
         case Ok(None): Response(Status.NotFound)

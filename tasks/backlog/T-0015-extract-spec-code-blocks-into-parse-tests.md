@@ -33,6 +33,8 @@ Anything not listed in the acceptance criteria; create follow-up tasks.
 
 ## Log
 
+2026-11-10 language-architect (owner-delegated, ADR-0016): Q-0021 decided: `spec/README.md` defines the info strings `egide` (file), `egide decls` (wrap with `module spec.decls`), `egide fragment` (wrap with `module spec.fragment` and `fn fragment():`, indent), `egide invalid` (must fail to parse); dedent list-item blocks; `# error RULE-ID` lines are semantic and still parse. Chapter blocks are tagged. Parse-level only: parse tests become runnable once T-0009..T-0012 land.
+
 ## Outcome
 
 

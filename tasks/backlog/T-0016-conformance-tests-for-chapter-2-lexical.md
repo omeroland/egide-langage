@@ -32,6 +32,8 @@ Anything not listed in the acceptance criteria; create follow-up tasks.
 
 ## Log
 
+2026-11-10 language-architect (owner-delegated, ADR-0016): New lexical rules to cover: LEX-003 (extended set, no allowlist), LEX-005, LEX-011/031 (trivia), LEX-036, LEX-040..042, 050, 053..055.
+
 ## Outcome
 
 

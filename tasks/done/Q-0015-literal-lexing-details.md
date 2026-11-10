@@ -4,7 +4,7 @@ rule: LEX-040, LEX-041, LEX-042, LEX-050, LEX-051, LEX-053, LEX-054
 raised_by: language-architect/wave1 (T-0022)
 blocking: [T-0003, T-0004]
 severity: medium
-status: open
+status: decided
 ---
 ## Question
 
@@ -49,3 +49,11 @@ Each point below lets two reasonable lexers give different tokens for the same s
 9. Dedent operates on the **raw source lines before escape processing**. Whitespace-only lines are ignored for the
    margin and become empty. The line break before the closing `"""` is kept (as Python does). A tab in the margin is
    error E0005 (LEX-004 extended to the indentation of triple-quoted strings).
+
+## Decision
+
+Decided by: owner-delegated (language-architect), 2026-11-10; the owner reviews at the MVP milestone.
+
+1 no `__`; 2 leading zeros are E0030 with an octal hint; 3 lowercase prefixes/exponent (hex digits either case), and a literal followed by an identifier character is an error; 4 `.5` is not a float, `_` allowed in fraction/exponent, `e+9` allowed; 5 durations need a decimal integer and a unit not followed by an identifier character, else `INT . IDENT`; 6 no `t.0`; 7 char escapes = LEX-050 minus `\{ \}` plus `\'`, exactly one scalar (E0042), no raw tab; 8 byte strings: printable ASCII plus `\\ \" \n \t \r \0 \xHH` (E0043), no `rb`; 9 triple-quoted dedent on raw lines, whitespace-only lines ignored, closing line break kept, tab in margin is E0005.
+
+ADR-0016. Rules: LEX-040, LEX-041, LEX-042, LEX-050, LEX-051, LEX-053, LEX-054, SYN-038. Tasks T-0003, T-0004 updated.

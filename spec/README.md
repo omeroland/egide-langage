@@ -31,7 +31,18 @@ unless an accepted ADR says the specification itself is wrong, in which case the
 - Tests reference rules in their header (`# spec: LEX-012, SYN-040`), diagnostics reference the rule they enforce,
   and pull requests cite the rules they implement. `tools/check-spec.sh` verifies that identifiers are unique.
 - Code blocks tagged `egide` are **examples**: non-normative unless the surrounding text says otherwise. They are
-  extracted and compiled by the conformance suite once the compiler supports them.
+  extracted and parsed by the conformance suite, so the info string says what the block is:
+
+  | Info string | Content | Extractor wraps it as |
+  |-------------|---------|-----------------------|
+  | `egide` | a complete file (starts with `module`, after an optional shebang) | nothing |
+  | `egide decls` | declarations (and imports), no `module` line | `module spec.decls` plus the block |
+  | `egide fragment` | a statement sequence | `module spec.fragment`, `fn fragment():` and the block indented |
+  | `egide invalid` | a block that MUST be rejected by the parser | like `fragment` or `decls`, expected to fail |
+
+  Blocks inside a list item are dedented by their common indentation. A line marked `# error RULE-ID` is a
+  semantic error reported by a later phase; it does not stop the block from parsing. Token-by-token annotations
+  (`# FN IDENT …`) are comments.
 - "Compile-time error" means the program is rejected with a diagnostic; the diagnostic code catalogue lives in
   [`docs/diagnostics.md`](../docs/diagnostics.md).
 - "Panic" means the current task is aborted as described in ERR-040 (ch. 8).

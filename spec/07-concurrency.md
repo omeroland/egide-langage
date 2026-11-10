@@ -5,7 +5,7 @@ follows from chapter 5: tasks receive values, never mutable references.
 
 ## 7.1 Tasks and scopes
 
-```egide
+```egide decls
 fn profiles(ids: List[UserId]) -> Result[List[Profile], Error] using api: Client:
     scope(timeout: 5.s) fn(s):
         let tasks = [s.spawn(() => api.profile(id)) for id in ids]
@@ -45,7 +45,7 @@ fn profiles(ids: List[UserId]) -> Result[List[Profile], Error] using api: Client
   `for v in ch:` iterates until close. Sending on a closed channel returns `Err(Closed)`.
 - **[CON-032]** `select` is a standard-library function taking a list of cases and running the first one ready:
 
-```egide
+```egide fragment
 select([
     ch_a.on_recv(v => handle_a(v)),
     ch_b.on_recv(v => handle_b(v)),

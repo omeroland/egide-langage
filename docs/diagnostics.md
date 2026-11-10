@@ -36,6 +36,9 @@ pull request**. Codes are never reused.
 | E0031 | LEX-041 | malformed float literal | allocated |
 | E0040 | LEX-050 | unterminated string literal | allocated |
 | E0041 | LEX-050 | invalid escape sequence `\{c}` | allocated |
+| E0042 | LEX-054 | character literal must contain exactly one character | allocated |
+| E0043 | LEX-053 | byte string accepts only printable ASCII and the escapes `\\ \" \n \t \r \0 \xHH` | allocated |
+| E0044 | LEX-055 | unterminated or malformed interpolation in template | allocated |
 | E0050 | LEX-061 | `;` is not used in Égide; statements end at line breaks | allocated |
 | E0051 | LEX-060 | unexpected character `{c}` | allocated |
 | E0100 | SYN-* | syntax error: {menhir message} | allocated |
@@ -48,13 +51,18 @@ pull request**. Codes are never reused.
 | E0107 | SYN-065 | invalid lambda parameter / type annotation outside a lambda parameter list | allocated |
 | E0108 | SYN-037 | the right side of `\|>` must be a function or a call; parenthesise: `(x \|> f) == 0` | allocated |
 | E0109 | SYN-061 | binding is immediately out of scope in a single-line block | allocated |
-| E0110 | SYN-017 | expected `unsafe(reason: "…")` | allocated |
+| E0110 | SYN-017, SYN-018 | expected `unsafe(reason: "…")` with a valid reason (single line, 1–200 printable characters) | allocated |
 | E0111 | SYN-003 | only `pub(package)` is a valid restricted visibility | allocated |
 | E0112 | SYN-053 | constructor or dotted pattern must end in an UpperCamelCase name | allocated |
 | E0113 | SYN-024 | variant and constant names must start with an uppercase letter | allocated |
 | E0114 | SYN-021 | `self` is allowed only as the first parameter of a method (never `comptime`) | allocated |
+| E0115 | SYN-018, GO-001 | `import go` path must be printable ASCII without escapes that produce forbidden characters | allocated |
 | E0116 | SYN-001 | a module path must not start with `go` | allocated |
 | E0117 | SYN-023 | unknown attribute, or attribute `@{name}` not allowed on this item | allocated |
+| E0118 | SYN-018 | string argument consumed by a tool is not a single line of 1–200 printable characters | allocated |
+| E0119 | SYN-006 | nesting too deep (limit 256) | allocated |
+| E0120 | SYN-030 | misplaced or unbound `using` argument: `{name}` | allocated |
+| E0121 | SYN-053 | `{name}` is a binding, not the variant `{Variant}`; write `{Variant}` or `_` | allocated |
 | E0301 | MEM-021 | `{place}` is passed as inout and also used by another argument of the same call | allocated |
 | E0302 | MEM-023 | use of `{name}` after it was moved by `take` | allocated |
 | E0303 | ERR-032 | resource `{name}` may leak: close it with `with` or move it with `take` | allocated |
@@ -63,6 +71,13 @@ pull request**. Codes are never reused.
 | E0402 | CAP-034 | public function `{fn}` uses capabilities but declares no `using` clause | allocated |
 | E0410 | SEC-017 | `{Sink}` cannot be built from `str` — risk: {risk}. Use the `{prefix}"…"` template | allocated |
 | E0412 | SEC-002 | `Untrusted[{T}]` passed where `{T}` is required — risk: injection. Validate it first | allocated |
+| E0420 | GO-032 | `@go_threadsafe` requires `import go` of the type's module in this package | allocated |
+| E0421 | GO-032, PKG-030 | `@go_threadsafe` for `{module}` is not listed as `go_threadsafe:{module}` in the manifest `allow` | allocated |
+| E0601 | LEX-055, CT-041 | template `{prefix}` (result type `{Sink}`) does not accept a format specifier (`:spec`) — sinks take none, risk: unreviewed channel into `{Sink}` | allocated |
+| E0602 | CT-040 | `@template` of the reserved standard prefix `{prefix}` outside `std` | allocated |
+| E0610 | CT-002 | top-level `let` or `comptime` argument must be pure: contains `{what}` | allocated |
+| W0001 | LEX-005 | right-to-left text in a string or comment may display the rest of the line in a different order; bind the string with `let` on its own line | allocated |
+| W0002 | LEX-011 | doc comment is not attached to a declaration | allocated |
 
 ## JSON format (`--error-format=json`)
 

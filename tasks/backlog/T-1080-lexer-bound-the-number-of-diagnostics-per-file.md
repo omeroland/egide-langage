@@ -67,4 +67,6 @@ Q-0001.
 
 ## Log
 
+2026-11-10 language-architect (owner-delegated, ADR-0016): also collapse consecutive identical forbidden characters or lone CRs into one diagnostic with a count (the E0005 run model), and keep the flood reproducer of the T-0006 review under 100 MB and 2 s. This replaces the duplicate task T-1034, which was removed.
+
 ## Outcome

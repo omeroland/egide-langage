@@ -6,7 +6,7 @@ the Go backend compiles to the same runtime: an Égide task is a goroutine and a
 
 ## 11.1 Importing Go
 
-```egide
+```egide decls
 import go "k8s.io/client-go/kubernetes" as kube
 import go "k8s.io/client-go/rest" as rest
 import go "k8s.io/apimachinery/pkg/apis/meta/v1" as metav1
@@ -22,7 +22,7 @@ fn tenant_namespaces(cs: kube.Clientset) -> Result[List[str], GoError] using go:
 ```
 
 - **[GO-001]** `import go "<import path>" as alias` imports a Go package. The alias is mandatory. The Go module MUST be
-  declared in the `[go]` section of the manifest (PKG-040).
+  declared in the `[go]` section of the manifest (PKG-040). The path is a string consumed by tools (SYN-018, E0115).
 - **[GO-002]** Exported Go identifiers keep their Go spelling (`NewForConfig`); LEX-023 naming warnings do not apply
   to them.
 - **[GO-003]** Go interop is available with the Go backend. With the native backend, Go packages are linked through
@@ -66,9 +66,17 @@ types** and **auditable**.
 - **[GO-030]** Go functions returning `(T, error)` MUST be treated as `Result` even when the Go documentation says the
   error "never happens".
 - **[GO-031]** Go methods with pointer receivers are callable on `GoRef[T]`.
-- **[GO-032]** `GoRef[T]` has reference semantics like `Shared[T]` and is not `Send`, unless a bridge module declares
-  it with the attribute `@go_threadsafe` on a `type` alias of `T` (SYN-023), e.g.
-  `@go_threadsafe` on the line above `type Clientset = kube.Clientset`; such declarations are listed by `egide audit`.
+- **[GO-032]** `GoRef[T]` has reference semantics like `Shared[T]` and is not `Send`, unless the attribute
+  `@go_threadsafe(reason: "…")` (SYN-023) is written on a `type` alias of exactly that Go type `T`, for example
+  `@go_threadsafe(reason: "documented as safe for concurrent use")` above `type Clientset = kube.Clientset`. The
+  attribute asserts a property the compiler cannot check, as `unsafe` does, and is gated like it:
+  1. it may appear only in a package that itself runs `import go` of the Go module of `T` (E0420), so it cannot reach
+     the types of another dependency;
+  2. the assertion is **program-wide** (an alias is the same type), it applies to `GoRef[T]` for exactly that `T`;
+  3. every package that transitively contains it MUST list `"go_threadsafe:<go module>"` in its `allow` entries
+     (PKG-030, PKG-031), otherwise the build fails (E0421);
+  4. `egide audit` lists every such attribute with its reason.
+  There is no "bridge module": the term is not used by this specification.
 
 ## 11.4 Purity classification of Go functions
 

@@ -49,8 +49,8 @@ max_steps = 100_000_000
 Thanks to capabilities (chapter 6), a dependency can only do what the code passes to it; the manifest does not list
 I/O permissions. It controls only the ways around the model.
 
-- **[PKG-030]** A dependency whose code (transitively) contains `unsafe`, C FFI or impure Go calls MUST be listed with
-  the matching `allow` entries: `"unsafe"`, `"ffi:<library>"`, `"go:<module>"`, `"test-capabilities"`.
+- **[PKG-030]** A dependency whose code (transitively) contains `unsafe`, C FFI, impure Go calls or `@go_threadsafe` MUST be listed with
+  the matching `allow` entries: `"unsafe"`, `"ffi:<library>"`, `"go:<module>"`, `"go_threadsafe:<go module>"` (GO-032), `"test-capabilities"`.
   A dependency update that introduces a new breach fails the build until the manifest is updated.
 - **[PKG-031]** `allow` entries are not transitive: every package that (transitively) depends on a breaching package
   declares it, so the breach is visible at every level.

@@ -36,4 +36,6 @@ Anything not listed in the acceptance criteria; create follow-up tasks.
 
 ## Log
 
+2026-11-10 language-architect (owner-delegated, ADR-0017, security review resolution): Add: cover checks (E0106, E0107) run inside the Menhir semantic actions, not in a separate traversal (SYN-005); PoCs cover_in_attribute_arg, cover_in_default_param, cover_in_generic_arg, cover_inout_arg_paren become conformance tests. Also E0110/E0115/E0118 (SYN-018 shape of tool strings, checked on the value after escapes), E0119 (nesting limit 256, SYN-006), E0120 (`using` arguments, SYN-030), E0121 (SYN-053 lowercase typo), `&(x)`/`(x) = 1` are E0106, top-level `let` restricted by the grammar (const_block). Diff the Menhir attachment against the EBNF mechanically.
+
 ## Outcome

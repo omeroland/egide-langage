@@ -12,11 +12,11 @@ lifetime annotations (ADR-0002).
   for `Shared[T]` (MEM-050) and `GoRef[T]` (GO-032).
 - **[MEM-003]** Values of every type are values in this sense, including `List`, `Map`, `str` and user structs.
 
-```egide
+```egide fragment
 var a = [1, 2, 3]
 var b = a            # logically a copy; physically shared (copy-on-write)
 b.push(4)            # the physical copy happens here, because `a` is still alive
-assert a == [1, 2, 3]
+assert(a == [1, 2, 3])
 ```
 
 ## 5.2 Implementation contract
@@ -47,10 +47,12 @@ assert a == [1, 2, 3]
 - **[MEM-024]** `inout self` methods may be called only on mutable places (`var` bindings, `inout` parameters, or
   their fields and elements).
 
-```egide
+```egide decls
 fn add_line(inout cart: Cart, item: Item):
     cart.lines.push(item)
+```
 
+```egide fragment
 add_line(&cart, item)
 add_line(&cart, cart.lines[0])    # error MEM-021: `cart` is borrowed as inout by the same call
 ```
@@ -98,6 +100,6 @@ add_line(&cart, cart.lines[0])    # error MEM-021: `cart` is borrowed as inout b
 ## 5.8 Unsafe
 
 - **[MEM-070]** `unsafe(reason: "…"): block` permits raw pointers (`std.unsafe.Ptr[T]`), unchecked construction of
-  validated types, capability construction for testing, and C FFI. The reason string is mandatory and non-empty.
+  validated types, capability construction for testing, and C FFI. The reason string is mandatory and satisfies SYN-018.
 - **[MEM-071]** A function containing `unsafe` is not marked in its signature, but its package MUST declare
   `allow = ["unsafe"]` in the manifest of every dependent (PKG-030), and `egide audit` lists every `unsafe` block.

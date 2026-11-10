@@ -35,6 +35,8 @@ Anything not listed in the acceptance criteria; create follow-up tasks.
 
 ## Log
 
+2026-11-10 language-architect (owner-delegated, ADR-0016): Q-0015/Q-0001 decided: char escapes are LEX-050 minus `\{ \}` plus `\'`, exactly one scalar (E0042), no raw tab; byte strings accept printable ASCII and `\\ \" \n \t \r \0 \xHH` only (E0043), no `rb`; triple-quoted dedent works on raw lines before escapes, whitespace-only lines ignored, closing line break kept, tab in margin is E0005; `\u{…}` accepts any scalar value (T-1033 extends the forbidden set).
+
 ## Outcome
 
 
