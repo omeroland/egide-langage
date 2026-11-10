@@ -4,7 +4,8 @@
 - Date: 2026-11-09
 - Deciders: owner
 - Spec chapters affected: 3, 4, 9 (and `spec/grammar/egide.ebnf`)
-- Raised by: T-0022 (spec audit of chapters 2 and 3)
+- Raised by: T-0022 (spec audit of chapters 2 and 3). Answers Q-0009 (slice-or-index ambiguity, PR #4) through
+  SYN 043; `slice_or_index` is deleted.
 
 > New rule ids are written with a space (`SYN 042`) because `tools/check-spec.sh` rejects references to ids that do
 > not exist yet in `spec/`.
@@ -41,7 +42,7 @@ argument positions.
 expression, or one of the type-only forms `fn(…) [-> T] [using …]` and `dyn B1 + … + Bn`. After name resolution:
 if the operand denotes a generic function, a generic type or a comptime type constructor, the arguments are type
 arguments or comptime value arguments (a generic argument that resolves to a type is a type, otherwise it is a
-comptime value); otherwise the operation is indexing, which takes exactly one argument, and a type-only form or a
+comptime value, evaluated under CT-001..CT-004 and CAP-041); otherwise the operation is indexing, which takes exactly one argument, and a type-only form or a
 second argument is a compile-time error. Inside a generic argument, a postfix `?` applied to a type is `Option`
 (SYN-041)."
 
@@ -93,6 +94,11 @@ Checked mechanically: a Menhir transcription of this EBNF together with ADR-0013
 bitwise levels) reports 0 conflicts; with `fn_caps` as a parenthesised list or with `dyn` capabilities it reports
 conflicts, hence the form above.
 
+Reproduction of the conflict check (not committed: the ADR template has no attachment slot, and the proposed
+grammar is only a simplified transcription). Write each production above in Menhir syntax with tokens for the lexer
+terminals, replace literals and patterns by a few representative alternatives, then run `menhir --explain file.mly`
+and read `file.conflicts`. The scratch file used for this ADR (about 110 lines) is attached as a comment on PR #6.
+
 ## Alternatives considered
 
 | Option | Pros | Cons | Why not |
@@ -106,7 +112,10 @@ conflicts, hence the form above.
 
 - Complexity budget: removes two productions (`slice_or_index`, `type_arg`), adds one resolution rule. No new
   feature: every form above is already used by the spec or the examples.
-- Security: none (INT-001..005 unaffected).
+- Security: INT-001..005 are unaffected. A generic argument that resolves to a comptime value is evaluated at build
+  time, so it is subject to CT-001, CT-003 and CAP-041 (only pure functions, bounded, no capability). Deciding
+  type-versus-value in the resolver must not create a way to run impure code at build time: SYN 042 adds "a comptime
+  value argument is evaluated under CT-001..CT-004".
 - Implementation: T-0008 (AST: `Index of expr * gen_arg list`, `gen_arg = Expr | TypeOnly of ty`; types keep their
   own AST with `TyApp of path * gen_arg list`), T-0011 (postfix), T-0009 (types), T-0030 (resolver turns `Index` into
   `Instantiate` when the operand is generic; converts expression-shaped arguments to types), T-0031/T-0050.

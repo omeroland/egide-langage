@@ -36,7 +36,10 @@ Recommended spec text for LEX-055 (each point can be decided separately):
 - (b) An interpolation is `{` expr [ `:` spec ] `}`. The expression ends at the first `:` or `}` at bracket depth 0
   (brackets and nested string/template literals are tracked). `spec` is raw text without `{`, `}`, `"` or a line
   break, and the template function interprets it (`f`: CT-041). A line break inside `{…}` is allowed only in `"""`
-  templates.
+  templates. **Sink templates** (`sql`, `html`, `cmd`, `url`, `path`, ch. 12) MUST reject a `:spec` suffix
+  (compile-time error), instead of passing it through: otherwise the spec string is a new channel into a sink
+  that nobody reviewed. Only `f` (and prefixes that declare a spec grammar through their `@template`
+  registration, CT-040) accept one.
 - (c) A keyword is never a template prefix (`return"x"` is `return` followed by a string).
 - (d) `p"""…"""` templates are dedented as in LEX-051 before the literal parts are split. There is no raw template
   form: with (a), all templates are already raw.

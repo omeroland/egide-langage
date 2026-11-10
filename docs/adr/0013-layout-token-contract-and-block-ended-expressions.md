@@ -44,7 +44,9 @@ outlier. T-0009..T-0012 cannot be written against the current EBNF without guess
 
 ## Decision
 
-**Keep LEX-032 unchanged** and make the EBNF match it. The layout produces a *terminator* model, like Python's,
+**Keep the LEX-032 token stream unchanged** and make the EBNF match it. (Q-0016 proposes two separate amendments to
+LEX-032, body width after a continuation line and the first line of a file; they do not alter the token contract
+below, and this ADR does not depend on them.) The layout produces a *terminator* model, like Python's,
 except that a block header is terminated by `INDENT` instead of `NEWLINE INDENT`:
 
 - every logical line is terminated by `NEWLINE`, except a line whose last token is a block `:`, which is
@@ -93,6 +95,9 @@ an `inout self` method, or a field `.f` or element `[i]` of a place; otherwise E
 expression'." The current `place = IDENT { … }` production is a reduce/reduce conflict with `primary` on `.` and `[`
 and omits `self` (`self.count += 1` does not parse; Q-0008), so the parser reads a postfix expression and checks it.
 Adding `"self"` as a root of `place` (Q-0008 option A) fixes the omission but keeps the conflict.
+
+**Doc comments.** The replacement `file` production drops `[ doc_comment ]` (the current `file` starts with it, but
+`doc_comment` is not a lexer terminal and is not defined). How `##` comments attach is open: see Q-0012.
 
 **EBNF**: replace the `file`, declaration-body and statement sections with the following, and remove `if_expr`
 and `match_expr` from `primary` and the `fn … : block` alternative from `lambda`:
@@ -143,13 +148,18 @@ assign_target = postfix_expr ;                                    (* MUST be a p
 Trace of the §2.4 example: `fn_sig ":" suite(INDENT block_stmt(if_expr: "if" expr ":" suite(INDENT x NEWLINE
 DEDENT) "else" ":" suite(0 NEWLINE)) DEDENT) EOF`.
 
-Checked mechanically: a Menhir transcription of this EBNF with ADR-0014's types (simplified literals, patterns and
+Checked mechanically (reproduction below): a Menhir transcription of this EBNF with ADR-0014's types (simplified literals, patterns and
 bitwise levels; parenthesised lambda heads left out, see Q-0010) reports 0 conflicts. With the current `place`
 production it reports a reduce/reduce conflict.
 
 Consequences of the grammar, stated so tests can check them: a single-line block cannot contain a let-else, a
 block-ended expression or a compound statement; `if c: a else: b` on one line is a syntax error (use
 `a if c else b`); there is no dangling `else`, because a single-line block cannot contain an `if`.
+
+Reproduction of the conflict check (not committed: the ADR template has no attachment slot, and the proposed
+grammar is only a simplified transcription). Write each production above in Menhir syntax with tokens for the lexer
+terminals, replace literals and patterns by a few representative alternatives, then run `menhir --explain file.mly`
+and read `file.conflicts`. The scratch file used for this ADR (about 110 lines) is attached as a comment on PR #6.
 
 ## Alternatives considered
 
@@ -165,7 +175,10 @@ block-ended expression or a compound statement; `if c: a else: b` on one line is
 - Complexity budget: removes the stmt/expr duplication of `if`/`match`; adds one positional rule (SYN 015) with one
   diagnostic. Users gain `let x = retry() fn: …`, `let v = loop: …` and `with`/`given` values, which the examples
   already assume.
-- Security: none (INT-001..005 unaffected).
+- Security: INT-001..005 are unaffected, with one tightening. The EBNF makes `unsafe(reason: …): block` (MEM-070,
+  MEM-071, PKG-030) a `primary`, so it can be an operand (`f(unsafe(reason: "x"): …)`). SYN 015 restricts it to a
+  statement or a whole right-hand side, so an `unsafe` block is always visible at the start of a line, which helps
+  review and `egide audit`. Q-0011 item 6 asks `security-reviewer` to confirm that no intended use is lost.
 - Implementation: T-0008 (AST: one `If` node, `Match`/`Loop`/`With`/`Given`/`Lambda`/`TrailingCall` are expressions;
   a `Stmt.Expr` wrapper), T-0009/T-0010/T-0011/T-0012 use this EBNF, T-0013 recovers at `NEWLINE` or `DEDENT`.
   T-0007 (layout) is unaffected. Add E0104 and E0106 to `docs/diagnostics.md`. Add `egide lex` conformance tests for LEX 036.

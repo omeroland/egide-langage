@@ -23,9 +23,12 @@ support it or reject it, and the spec says neither.
    grep: `@derive`, `@acyclic`, `@test`, `@go_threadsafe`, `@derivation` (CT-030), `@template` (CT-040), `@property`,
    `@integration` (TOOL-030, TOOL-031). Is this the closed set? `@property fn(x: T)` (TOOL-030) also shows an
    attribute on the same line as `fn`, which the EBNF does not allow (`attribute NEWLINE`).
-6. **`unsafe` block**: `"unsafe" "(" "reason" ":" STRING ")" ":" block` exists only in the EBNF. It has no SYN rule
-   or prose, although TYP-031, CAP-002 and SEC-017 depend on it. Its value, its scope (expression or
-   block) and its interaction with `pub` items are unspecified. This is security-relevant (ch. 6, 12).
+6. **`unsafe` block**: semantically it is defined by MEM-070 (what it permits; the reason string is mandatory and
+   non-empty) and MEM-071 (the manifest `allow = ["unsafe"]`, `egide audit` lists every block); TYP-031, CAP-002 and
+   SEC-017 depend on it. What is missing is its **syntactic** role in ch. 3: `"unsafe" "(" "reason" ":" STRING ")"
+   ":" block` appears only in the EBNF, as a `primary`, so it can be used as an operand (`1 + unsafe(…): …`), and
+   no SYN rule says whether it is an expression or a statement, what its value is, or how the `reason` identifier
+   is checked.
 7. `dyn A + B` (ERR-020): the EBNF allows a single bound. ADR-0014 fixes this.
 
 ## Options and recommendation (per item)
@@ -43,6 +46,7 @@ support it or reject it, and the spec says neither.
    bridge-module manifest entry. Do not add a special statement-attribute form.
 5. Add a table of attributes to ch. 3 (name, target, arguments, rule). Allow an attribute only on its own line
    (TOOL-030 then reads `@property` on the line before `fn`).
-6. Add a SYN rule: `unsafe(reason: "…"): block` is a block-ended expression (ADR-0013). The reason MUST be a
-   non-empty string literal, `egide audit` lists it, and its effect is defined in ch. 6 and ch. 12. Ask
-   `security-reviewer` to review.
+6. Add a SYN rule that only places the construct: `unsafe(reason: "…"): block` is a block-ended expression
+   (ADR-0013, SYN 015), so it cannot be an operand; the identifier before the string MUST be `reason`. Its effect,
+   the non-empty reason, the manifest entry and the audit listing stay in MEM-070/MEM-071 and are not restated.
+   Ask `security-reviewer` to confirm that moving `unsafe` out of `primary` loses no use that MEM-070 intends.

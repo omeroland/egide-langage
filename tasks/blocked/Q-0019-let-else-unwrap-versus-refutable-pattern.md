@@ -47,3 +47,8 @@ A. It is explicit, has a single meaning, and is proven in practice. It also agre
 the parser or type checker depend on the right side's type to interpret a pattern. Spec edits: ERR-012 wording;
 rewrite README, `examples/tenants_api.egd` (2 sites) and ch. 8 (`let Some(port) = cfg.port else: …`). Accessing the
 error remains `match` or `?` with `.context(…)`. No grammar change (the AST from T-0010 is the same for all options).
+
+Note for `security-reviewer`: the choice decides what a validated unwrap means. Under option C, `let Some(x) = opt
+else: …` on an `Option[Option[int]]` could silently bind `x: int` or `x: Option[int]` depending on types, and a
+`let` that unwraps a `Result[TenantId, ValidationError]` (the TYP-031 constructor) must not be readable as a match
+on the `Result` itself. Option A has one reading in every case, which is the safer one.
