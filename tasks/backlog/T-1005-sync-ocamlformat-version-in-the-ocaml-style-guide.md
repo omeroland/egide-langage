@@ -1,5 +1,5 @@
 ---
-id: T-1000
+id: T-1005
 title: Sync the ocamlformat version in the OCaml style guide (governance)
 kind: task
 phase: 0
@@ -23,7 +23,7 @@ the pin from 0.26.2 to 0.28.1 (0.26.2 cannot be installed on OCaml 5.3), but the
 ## Context
 
 - T-0028 (pin bump), AGENTS.md rule 6: `agents/` changes only on a `governance/*` branch, merged by the owner.
-- Branch: `governance/t-1000-style-guide-ocamlformat`.
+- Branch: `governance/t-1005-style-guide-ocamlformat`.
 
 ## Acceptance criteria
 
