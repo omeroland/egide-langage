@@ -9,9 +9,9 @@ spec: [LEX-001, LEX-003]
 paths: [tests/conformance/lexical/, tools/run-conformance.sh, tools/conformance/]
 estimate: S
 labels: [security]
-status: backlog
-claimed_by:
-claimed_at:
+status: in-progress
+claimed_by: test-engineer/wave2
+claimed_at: 2026-11-10
 ---
 
 ## Goal
