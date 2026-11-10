@@ -1,0 +1,11 @@
+# spec: LEX-001
+# expect: lex-fail
+# diagnostic: E0001 at 9:3
+# diagnostic: E0001 at 9:7
+# diagnostic: E0001 at 10:10
+# diagnostic: E0001 at 11:9
+# Separate ill-formed runs in a comment, a string and code are reported separately.
+module tests.lexical.bytes_invalid_separate_runs
+# ÿ a þ
+let s = "Ã"
+let x = ÿ

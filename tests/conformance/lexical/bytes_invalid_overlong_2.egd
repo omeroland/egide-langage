@@ -1,0 +1,6 @@
+# spec: LEX-001
+# expect: lex-fail
+# diagnostic: E0001 at 6:3
+# Overlong two-byte encoding of slash (C0 AF) is one E0001.
+module tests.lexical.bytes_invalid_overlong_2
+# À¯ z

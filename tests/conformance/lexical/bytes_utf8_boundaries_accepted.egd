@@ -1,0 +1,6 @@
+# spec: LEX-001
+# expect: lex-pass
+# Boundary values of every well-formed UTF-8 pattern are accepted in comments and strings.
+module tests.lexical.bytes_utf8_boundaries_accepted
+#   ߿ ࠀ ퟿  ￿ 𐀀 􏿿
+let s = " ߿ࠀ퟿￿𐀀􏿿"

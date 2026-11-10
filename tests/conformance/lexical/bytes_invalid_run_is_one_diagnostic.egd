@@ -1,0 +1,6 @@
+# spec: LEX-001
+# expect: lex-fail
+# diagnostic: E0001 at 6:3
+# A run of ill-formed bytes is a single E0001.
+module tests.lexical.bytes_invalid_run_is_one_diagnostic
+# ÿþý z
