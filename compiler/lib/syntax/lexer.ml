@@ -12,12 +12,16 @@ let exponent = [%sedlex.regexp? ('e' | 'E'), Opt ('+' | '-'), Plus digit]
 
 type state = { buf : Sedlexing.lexbuf; sink : D.Sink.t }
 
-let span st = let s, e = Sedlexing.lexing_positions st.buf in Egide_source.Span.of_lexing s e
+let span st =
+  let s, e = Sedlexing.lexing_positions st.buf in
+  Egide_source.Span.of_lexing s e
+
 let report st ~rule ~code msg = D.Sink.report st.sink (D.error ~rule ~code (span st) msg)
 
 (* LEX-004: one diagnostic per run of tabs, spanning the run. *)
 let report_tab st =
-  report st ~rule:"LEX-004" ~code:"E0005" "tab character outside a string literal; indent with 4 spaces"
+  report st ~rule:"LEX-004" ~code:"E0005"
+    "tab character outside a string literal; indent with 4 spaces"
 
 let ret st tok =
   let startp, _ = Sedlexing.lexing_positions st.buf in
@@ -40,7 +44,8 @@ let rec token st =
       match Token_table.keyword s with Some kw -> ret st kw | None -> ret st (IDENT s))
   | "0x", Plus (hex | '_') | "0o", Plus ('0' .. '7' | '_') | "0b", Plus ('0' | '1' | '_') ->
       ret st (INT (Sedlexing.Utf8.lexeme buf))
-  | dec_int, '.', Plus digit, Opt exponent | dec_int, exponent -> ret st (FLOAT (Sedlexing.Utf8.lexeme buf))
+  | dec_int, '.', Plus digit, Opt exponent | dec_int, exponent ->
+      ret st (FLOAT (Sedlexing.Utf8.lexeme buf))
   | dec_int -> ret st (INT (Sedlexing.Utf8.lexeme buf))
   | '"' ->
       let startp, _ = Sedlexing.lexing_positions buf in
@@ -91,7 +96,8 @@ let rec token st =
   | '{' -> ret st LBRACE
   | '}' -> ret st RBRACE
   | ';' ->
-      report st ~rule:"LEX-061" ~code:"E0050" "`;` is not used in Égide; statements end at line breaks";
+      report st ~rule:"LEX-061" ~code:"E0050"
+        "`;` is not used in Égide; statements end at line breaks";
       token st
   | eof -> None
   | any ->
@@ -119,12 +125,24 @@ and string st acc =
   let buf = st.buf in
   match%sedlex buf with
   | '"' -> STRING (Buffer.contents acc)
-  | "\\\\" -> Buffer.add_char acc '\\'; string st acc
-  | "\\\"" -> Buffer.add_char acc '"'; string st acc
-  | "\\n" -> Buffer.add_char acc '\n'; string st acc
-  | "\\t" -> Buffer.add_char acc '\t'; string st acc
-  | "\\r" -> Buffer.add_char acc '\r'; string st acc
-  | "\\0" -> Buffer.add_char acc '\000'; string st acc
+  | "\\\\" ->
+      Buffer.add_char acc '\\';
+      string st acc
+  | "\\\"" ->
+      Buffer.add_char acc '"';
+      string st acc
+  | "\\n" ->
+      Buffer.add_char acc '\n';
+      string st acc
+  | "\\t" ->
+      Buffer.add_char acc '\t';
+      string st acc
+  | "\\r" ->
+      Buffer.add_char acc '\r';
+      string st acc
+  | "\\0" ->
+      Buffer.add_char acc '\000';
+      string st acc
   | '\\', any ->
       report st ~rule:"LEX-050" ~code:"E0041"
         (Printf.sprintf "invalid escape sequence `%s`" (Sedlexing.Utf8.lexeme buf));

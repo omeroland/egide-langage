@@ -42,6 +42,7 @@ let is_rule_id s =
 (* `E0022`, `W0001`: one letter and four digits (docs/diagnostics.md). *)
 let is_code s =
   String.length s = 5 && (s.[0] = 'E' || s.[0] = 'W') && all is_digit (String.sub s 1 4)
+
 let positive s =
   match int_of_string_opt s with Some n when n >= 1 && all is_digit s -> Some n | _ -> None
 
@@ -90,93 +91,97 @@ let parse ?stdout_file src =
   let diagnostics = ref [] and stdout = ref [] and phase = ref None and phase_seen = ref false in
   let backends = ref None and backends_seen = ref false in
   let once seen ln key =
-    if !seen then (error "%sduplicate `# %s:` header" (at ln) key; false) else (seen := true; true)
+    if !seen then (
+      error "%sduplicate `# %s:` header" (at ln) key;
+      false)
+    else (
+      seen := true;
+      true)
   in
   let in_header = ref true in
   String.split_on_char '\n' src
   |> List.iteri (fun i raw ->
-         let ln = i + 1 and line = strip_cr raw in
-         if !in_header && not (line = "" || line.[0] = '#') then in_header := false;
-         match directive line with
-         | None -> ()
-         | Some (key, _) when not !in_header ->
-             if List.mem key runner_keys then
-               error
-                 "%s`# %s:` after the header block (headers must precede the first code line)"
-                 (at ln) key
-         | Some (key, raw_value) -> (
-             let v = String.trim raw_value in
-             match key with
-             | "spec" ->
-                 spec_seen := true;
-                 let ids =
-                   String.split_on_char ',' v
-                   |> List.concat_map (String.split_on_char ' ')
-                   |> List.filter (( <> ) "")
-                 in
-                 if ids = [] then error "%s`# spec:` cites no rule id" (at ln);
-                 List.iter
-                   (fun id ->
-                     if not (is_rule_id id) then
-                       error "%sinvalid rule id `%s` (expected PREFIX-NNN)" (at ln) id
-                     else if not (List.mem id !spec) then spec := !spec @ [ id ])
-                   ids
-             | "expect" ->
-                 if once expect_seen ln key then begin
-                   match expect_of_string v with
-                   | Some e -> expect := Some e
-                   | None ->
-                       error
-                         "%sunknown expectation `%s` (expected lex-pass, lex-fail, parse-pass, \
-                          parse-fail, compile-fail, run-pass or run-panic)"
-                         (at ln) v
-                 end
-             | "diagnostic" -> (
-                 match parse_diagnostic v with
-                 | Some d -> diagnostics := d :: !diagnostics
-                 | None ->
-                     error
-                       "%smalformed diagnostic `%s` (expected `<code> at <line>:<col>`, e.g. \
-                        `E0022 at 8:3`)"
-                       (at ln) v)
-             | "stdout" ->
-                 (* One expected line: drop the single space after the colon, keep the rest. *)
-                 let l =
-                   if String.starts_with ~prefix:" " raw_value then
-                     String.sub raw_value 1 (String.length raw_value - 1)
-                   else raw_value
-                 in
-                 stdout := l :: !stdout
-             | "phase" ->
-                 if once phase_seen ln key then begin
-                   match int_of_string_opt v with
-                   | Some p when p >= 0 && all is_digit v -> phase := Some p
-                   | _ -> error "%sinvalid phase `%s` (expected a non-negative integer)" (at ln) v
-                 end
-             | "backends" ->
-                 ignore (once backends_seen ln key);
-                 let names =
-                   String.split_on_char ',' v |> List.map String.trim |> List.filter (( <> ) "")
-                 in
-                 if names = [] then error "%s`# backends:` lists no backend" (at ln);
-                 let bs =
-                   List.filter_map
-                     (fun s ->
-                       match backend_of_string s with
-                       | Some b -> Some b
-                       | None ->
-                           error "%sunknown backend `%s` (expected interp, go or native)" (at ln) s;
-                           None)
-                     names
-                 in
-                 let dedup =
-                   List.fold_left (fun acc b -> if List.mem b acc then acc else acc @ [ b ]) [] bs
-                 in
-                 if !backends = None then backends := Some dedup
-             | k when List.mem k other_keys -> ()
-             | k ->
-                 error "%sunknown header `# %s:` (known: %s)" (at ln) k
-                   (String.concat ", " (runner_keys @ other_keys))));
+      let ln = i + 1 and line = strip_cr raw in
+      if !in_header && not (line = "" || line.[0] = '#') then in_header := false;
+      match directive line with
+      | None -> ()
+      | Some (key, _) when not !in_header ->
+          if List.mem key runner_keys then
+            error "%s`# %s:` after the header block (headers must precede the first code line)"
+              (at ln) key
+      | Some (key, raw_value) -> (
+          let v = String.trim raw_value in
+          match key with
+          | "spec" ->
+              spec_seen := true;
+              let ids =
+                String.split_on_char ',' v
+                |> List.concat_map (String.split_on_char ' ')
+                |> List.filter (( <> ) "")
+              in
+              if ids = [] then error "%s`# spec:` cites no rule id" (at ln);
+              List.iter
+                (fun id ->
+                  if not (is_rule_id id) then
+                    error "%sinvalid rule id `%s` (expected PREFIX-NNN)" (at ln) id
+                  else if not (List.mem id !spec) then spec := !spec @ [ id ])
+                ids
+          | "expect" ->
+              if once expect_seen ln key then begin
+                match expect_of_string v with
+                | Some e -> expect := Some e
+                | None ->
+                    error
+                      "%sunknown expectation `%s` (expected lex-pass, lex-fail, parse-pass, \
+                       parse-fail, compile-fail, run-pass or run-panic)"
+                      (at ln) v
+              end
+          | "diagnostic" -> (
+              match parse_diagnostic v with
+              | Some d -> diagnostics := d :: !diagnostics
+              | None ->
+                  error
+                    "%smalformed diagnostic `%s` (expected `<code> at <line>:<col>`, e.g. `E0022 \
+                     at 8:3`)"
+                    (at ln) v)
+          | "stdout" ->
+              (* One expected line: drop the single space after the colon, keep the rest. *)
+              let l =
+                if String.starts_with ~prefix:" " raw_value then
+                  String.sub raw_value 1 (String.length raw_value - 1)
+                else raw_value
+              in
+              stdout := l :: !stdout
+          | "phase" ->
+              if once phase_seen ln key then begin
+                match int_of_string_opt v with
+                | Some p when p >= 0 && all is_digit v -> phase := Some p
+                | _ -> error "%sinvalid phase `%s` (expected a non-negative integer)" (at ln) v
+              end
+          | "backends" ->
+              ignore (once backends_seen ln key);
+              let names =
+                String.split_on_char ',' v |> List.map String.trim |> List.filter (( <> ) "")
+              in
+              if names = [] then error "%s`# backends:` lists no backend" (at ln);
+              let bs =
+                List.filter_map
+                  (fun s ->
+                    match backend_of_string s with
+                    | Some b -> Some b
+                    | None ->
+                        error "%sunknown backend `%s` (expected interp, go or native)" (at ln) s;
+                        None)
+                  names
+              in
+              let dedup =
+                List.fold_left (fun acc b -> if List.mem b acc then acc else acc @ [ b ]) [] bs
+              in
+              if !backends = None then backends := Some dedup
+          | k when List.mem k other_keys -> ()
+          | k ->
+              error "%sunknown header `# %s:` (known: %s)" (at ln) k
+                (String.concat ", " (runner_keys @ other_keys))));
   if not !spec_seen then error "missing `# spec:` header";
   if not !expect_seen then error "missing `# expect:` header";
   let diagnostics = List.rev !diagnostics and stdout_lines = List.rev !stdout in

@@ -4,9 +4,13 @@
 module D = Egide_diagnostics.Diagnostic
 module Span = Egide_source.Span
 
-let sp l c = Span.make ~file:"t.egd" ~start:{ Span.line = l; col = c } ~stop:{ Span.line = l; col = c + 1 }
+let sp l c =
+  Span.make ~file:"t.egd" ~start:{ Span.line = l; col = c } ~stop:{ Span.line = l; col = c + 1 }
 
-let try_ f = match f () with (_ : D.t) -> print_endline "accepted" | exception Invalid_argument m -> print_endline m
+let try_ f =
+  match f () with
+  | (_ : D.t) -> print_endline "accepted"
+  | exception Invalid_argument m -> print_endline m
 
 (* spec: TOOL-040 — a stable code (E/W + 4 digits), a spec rule id, a one-line non-empty message. *)
 let%expect_test "constructors validate code, rule, message, notes and fixes" =
@@ -19,7 +23,8 @@ let%expect_test "constructors validate code, rule, message, notes and fixes" =
   try_ (fun () -> D.error ~rule:"LEX-001" ~code:"E0001" (sp 1 1) "");
   try_ (fun () -> D.error ~rule:"LEX-001" ~code:"E0001" ~notes:[ "" ] (sp 1 1) "m");
   try_ (fun () -> D.error ~rule:"LEX-001" ~code:"E0001" ~fixes:[ D.fix "f" [] ] (sp 1 1) "m");
-  try_ (fun () -> D.error ~rule:"LEX-001" ~code:"E0001" ~fixes:[ D.fix "" [ D.edit (sp 1 1) "" ] ] (sp 1 1) "m");
+  try_ (fun () ->
+      D.error ~rule:"LEX-001" ~code:"E0001" ~fixes:[ D.fix "" [ D.edit (sp 1 1) "" ] ] (sp 1 1) "m");
   [%expect
     {|
     accepted
@@ -37,11 +42,14 @@ let%expect_test "constructors validate code, rule, message, notes and fixes" =
 (* spec: TOOL-040 — fields are readable by passes and tools. *)
 let%expect_test "fields of a diagnostic" =
   let d =
-    D.error ~rule:"MEM-021" ~code:"E0301" ~labels:[ D.label (sp 2 3) "here" ] ~notes:[ "n" ]
-      ~fixes:[ D.fix "f" [ D.edit (sp 1 1) "x" ] ] (sp 1 1) "m"
+    D.error ~rule:"MEM-021" ~code:"E0301"
+      ~labels:[ D.label (sp 2 3) "here" ]
+      ~notes:[ "n" ]
+      ~fixes:[ D.fix "f" [ D.edit (sp 1 1) "x" ] ]
+      (sp 1 1) "m"
   in
-  Printf.printf "%s %s %s %s %d %d %d\n" d.code (D.severity_to_string d.severity) (Option.get d.rule) d.message
-    (List.length d.labels) (List.length d.notes) (List.length d.fixes);
+  Printf.printf "%s %s %s %s %d %d %d\n" d.code (D.severity_to_string d.severity)
+    (Option.get d.rule) d.message (List.length d.labels) (List.length d.notes) (List.length d.fixes);
   let l = List.hd d.labels and f = List.hd d.fixes in
   Printf.printf "%s %d %s %s\n" l.message l.span.start.line f.message (List.hd f.edits).replacement;
   [%expect {|

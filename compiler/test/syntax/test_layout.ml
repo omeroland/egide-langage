@@ -5,7 +5,8 @@ module D = Egide_diagnostics.Diagnostic
 
 let show src =
   let toks, diags = Parse.tokens ~file:"t.egd" src in
-  print_endline (String.concat " " (List.map (fun (t : Lexer.located) -> Parse.token_to_string t.tok) toks));
+  print_endline
+    (String.concat " " (List.map (fun (t : Lexer.located) -> Parse.token_to_string t.tok) toks));
   List.iter (fun d -> print_endline (D.to_human d)) diags
 
 (* spec: LEX-032, LEX-034 *)
@@ -50,7 +51,8 @@ let%expect_test "dedent to an unknown column" =
 (* spec: LEX-030, LEX-035 *)
 let%expect_test "line breaks inside brackets are joined" =
   show "module m\nlet x = f(1,\n      2)\n";
-  [%expect {| module IDENT("m") NEWLINE let IDENT("x") = IDENT("f") ( INT("1") , INT("2") ) NEWLINE EOF |}]
+  [%expect
+    {| module IDENT("m") NEWLINE let IDENT("x") = IDENT("f") ( INT("1") , INT("2") ) NEWLINE EOF |}]
 
 (* spec: LEX-003 *)
 let%expect_test "bidi override in a string is forbidden" =
@@ -123,7 +125,8 @@ let%expect_test "blank and comment lines inside a continuation" =
 (* spec: LEX-030 (b): a continuation token at the same width does not join (NEWLINE is emitted). *)
 let%expect_test "continuation token not indented more starts a new logical line" =
   show "module m\nlet y = xs\n|> f\n";
-  [%expect {| module IDENT("m") NEWLINE let IDENT("y") = IDENT("xs") NEWLINE |> IDENT("f") NEWLINE EOF |}]
+  [%expect
+    {| module IDENT("m") NEWLINE let IDENT("y") = IDENT("xs") NEWLINE |> IDENT("f") NEWLINE EOF |}]
 
 (* spec: LEX-030 (b), LEX-032 step 2: only `|>`, `.`, `and`, `or` continue a line. *)
 let%expect_test "other operators do not continue a line" =

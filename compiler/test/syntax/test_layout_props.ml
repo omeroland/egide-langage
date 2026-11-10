@@ -11,11 +11,14 @@ let fragments =
 let gen_line =
   let open QCheck2.Gen in
   let* width = oneof [ map (fun n -> 4 * n) (int_bound 4); int_bound 17 ] in
-  let+ frags = list_size (int_bound 5) (map (Array.get fragments) (int_bound (Array.length fragments - 1))) in
+  let+ frags =
+    list_size (int_bound 5) (map (Array.get fragments) (int_bound (Array.length fragments - 1)))
+  in
   String.make width ' ' ^ String.concat " " frags
 
 let gen_program =
-  QCheck2.Gen.(map (fun ls -> String.concat "\n" ("module m" :: ls) ^ "\n") (list_size (int_bound 30) gen_line))
+  QCheck2.Gen.(
+    map (fun ls -> String.concat "\n" ("module m" :: ls) ^ "\n") (list_size (int_bound 30) gen_line))
 
 (* Well-indented programs: a tree of blocks, every block opened by a line ending with `:`, bodies at
    +4, optional continuation lines. These must produce no layout diagnostic. *)
@@ -61,11 +64,16 @@ let count tok toks = List.length (List.filter (fun (t : Lexer.located) -> t.tok 
 
 let prop_balanced_any =
   QCheck2.Test.make ~name:"layout tokens are balanced on arbitrary line soup" ~count:2000
-    ~print:(fun s -> s) gen_program (fun src -> balanced (fst (layout_tokens src)))
+    ~print:(fun s -> s)
+    gen_program
+    (fun src -> balanced (fst (layout_tokens src)))
 
 let prop_well_indented =
   QCheck2.Test.make ~name:"well-indented programs: balanced, no diagnostics, one INDENT per block"
-    ~count:1000 ~print:(fun s -> s) gen_well_indented (fun src ->
+    ~count:1000
+    ~print:(fun s -> s)
+    gen_well_indented
+    (fun src ->
       let toks, diags = layout_tokens src in
       let blocks =
         List.length

@@ -7,8 +7,18 @@ let%expect_test "one testsuite per directory, failures and skips" =
     (Junit.to_xml
        [
          { file = "tests/a/x.egd"; name = "x"; status = Pass; time = 0.0126 };
-         { file = "tests/a/y.egd"; name = "y[interp]"; status = Fail "expected <1> & \"2\"\n  | ok"; time = 1. };
-         { file = "tests/b/z.egd"; name = "z"; status = Skip "phase 2 > current phase 0"; time = 0. };
+         {
+           file = "tests/a/y.egd";
+           name = "y[interp]";
+           status = Fail "expected <1> & \"2\"\n  | ok";
+           time = 1.;
+         };
+         {
+           file = "tests/b/z.egd";
+           name = "z";
+           status = Skip "phase 2 > current phase 0";
+           time = 0.;
+         };
        ]);
   [%expect
     {|

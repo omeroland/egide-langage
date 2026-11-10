@@ -6,23 +6,29 @@ let lines = Text.lines
 let diagnostics_of_stderr stderr =
   Json.objects_in_lines stderr
   |> List.filter_map (fun o ->
-         let str k = match Json.member k o with Some (Json.String s) -> Some s | _ -> None in
-         let int p =
-           match Json.path p o with
-           | Some (Json.Number f) when Float.is_integer f -> Some (int_of_float f)
-           | _ -> None
-         in
-         match (str "code", int [ "span"; "start"; "line" ], int [ "span"; "start"; "col" ]) with
-         | Some code, Some line, Some col ->
-             Some { code; severity = Option.value (str "severity") ~default:""; line; col }
-         | _ -> None)
+      let str k = match Json.member k o with Some (Json.String s) -> Some s | _ -> None in
+      let int p =
+        match Json.path p o with
+        | Some (Json.Number f) when Float.is_integer f -> Some (int_of_float f)
+        | _ -> None
+      in
+      match (str "code", int [ "span"; "start"; "line" ], int [ "span"; "start"; "col" ]) with
+      | Some code, Some line, Some col ->
+          Some { code; severity = Option.value (str "severity") ~default:""; line; col }
+      | _ -> None)
 
 let signal_name s =
   List.assoc_opt s
     Sys.
       [
-        (sigsegv, "SIGSEGV"); (sigabrt, "SIGABRT"); (sigkill, "SIGKILL"); (sigbus, "SIGBUS");
-        (sigfpe, "SIGFPE"); (sigill, "SIGILL"); (sigterm, "SIGTERM"); (sigint, "SIGINT");
+        (sigsegv, "SIGSEGV");
+        (sigabrt, "SIGABRT");
+        (sigkill, "SIGKILL");
+        (sigbus, "SIGBUS");
+        (sigfpe, "SIGFPE");
+        (sigill, "SIGILL");
+        (sigterm, "SIGTERM");
+        (sigint, "SIGINT");
         (sigpipe, "SIGPIPE");
       ]
   |> Option.value ~default:(Printf.sprintf "signal %d" s)
@@ -30,9 +36,7 @@ let signal_name s =
 let show_actual (d : actual_diagnostic) = Printf.sprintf "%s at %d:%d" d.code d.line d.col
 
 let reported ds =
-  match ds with
-  | [] -> ""
-  | ds -> "\n  reported: " ^ String.concat ", " (List.map show_actual ds)
+  match ds with [] -> "" | ds -> "\n  reported: " ^ String.concat ", " (List.map show_actual ds)
 
 (* A crash is a failure whatever the test expects: a compiler bug must never make a `*-fail`
    test pass. Exit 70 and `ICE` are the internal-error conventions (docs/architecture.md).

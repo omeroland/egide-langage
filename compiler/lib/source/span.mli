@@ -2,7 +2,6 @@
     (docs/diagnostics.md). *)
 
 type pos = { line : int; col : int }
-
 type t = { file : string; start : pos; stop : pos }
 
 val make : file:string -> start:pos -> stop:pos -> t

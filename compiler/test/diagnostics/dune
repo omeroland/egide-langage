@@ -1,4 +1,5 @@
 ; Unit tests for egide.diagnostics (T-0002). The JSON tests read the schema from docs/.
+
 (library
  (name test_diagnostics)
  (inline_tests

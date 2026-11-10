@@ -45,18 +45,33 @@ let parse s =
           incr pos;
           let esc_pos = !pos in
           (match peek () with
-          | Some (('"' | '\\' | '/') as c) -> incr pos; Buffer.add_char b c
-          | Some 'n' -> incr pos; Buffer.add_char b '\n'
-          | Some 't' -> incr pos; Buffer.add_char b '\t'
-          | Some 'r' -> incr pos; Buffer.add_char b '\r'
-          | Some 'b' -> incr pos; Buffer.add_char b '\b'
-          | Some 'f' -> incr pos; Buffer.add_char b '\012'
+          | Some (('"' | '\\' | '/') as c) ->
+              incr pos;
+              Buffer.add_char b c
+          | Some 'n' ->
+              incr pos;
+              Buffer.add_char b '\n'
+          | Some 't' ->
+              incr pos;
+              Buffer.add_char b '\t'
+          | Some 'r' ->
+              incr pos;
+              Buffer.add_char b '\r'
+          | Some 'b' ->
+              incr pos;
+              Buffer.add_char b '\b'
+          | Some 'f' ->
+              incr pos;
+              Buffer.add_char b '\012'
           | Some 'u' ->
               incr pos;
               let u = hex4 () in
               let cp =
-                if u >= 0xD800 && u <= 0xDBFF
-                   && !pos + 6 <= n && s.[!pos] = '\\' && s.[!pos + 1] = 'u'
+                if
+                  u >= 0xD800 && u <= 0xDBFF
+                  && !pos + 6 <= n
+                  && s.[!pos] = '\\'
+                  && s.[!pos + 1] = 'u'
                 then begin
                   pos := !pos + 2;
                   let lo = hex4 () in
@@ -82,7 +97,9 @@ let parse s =
   let number () =
     let start = !pos in
     let is_num_char = function '0' .. '9' | '-' | '+' | '.' | 'e' | 'E' -> true | _ -> false in
-    while !pos < n && is_num_char s.[!pos] do incr pos done;
+    while !pos < n && is_num_char s.[!pos] do
+      incr pos
+    done;
     match float_of_string_opt (String.sub s start (!pos - start)) with
     | Some f -> Number f
     | None -> raise (Parse_error ("invalid number", start))
@@ -102,7 +119,9 @@ let parse s =
     | Some '{' ->
         incr pos;
         skip_ws ();
-        if peek () = Some '}' then (incr pos; Object [])
+        if peek () = Some '}' then (
+          incr pos;
+          Object [])
         else
           let rec fields acc =
             skip_ws ();
@@ -113,8 +132,12 @@ let parse s =
             let v = value () in
             skip_ws ();
             match peek () with
-            | Some ',' -> incr pos; fields ((k, v) :: acc)
-            | Some '}' -> incr pos; Object (List.rev ((k, v) :: acc))
+            | Some ',' ->
+                incr pos;
+                fields ((k, v) :: acc)
+            | Some '}' ->
+                incr pos;
+                Object (List.rev ((k, v) :: acc))
             | None -> err "unexpected end of input"
             | Some _ -> err "expected ',' or '}'"
           in
@@ -122,14 +145,20 @@ let parse s =
     | Some '[' ->
         incr pos;
         skip_ws ();
-        if peek () = Some ']' then (incr pos; Array [])
+        if peek () = Some ']' then (
+          incr pos;
+          Array [])
         else
           let rec items acc =
             let v = value () in
             skip_ws ();
             match peek () with
-            | Some ',' -> incr pos; items (v :: acc)
-            | Some ']' -> incr pos; Array (List.rev (v :: acc))
+            | Some ',' ->
+                incr pos;
+                items (v :: acc)
+            | Some ']' ->
+                incr pos;
+                Array (List.rev (v :: acc))
             | None -> err "unexpected end of input"
             | Some _ -> err "expected ',' or ']'"
           in
@@ -153,10 +182,10 @@ let parse s =
 let objects_in_lines text =
   String.split_on_char '\n' text
   |> List.filter_map (fun line ->
-         let line = String.trim line in
-         if String.starts_with ~prefix:"{" line then
-           match parse line with Ok (Object _ as o) -> Some o | Ok _ | Error _ -> None
-         else None)
+      let line = String.trim line in
+      if String.starts_with ~prefix:"{" line then
+        match parse line with Ok (Object _ as o) -> Some o | Ok _ | Error _ -> None
+      else None)
 
 let member key = function Object fields -> List.assoc_opt key fields | _ -> None
 

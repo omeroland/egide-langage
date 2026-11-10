@@ -16,9 +16,7 @@ let diag code line col =
 
 let c ?(stdout = "") ?(stderr = "") h exit =
   print_endline
-    (match Verdict.check h exit ~stdout ~stderr with
-    | Ok () -> "PASS"
-    | Error m -> "FAIL " ^ m)
+    (match Verdict.check h exit ~stdout ~stderr with Ok () -> "PASS" | Error m -> "FAIL " ^ m)
 
 let%expect_test "pass expectations need exit 0" =
   let h = h_of "lex-pass" "" in
@@ -37,7 +35,8 @@ let%expect_test "pass expectations need exit 0" =
 
 let%expect_test "fail expectations need exit 1 and every expected diagnostic" =
   let h = h_of "lex-fail" "# diagnostic: E0022 at 8:3\n# diagnostic: E0022 at 8:3\n" in
-  c h (Exited 1) ~stderr:(String.concat "\n" [ diag "E0022" 8 3; diag "E0005" 2 1; diag "E0022" 8 3 ]);
+  c h (Exited 1)
+    ~stderr:(String.concat "\n" [ diag "E0022" 8 3; diag "E0005" 2 1; diag "E0022" 8 3 ]);
   c h (Exited 1) ~stderr:(diag "E0022" 8 3);
   c h (Exited 1) ~stderr:(diag "E0022" 8 4 ^ "\n" ^ diag "E0021" 8 3);
   c h (Exited 0);

@@ -89,7 +89,9 @@ let parse (s : string) : json =
     while !i < n && is_num s.[!i] do
       incr i
     done;
-    match float_of_string_opt (String.sub s start (!i - start)) with Some f -> f | None -> fail "bad number"
+    match float_of_string_opt (String.sub s start (!i - start)) with
+    | Some f -> f
+    | None -> fail "bad number"
   in
   let rec value () =
     ws ();
@@ -179,7 +181,10 @@ let parse_re (p : string) : re =
     in
     match more [ first ] with [ x ] -> x | xs -> Alt xs
   and seq () =
-    let rec go acc = if !i >= n || p.[!i] = '|' || p.[!i] = ')' then Seq (List.rev acc) else go (quant (atom ()) :: acc) in
+    let rec go acc =
+      if !i >= n || p.[!i] = '|' || p.[!i] = ')' then Seq (List.rev acc)
+      else go (quant (atom ()) :: acc)
+    in
     go []
   and atom () =
     let c = p.[!i] in
@@ -222,11 +227,11 @@ let parse_re (p : string) : re =
       | '+' ->
           incr i;
           Rep (r, 1, None)
-      | '{' ->
+      | '{' -> (
           let close = String.index_from p !i '}' in
           let body = String.sub p (!i + 1) (close - !i - 1) in
           i := close + 1;
-          (match String.split_on_char ',' body with
+          match String.split_on_char ',' body with
           | [ a ] -> Rep (r, int_of_string a, Some (int_of_string a))
           | [ a; "" ] -> Rep (r, int_of_string a, None)
           | [ a; b ] -> Rep (r, int_of_string a, Some (int_of_string b))
@@ -245,16 +250,15 @@ let re_search (r : re) (s : string) : bool =
     match r with
     | Chr c -> pos < n && s.[pos] = c && k (pos + 1)
     | Cls rs -> pos < n && List.exists (fun (a, b) -> s.[pos] >= a && s.[pos] <= b) rs && k (pos + 1)
-    | Seq rs -> (
-        match rs with [] -> k pos | r :: rest -> m r pos (fun p -> m (Seq rest) p k))
+    | Seq rs -> ( match rs with [] -> k pos | r :: rest -> m r pos (fun p -> m (Seq rest) p k))
     | Alt rs -> List.exists (fun r -> m r pos k) rs
     | Bol -> pos = 0 && k pos
     | Eol -> pos = n && k pos
     | Rep (r, lo, hi) ->
         let rec go count pos =
           (count >= lo && k pos)
-          || ((match hi with Some h -> count < h | None -> true)
-             && m r pos (fun p -> p > pos && go (count + 1) p))
+          || (match hi with Some h -> count < h | None -> true)
+             && m r pos (fun p -> p > pos && go (count + 1) p)
         in
         go 0 pos
   in
@@ -266,8 +270,19 @@ let re_search (r : re) (s : string) : bool =
 let annotations = [ "$schema"; "$id"; "title"; "description"; "$comment"; "$defs" ]
 
 let supported =
-  [ "type"; "enum"; "required"; "properties"; "additionalProperties"; "items"; "pattern"; "minimum"; "minLength";
-    "minItems"; "$ref" ]
+  [
+    "type";
+    "enum";
+    "required";
+    "properties";
+    "additionalProperties";
+    "items";
+    "pattern";
+    "minimum";
+    "minLength";
+    "minItems";
+    "$ref";
+  ]
 
 let type_name = function
   | Null -> "null"
@@ -287,7 +302,9 @@ let rec utf8_length s i acc =
     [Failure] on a schema keyword outside the supported subset. *)
 let validate ~(root : json) (schema : json) (v : json) : string list =
   let errs = ref [] in
-  let err path msg = errs := Printf.sprintf "%s: %s" (if path = "" then "/" else path) msg :: !errs in
+  let err path msg =
+    errs := Printf.sprintf "%s: %s" (if path = "" then "/" else path) msg :: !errs
+  in
   let resolve ref_ =
     let prefix = "#/$defs/" in
     if not (String.starts_with ~prefix ref_) then failwith ("unsupported $ref " ^ ref_);
@@ -296,7 +313,9 @@ let validate ~(root : json) (schema : json) (v : json) : string list =
     | Obj kv -> (
         match List.assoc_opt "$defs" kv with
         | Some (Obj defs) -> (
-            match List.assoc_opt name defs with Some s -> s | None -> failwith ("dangling $ref " ^ ref_))
+            match List.assoc_opt name defs with
+            | Some s -> s
+            | None -> failwith ("dangling $ref " ^ ref_))
         | _ -> failwith "no $defs")
     | _ -> failwith "schema root is not an object"
   in
@@ -305,7 +324,8 @@ let validate ~(root : json) (schema : json) (v : json) : string list =
     | Obj kws -> (
         List.iter
           (fun (k, _) ->
-            if not (List.mem k annotations || List.mem k supported) then failwith ("unsupported schema keyword " ^ k))
+            if not (List.mem k annotations || List.mem k supported) then
+              failwith ("unsupported schema keyword " ^ k))
           kws;
         let kw k = List.assoc_opt k kws in
         Option.iter
@@ -313,14 +333,22 @@ let validate ~(root : json) (schema : json) (v : json) : string list =
           (kw "$ref");
         Option.iter
           (fun t ->
-            let allowed = match t with Str s -> [ s ] | Arr l -> List.map (function Str s -> s | _ -> "?") l | _ -> [] in
+            let allowed =
+              match t with
+              | Str s -> [ s ]
+              | Arr l -> List.map (function Str s -> s | _ -> "?") l
+              | _ -> []
+            in
             let actual = type_name v in
             let ok = List.mem actual allowed || (actual = "integer" && List.mem "number" allowed) in
-            if not ok then err path (Printf.sprintf "expected type %s, got %s" (String.concat "|" allowed) actual))
+            if not ok then
+              err path
+                (Printf.sprintf "expected type %s, got %s" (String.concat "|" allowed) actual))
           (kw "type");
         Option.iter
           (function
-            | Arr opts -> if not (List.mem v opts) then err path "value not in enum" | _ -> failwith "enum")
+            | Arr opts -> if not (List.mem v opts) then err path "value not in enum"
+            | _ -> failwith "enum")
           (kw "enum");
         (match v with
         | Obj fields ->
@@ -329,12 +357,19 @@ let validate ~(root : json) (schema : json) (v : json) : string list =
                 | Arr req ->
                     List.iter
                       (function
-                        | Str f -> if not (List.mem_assoc f fields) then err path ("missing required property " ^ f)
+                        | Str f ->
+                            if not (List.mem_assoc f fields) then
+                              err path ("missing required property " ^ f)
                         | _ -> failwith "required")
                       req
                 | _ -> failwith "required")
               (kw "required");
-            let props = match kw "properties" with Some (Obj p) -> p | None -> [] | _ -> failwith "properties" in
+            let props =
+              match kw "properties" with
+              | Some (Obj p) -> p
+              | None -> []
+              | _ -> failwith "properties"
+            in
             List.iter
               (fun (f, fv) ->
                 match List.assoc_opt f props with
@@ -348,22 +383,28 @@ let validate ~(root : json) (schema : json) (v : json) : string list =
         | _ -> ());
         (match v with
         | Arr items ->
-            Option.iter (fun s -> List.iteri (fun i x -> check (Printf.sprintf "%s/%d" path i) s x) items) (kw "items");
+            Option.iter
+              (fun s -> List.iteri (fun i x -> check (Printf.sprintf "%s/%d" path i) s x) items)
+              (kw "items");
             Option.iter
               (function
-                | Num k -> if float_of_int (List.length items) < k then err path "too few items" | _ -> failwith "minItems")
+                | Num k -> if float_of_int (List.length items) < k then err path "too few items"
+                | _ -> failwith "minItems")
               (kw "minItems")
         | _ -> ());
         (match v with
         | Str s ->
             Option.iter
               (function
-                | Str p -> if not (re_search (parse_re p) s) then err path (Printf.sprintf "%S does not match %s" s p)
+                | Str p ->
+                    if not (re_search (parse_re p) s) then
+                      err path (Printf.sprintf "%S does not match %s" s p)
                 | _ -> failwith "pattern")
               (kw "pattern");
             Option.iter
               (function
-                | Num k -> if float_of_int (utf8_length s 0 0) < k then err path "string too short" | _ -> failwith "minLength")
+                | Num k -> if float_of_int (utf8_length s 0 0) < k then err path "string too short"
+                | _ -> failwith "minLength")
               (kw "minLength")
         | _ -> ());
         match v with
@@ -380,5 +421,4 @@ let validate ~(root : json) (schema : json) (v : json) : string list =
   List.rev !errs
 
 let schema_path = "../../../docs/diagnostics.schema.json"
-
 let load_schema () = parse (In_channel.with_open_bin schema_path In_channel.input_all)

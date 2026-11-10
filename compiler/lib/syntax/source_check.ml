@@ -51,7 +51,8 @@ let decode src i cp_out =
     else if b0 = 0xF0 then (4, 0x90, 0xBF)
     else if b0 >= 0xF1 && b0 <= 0xF3 then (4, 0x80, 0xBF)
     else if b0 = 0xF4 then (4, 0x80, 0x8F)
-    else (0, 0, 0) (* 80..C1 and F5..FF never start a sequence *)
+    else (0, 0, 0)
+    (* 80..C1 and F5..FF never start a sequence *)
   in
   if width = 1 then begin
     cp_out.(0) <- b0;
@@ -78,7 +79,9 @@ let check ~file src =
   let add d = diags := d :: !diags in
   let len = String.length src in
   let line = ref 1 and col = ref 1 in
-  let span c0 c1 = Span.make ~file ~start:{ Span.line = !line; col = c0 } ~stop:{ line = !line; col = c1 } in
+  let span c0 c1 =
+    Span.make ~file ~start:{ Span.line = !line; col = c0 } ~stop:{ line = !line; col = c1 }
+  in
   (* Column where the current run of ill-formed bytes started, or 0. A run is reported once (E0001); each maximal
      subpart counts as one column, as if replaced by U+FFFD. *)
   let bad_start = ref 0 in
@@ -108,16 +111,22 @@ let check ~file src =
         if cp = 0x0D then begin
           (* LEX-002: CR LF is accepted; a lone CR is not. *)
           if not (!i + 1 < len && src.[!i + 1] = '\n') then
-            add (D.error ~rule:"LEX-002" ~code:"E0003" (span !col (!col + 1)) "lone carriage return")
+            add
+              (D.error ~rule:"LEX-002" ~code:"E0003" (span !col (!col + 1)) "lone carriage return")
         end
         else if cp = 0xFEFF && !i = 0 then
-          add (D.error ~rule:"LEX-001" ~code:"E0002" (span !col (!col + 1)) "byte-order mark is not allowed")
+          add
+            (D.error ~rule:"LEX-001" ~code:"E0002"
+               (span !col (!col + 1))
+               "byte-order mark is not allowed")
         else if is_forbidden cp then
           add
-            (D.error ~rule:"LEX-003" ~code:"E0004" (span !col (!col + 1))
+            (D.error ~rule:"LEX-003" ~code:"E0004"
+               (span !col (!col + 1))
                (Printf.sprintf
-                  "forbidden character U+%04X (%s) — risk: hidden or reordered source text (Trojan Source)" cp
-                  (name cp)));
+                  "forbidden character U+%04X (%s) — risk: hidden or reordered source text (Trojan \
+                   Source)"
+                  cp (name cp)));
         incr col
       end;
       i := !i + w
