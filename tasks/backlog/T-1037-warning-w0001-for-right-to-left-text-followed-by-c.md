@@ -33,4 +33,6 @@ Anything not listed in the acceptance criteria; create follow-up tasks.
 
 ## Log
 
+2026-11-10 language-architect (owner-delegated, ADR-0017, security review resolution): LEX-005 scope: all string forms, char literals, template parts, comments, and lines whose first strong character is RTL; not suppressed for dependencies; `egide fmt --check` fails on W0001.
+
 ## Outcome

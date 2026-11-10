@@ -55,7 +55,8 @@ impl_body       = INDENT impl_item { impl_item } DEDENT ;
 impl_item       = { attribute NEWLINE } [ visibility ] fn_decl | "type" IDENT "=" type NEWLINE ;
 
 type_decl       = "type" IDENT [ generics ] "=" ( "new" type [ "where" expr ] | type ) ;
-const_decl      = "let" IDENT [ ":" type ] "=" ( expr NEWLINE | block_expr ) ;    (* implicitly comptime, CT-002 *)
+const_decl      = "let" IDENT [ ":" type ] "=" ( expr NEWLINE | const_block ) ;    (* implicitly comptime, CT-002 *)
+const_block     = if_expr | match_expr | loop_expr | fn_lambda | trailing_call ;     (* never unsafe, given, with: SYN-015 *)
 
 (* ---------- Types (SYN-042, TYP-006) ---------- *)
 

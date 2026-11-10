@@ -8,29 +8,50 @@
   normalised to LF; a lone CR is a compile-time error.
 - **[LEX-003]** The following code points are forbidden **anywhere** in a source file, including comments and string
   literals, to defeat "Trojan Source" attacks (CVE-2021-42574), hidden-text smuggling (TAG characters, variation
-  selectors) and invisible-character confusion (E0004):
-  1. all characters of general category `Cf` (format): this includes the bidirectional controls `U+061C`, `U+200E`,
-     `U+200F`, `U+202A`–`U+202E`, `U+2066`–`U+2069`, the zero-width characters `U+200B`–`U+200D`, `U+2060`, `U+FEFF`,
-     `U+00AD`, `U+180E`, `U+2061`–`U+2064`, `U+206A`–`U+206F`, `U+FFF9`–`U+FFFB` and the TAG characters
-     `U+E0000`–`U+E007F`;
-  2. the variation selectors `U+FE00`–`U+FE0F`, `U+E0100`–`U+E01EF`, `U+180B`–`U+180D`, `U+180F` (category `Mn`),
-     the combining grapheme joiner `U+034F` and the Hangul fillers `U+115F`, `U+1160`, `U+3164`, `U+FFA0` (category
-     `Lo`), which render as nothing or as blank;
-  3. line and paragraph separators `U+2028`, `U+2029`;
-  4. all other characters of general category `Cc` except LF and, inside string literals only, HT (`U+0009`).
+  selectors) and invisible-character confusion (E0004). The set is defined **by property**, not by enumeration:
 
-  Categories are those of Unicode 16.0; a code point that a later Unicode version adds to `Cf` is forbidden from the
-  first compiler release that adopts that version. **There is no allowlist**: not even the zero-width joiner or
-  non-joiner, nor `U+FE0F` after an emoji. A string literal that needs such a character writes it with an escape
-  (`"\u{200D}"`, `"\u{2764}\u{FE0F}"`, LEX-050), which is visible in the source and reviewable. An allowlist can be added
-  later without breaking any program; removing one could not.
+  > Cf ∪ Default_Ignorable_Code_Point ∪ Variation_Selector ∪ Noncharacter_Code_Point ∪ { U+2028, U+2029 } ∪
+  > Cc ∖ { LF } (and ∖ { HT } inside string literals only)
+
+  where Cf is the general category *Format*, Default_Ignorable_Code_Point (DICP) and Variation_Selector are the Unicode
+  properties of those names (assigned **or unassigned** code points: DICP reserves its ranges), and the noncharacters
+  are `U+FDD0`–`U+FDEF` and `U+xFFFE`, `U+xFFFF` for every plane. Unassigned code points that have none of these
+  properties are not forbidden (forbidding all of `Cn` would make a program's validity depend on the compiler's
+  Unicode version). Non-normative, the set includes: the bidirectional controls `U+061C`, `U+200E`, `U+200F`,
+  `U+202A`–`U+202E`, `U+2066`–`U+2069`; the zero-width characters `U+200B`–`U+200D`, `U+2060`, `U+FEFF`; `U+00AD`,
+  `U+034F`, `U+17B4`, `U+17B5`, `U+180B`–`U+180F`, `U+2061`–`U+2064`, `U+2065`, `U+206A`–`U+206F`, `U+115F`, `U+1160`,
+  `U+3164`, `U+FFA0`, `U+FE00`–`U+FE0F`, `U+FFF0`–`U+FFF8`, `U+FFF9`–`U+FFFB`, `U+E0000`–`U+E0FFF` (TAG characters,
+  variation selectors and every reserved code point between them).
+
+  **Unicode version and table.** The property data is Unicode **16.0.0** (`DerivedCoreProperties.txt`,
+  `UnicodeData.txt`, `PropList.txt`). The compiler embeds a generated table; it MUST NOT consult the host's libc, ICU
+  or runtime Unicode data, so that two machines agree. `tools/gen/unicode_forbidden.py` (task T-1033) regenerates the
+  table from the three files, whose SHA-256 digests are recorded in the generated file's header, and
+  `tools/check-generated.sh` fails when the table is stale. Adopting a newer Unicode version is a specification change
+  (an ADR that names the version), never an implicit compiler upgrade.
+
+  **No allowlist**, not even the zero-width joiner or non-joiner, nor `U+FE0F` after an emoji. A string literal that
+  needs such a character writes it with an escape (`"\u{200D}"`, `"\u{2764}\u{FE0F}"`, LEX-050), visible in the source.
+  An allowlist can be added later without breaking any program; removing one could not. Spaces of category `Zs` other
+  than `U+0020` (for example the no-break space) are allowed in comments and string literals only; outside them they
+  are E0051, so they never separate tokens or indent (LEX-004).
 - **[LEX-004]** The horizontal tab `U+0009` MUST NOT appear outside string literals. Indentation uses spaces only.
 - **[LEX-005] Display order of right-to-left text (non-goal, warning only).** Strong right-to-left letters (bidi class
-  `R` or `AL`) are not forbidden: they are legitimate text in strings and comments, and identifiers cannot contain
-  them (LEX-020). They can still make an editor display the rest of the line in a different order than it is lexed,
-  without changing the tokens. The compiler therefore does not reject them, and warns (W0001) when a string literal
-  or comment on a line contains such a letter and any token follows it on the same line; the fix is to bind the string
-  with `let` on its own line. The warning is a review aid, not a security guarantee (the Trojan Source defence is LEX-003).
+  `R` or `AL`) are not forbidden: they are legitimate text, and identifiers cannot contain them (LEX-020). They can
+  still make an editor display the rest of the line in a different order than it is lexed, without changing the
+  tokens. The compiler therefore does not reject them, and warns (W0001) when a string literal of any form (plain, raw,
+  triple-quoted, the literal parts of a template), a character literal or a comment contains such a letter and any
+  token follows it on the same line, or when the first strong character of a line is right-to-left. The fix is to bind
+  the string with `let` on its own line. W0001 is not suppressed for dependencies and `egide fmt --check` fails on it.
+  It is a review aid, not a security guarantee (the Trojan Source defence is LEX-003).
+- **[LEX-006] Output hygiene.** Every output of the toolchain that includes source text or the value of a string
+  literal passes it through one escaping function: diagnostics and their excerpts, `egide audit`, the SBOM, the
+  lockfile, LSP messages and hover text, test and panic output printed by the toolchain. The function renders every
+  code point of the LEX-003 set, every `Zs` other than `U+0020`, every bidi control, DEL, `\` and line breaks as `\u{H…}`
+  (or `\\`, `\n`), so a terminal escape sequence, an invisible character or a right-to-left override in a value can
+  never reach a terminal or a viewer. Machine formats (JSON, CycloneDX) use the format's own escape syntax such that
+  no raw code point of that set appears in the output bytes. Positive: `error[E0004]: forbidden character U+001B`.
+  Negative: an audit line that prints a `reason` containing `\u{1B}[2K` verbatim.
 
 ## 2.2 Comments
 
@@ -136,7 +157,8 @@ fn f(x: int) -> int:          # FN IDENT ( IDENT : IDENT ) -> IDENT :
 
 - **[LEX-050]** String literals are delimited by `"`. Escapes: `\\`, `\"`, `\n`, `\t`, `\r`, `\0`, `\{`, `\}`,
   `\u{H…}` (1–6 hex digits, any Unicode scalar value: surrogates and values above `10FFFF` are errors; characters
-  forbidden by LEX-003 are allowed here, because the escape makes them visible). Any other escape is an error (E0041).
+  forbidden by LEX-003 are allowed here, because the escape makes them visible in the source; the value is then
+  subject to LEX-006 in every tool output and to SYN-018 where a tool consumes it). Any other escape is an error (E0041).
   A raw LF inside `"…"` is an error.
 - **[LEX-051]** Triple-quoted strings `"""…"""` may span lines. The common leading indentation of their content lines
   is removed, as with Python's `textwrap.dedent`, but on the **raw source lines before escape processing**; whitespace-only
@@ -159,13 +181,21 @@ fn f(x: int) -> int:          # FN IDENT ( IDENT : IDENT ) -> IDENT :
   - An interpolation is `{` expr [ `:` spec ] `}`. The expression ends at the first `:` or `}` outside any bracket
     pair (`()`, `[]`, `{}`; nested string and template literals are tracked, so `f"{m["k"]}"` and `f"{ {1, 2} }"` work).
     `spec` is raw text without `{`, `}`, `"` or a line break. A line break inside `{…}` is allowed only in `"""`
-    templates. Unterminated or malformed interpolations are E0044.
+    templates. Inside `{…}` a `#` is E0044 (there are no comments there, so a comment can never hide a `}`).
+    Character literals, plain and triple-quoted strings and templates inside an interpolation are tokenised by the same
+    recursive lexer, so `f"{c == '"'}"` and `f"{m["k"]}"` end where they read. An empty spec (`{x:}`) is a spec.
+    Unterminated or malformed interpolations are E0044.
+  - Reading is left to right: a backslash consumes the next character first, then `{{` and `}}` are collapsed, and a lone
+    `}` in literal text is E0044. So `\{{x}}` is a protected `{`, the interpolation `{x}`, then a stray `}`: E0044.
+    Templates nest at most 8 levels deep (E0044); SYN-006 bounds everything else.
   - A `"""` template is dedented as in LEX-051 before it is split. There is no raw template form; all are raw.
 
-  The meaning of the prefix, including how literal parts are unescaped, is given by a `comptime` template function
-  (CT-040): `f` applies the escapes of LEX-050 to literal parts, `re` passes backslashes to the regex compiler. Only
-  `f`, and prefixes that declare a spec grammar in their `@template` registration, accept a `:spec`; the sink
-  templates (`sql`, `html`, `cmd`, `url`, `path`, ch. 12) MUST reject it (E0601), so that a spec string is never an
+  The literal parts handed to the template function are the text with each `{{` and `}}` collapsed to one brace
+  (sinks never re-scan for `{{`). The meaning of the prefix, including how literal parts are unescaped, is given by a
+  `comptime` template function (CT-040): `f` applies the escapes of LEX-050 to literal parts, `re` passes backslashes to the regex compiler. Only
+  `f`, and prefixes that declare a spec grammar in their `@template` registration, accept a `:spec`; a template whose result type is a
+  sink type (the std `sql`, `html`, `cmd`, `url`, `path`, and any other prefix returning a sink type, ch. 12) MUST reject
+  it (E0601), so that a spec string is never an
   unreviewed channel into a sink. Interpolated expressions are tokenised recursively; templates may nest.
 
 ## 2.7 Operators and punctuation

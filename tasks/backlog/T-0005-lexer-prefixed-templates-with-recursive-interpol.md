@@ -34,6 +34,8 @@ Anything not listed in the acceptance criteria; create follow-up tasks.
 
 ## Log
 
+2026-11-10 language-architect (owner-delegated, ADR-0017, security review resolution): LEX-055 end rule: `#` inside `{…}` is E0044; `\` consumes the next character first, then `{{`/`}}` collapse, lone `}` is E0044; char literals and nested strings tracked in interpolations; empty spec `{x:}` is a spec; literal parts delivered after brace collapse; template nesting limit 8 (E0044). E0601/E0602 live in the template/type phase, not in the lexer.
+
 2026-11-10 language-architect (owner-delegated, ADR-0016): Q-0014 decided (LEX-055): literal parts are raw, `{{`/`}}` only lexer escapes, a backslash only protects the next character, interpolation `{expr[:spec]}` ends at the first `:` or `}` outside brackets (strings and templates tracked), spec raw without `{ } "` or line break, line break inside `{}` only in triple-quoted templates, keywords are never prefixes, triple-quoted templates dedented before splitting, E0044 for malformed interpolation. Sink prefixes rejecting `:spec` (E0601) belong to the template functions, not the lexer.
 
 ## Outcome

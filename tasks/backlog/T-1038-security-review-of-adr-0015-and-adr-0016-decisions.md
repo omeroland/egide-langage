@@ -33,4 +33,6 @@ Anything not listed in the acceptance criteria; create follow-up tasks.
 
 ## Log
 
+2026-11-10 language-architect (owner-delegated, ADR-0017, security review resolution): The review is posted (PR #14, #15). Resolution is ADR-0017. Remaining: add the review's PoC files to tests/security/ (append-only) once the rules are implemented, and re-review the SYN-018 / LEX-006 / GO-032 text.
+
 ## Outcome

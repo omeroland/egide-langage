@@ -1,5 +1,5 @@
 /* ADR-0013 / ADR-0014 / ADR-0015 grammar check (scratch, not part of the build).
-   Menhir transcription of spec/grammar/egide.ebnf v0.3-draft: simplified only in that semantic actions are empty
+   Menhir transcription of spec/grammar/egide.ebnf v0.3-draft (top-level `let` takes const_block, ADR-0017): simplified only in that semantic actions are empty
    and the lexer terminals are abstract tokens. Trailing commas use tcl(X) because `{ "," x } [ "," ]` needs two
    tokens of lookahead in Menhir's list combinators.
    Run:  menhir --explain egide.mly   -> no conflict warning, empty egide.conflicts
@@ -60,7 +60,8 @@ impl_item: list(terminated(attribute, NEWLINE)) option(visibility) fn_decl {} | 
 type_decl: TYPE IDENT option(generics) EQ NEW ty option(preceded(WHERE, expr)) {}
   | TYPE IDENT option(generics) EQ ty {}
 const_decl: LET IDENT option(preceded(COLON, ty)) EQ expr NEWLINE {}
-  | LET IDENT option(preceded(COLON, ty)) EQ block_expr {}
+  | LET IDENT option(preceded(COLON, ty)) EQ const_block {}
+const_block: if_expr | match_expr | loop_expr | fn_lambda | trailing_call {}
 ty: ret_type | fn_type {}
 ret_type: simple_type option(QUESTION) {}
 simple_type: path option(delimited(LBRACKET, gen_args, RBRACKET)) {}

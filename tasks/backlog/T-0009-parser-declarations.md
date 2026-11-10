@@ -33,6 +33,8 @@ Anything not listed in the acceptance criteria; create follow-up tasks.
 
 ## Log
 
+2026-11-10 language-architect (owner-delegated, ADR-0017, security review resolution): Top-level `let` uses `const_block` (no unsafe/given/with); `pub(package)` counts as `pub` (TYP-003, CAP-034); one namespace for types and values; E0115 `import go` path is printable ASCII.
+
 2026-11-10 language-architect (owner-delegated): spec/grammar/egide.ebnf is v0.3 (ADR-0013, ADR-0014, ADR-0015 accepted). Read `docs/adr/attachments/0013-menhir-check.mly` (0 conflicts) as the starting point for parser.mly, and do T-1030 (AST) first. Here: `suite`/layout contract LEX-036; `struct Name`/`impl T for U` without body; `visibility` incl. `pub(package)`; `params` with `self_param` first; `type_decl` where only after `new`; no top-level `comptime let`; no `pub impl`; `import` alias xor items; types per ADR-0014/TYP-006. Q-0002, Q-0011, Q-0020 are decided.
 
 ## Outcome

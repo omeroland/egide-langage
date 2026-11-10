@@ -62,3 +62,5 @@ Decided by: owner-delegated (language-architect), 2026-11-10; the owner reviews 
 Option A. Comments are recorded in a side table; a run of `##` lines directly above (no blank line) a module, top-level declaration, field, variant, trait item or impl item documents it; any other `##` is W0002. ERR-002: `# ignored: <reason>` on the statement's last line, non-empty reason, else E0304.
 
 ADR-0016. Rules: LEX-011, LEX-031, ERR-002; EBNF has no `doc_comment`. Work: T-1036.
+
+Amended 2026-11-10 by ADR-0017 (security review, owner-delegated): see the ADR for the changed rules (ERR-002 spoof cases, never-read `Result` bindings).

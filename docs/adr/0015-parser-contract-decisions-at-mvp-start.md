@@ -84,3 +84,7 @@ notation `{ "," x } [ "," ]` is fine for readers; the parser uses the factored f
 - Implementation: T-0009..T-0013 and  tasks T-1030 (AST), T-1031 (post-parse checks), T-1032 (layout tests).
 - Diagnostics: E0104..E0117 added to `docs/diagnostics.md` (allocated).
 - Migration: none (pre-1.0).
+
+## Amendment
+
+Amended by ADR-0017 (resolution of the security review): see its table for the rules changed (LEX-003, LEX-006, LEX-055, SYN-018, GO-032, PKG-030, ERR-002 and others). Where this ADR and ADR-0017 differ, ADR-0017 wins.

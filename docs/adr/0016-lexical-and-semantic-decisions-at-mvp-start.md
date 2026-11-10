@@ -64,3 +64,7 @@ Choices the owner should see first:
 - Implementation: T-1033 (forbidden set), T-1080 (diagnostic cap), T-1035 (layout), T-1036 (comment trivia and ERR-002
   check), T-1037 (RTL warning), T-1038 (security review); T-0003..T-0005 and T-0015 logs updated.
 - Migration: none (pre-1.0). The README and examples are updated in this PR.
+
+## Amendment
+
+Amended by ADR-0017 (resolution of the security review): see its table for the rules changed (LEX-003, LEX-006, LEX-055, SYN-018, GO-032, PKG-030, ERR-002 and others). Where this ADR and ADR-0017 differ, ADR-0017 wins.

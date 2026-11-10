@@ -60,3 +60,5 @@ Decided by: owner-delegated (language-architect), 2026-11-10; the owner reviews 
 Option A. `let pattern = expr else: block` is pattern matching only: `let Ok(id) = TenantId.parse(s) else: …`. No implicit unwrap; an irrefutable pattern with `else` is an error. README, `examples/tenants_api.egd` (2 sites) and ch. 8 are rewritten. Security note (for `security-reviewer`): one reading in every case; a validated unwrap cannot be mistaken for a match on the `Result`.
 
 ADR-0016. Rules: ERR-012, TYP-062 (SYN-012 unchanged). Security-relevant: T-1038.
+
+Amended 2026-11-10 by ADR-0017 (security review, owner-delegated): see the ADR for the changed rules (`egide audit` lists let-else on a `Result`).

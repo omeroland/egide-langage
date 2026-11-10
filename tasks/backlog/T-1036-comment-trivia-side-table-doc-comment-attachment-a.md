@@ -34,4 +34,6 @@ Anything not listed in the acceptance criteria; create follow-up tasks.
 
 ## Log
 
+2026-11-10 language-architect (owner-delegated, ADR-0017, security review resolution): ERR-002: the lookup returns the kind-`#` comment on the line of the statement's last token (not the first), never from inside strings; `##` does not count; reason needs a non-whitespace, non-Zs character. A never-read `Result` binding (`_x` too) is a discard (E0304).
+
 ## Outcome

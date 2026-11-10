@@ -3,10 +3,13 @@
 ## 8.1 Errors are values
 
 - **[ERR-001]** Recoverable errors are values of type `Result[T, E]`. There are no exceptions.
-- **[ERR-002]** A value of type `Result` MUST be used: binding it, matching it, propagating it with `?`, returning it
-  or passing it on. Discarding it is a compile-time error. The explicit discard is
-  `let _ = f()  # ignored: <reason>`; the comment MUST end the statement's last line, start with `# ignored:` and give a non-empty reason (E0304
-  otherwise), and `egide audit` lists these sites.
+- **[ERR-002]** A value of type `Result` MUST be used: matching it, propagating it with `?`, returning it, passing it
+  on, or binding it to a name that is later read. Discarding it is a compile-time error (E0304); a `Result`-typed
+  binding that is never read, including a name starting with `_`, is a discard. The explicit discard is
+  `let _ = f()  # ignored: <reason>`. The check reads the comment side table (LEX-031), not the text: the comment MUST
+  be of kind `#` (a `##` comment does not count), MUST be on the line of the statement's last token, MUST start with
+  `# ignored:` and MUST have a reason with at least one character that is not whitespace or `Zs`. The text `# ignored:`
+  inside a string or triple-quoted literal is not a comment. `egide audit` lists these sites.
 
 ## 8.2 Propagation
 
@@ -18,7 +21,8 @@
   the block runs and MUST diverge (SYN-012). It is the form for unwrapping: `let Some(port) = cfg.port else: …`,
   `let Ok(id) = TenantId.parse(s) else: …`. There is no implicit unwrap: `let id = TenantId.parse(s) else: …` binds the
   whole `Result`, the `else` is unreachable (TYP-061) and the compiler rejects it. The error value is not bound; use
-  `match`, or `?` with `.context(…)`, to read it.
+  `match`, or `?` with `.context(…)`, to read it. `egide audit` lists every `let … else` whose scrutinee has type
+  `Result`, because the `else` block silently consumes the error.
 - **[ERR-013]** `res.context("while loading config")` wraps an error with a message, keeping the cause chain;
   `Error` (the dynamic application error type in `std.error`) prints the chain.
 

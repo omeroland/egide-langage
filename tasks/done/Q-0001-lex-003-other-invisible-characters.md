@@ -57,3 +57,5 @@ Decided by: owner-delegated (language-architect), 2026-11-10; the owner reviews 
 Option C without an allowlist. LEX-003 forbids every `Cf` character, the variation selectors, U+034F and the Hangul fillers, everywhere, as E0004. Strings write such characters with `\u{…}`, which LEX-050 now accepts for any scalar value. ZWJ/ZWNJ/U+FE0F get no exception (cost and reasons in ADR-0016). RTL letters in strings: explicit non-goal, warning W0001 (LEX-005). Zs spaces stay allowed.
 
 ADR-0016. Rules: LEX-003, LEX-005 (new), LEX-050. Lexer work: T-1033; flood cap T-1080; warning T-1037.
+
+Amended 2026-11-10 by ADR-0017 (security review, owner-delegated): see the ADR for the changed rules (LEX-003 by property, LEX-006, SYN-018).

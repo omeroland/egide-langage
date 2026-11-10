@@ -57,3 +57,5 @@ Decided by: owner-delegated (language-architect), 2026-11-10; the owner reviews 
 (a) literal parts raw, `{{`/`}}` the only lexer escapes, backslash protects the next character; (b) `{expr[:spec]}` ends at the first `:` or `}` outside brackets, spec is raw without `{ } "` or line break, line breaks inside `{}` only in triple-quoted templates, **sink templates (`sql`, `html`, `cmd`, `url`, `path`) reject `:spec` (E0601)**; (c) a keyword is never a prefix; (d) triple-quoted templates are dedented first, no raw form. `re"…{{2,62}}…"` in the example.
 
 ADR-0016. Rules: LEX-055, CT-040, CT-041. Security-relevant: for `security-reviewer` (T-1038).
+
+Amended 2026-11-10 by ADR-0017 (security review, owner-delegated): see the ADR for the changed rules (LEX-055 end rule, E0601 keyed by result type, reserved std prefixes).

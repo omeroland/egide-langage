@@ -35,6 +35,8 @@ Split into two PRs if it exceeds 400 lines (expressions first, then lambdas/comp
 
 ## Log
 
+2026-11-10 language-architect (owner-delegated, ADR-0017, security review resolution): `using` arguments: last, bind only `using` parameters, E0120 (SYN-030). Nesting limit E0119 (SYN-006). Parenthesised expression is not a place (SYN-012).
+
 2026-11-10 language-architect (owner-delegated): spec/grammar/egide.ebnf is v0.3 (ADR-0013, ADR-0014, ADR-0015 accepted). Read `docs/adr/attachments/0013-menhir-check.mly` (0 conflicts) as the starting point for parser.mly, and do T-1030 (AST) first. Here: Q-0009 (no slice production, SYN-043), Q-0010 (cover grammar `paren_form`/`cover_item`/`arg`, SYN-065), Q-0011.1 (`using` argument), Q-0017 (`|>` shape check, E0108), SYN-042 generic arguments `[ ... ]`, block-ended expressions outside `expr`. `..=` needs an upper bound.
 
 ## Outcome

@@ -58,3 +58,5 @@ Decided by: owner-delegated (language-architect), 2026-11-10; the owner reviews 
 Item 1: add `using name: expr` argument. 2: `pub(package)`, `package` contextual (E0111). 3: option (b), type-returning functions and anonymous `struct:` removed; use generic declarations with `comptime` parameters. 4: `@go_threadsafe` is an attribute on a `type` alias of an imported Go type. 5: closed attribute table in ch. 3, own line, E0117. 6: `unsafe(reason: "…"): block` is a block-ended expression; `reason` checked (E0110); effect stays MEM-070/071. 7: covered by ADR-0014.
 
 ADR-0015 (items 1-6), ADR-0014 (7). Rules: SYN-017 (new), SYN-023 (table), SYN-003, SYN-030, CT-011, CT-012, GO-032, TOOL-030. Security-relevant, for `security-reviewer`: items 3, 4, 6.
+
+Amended 2026-11-10 by ADR-0017 (security review, owner-delegated): see the ADR for the changed rules (`@go_threadsafe` gated by the manifest and a reason, GO-032, PKG-030; top-level `let` restriction; SYN-018 for `unsafe` reasons).
