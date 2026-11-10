@@ -22,7 +22,10 @@ let bool b = e (Lit (Bool b))
 let tn name = t (Ty_path { path = path name; args = [] })
 let tapp name args = t (Ty_path { path = path name; args = List.map (fun a -> Ta_type a) args })
 let bin op lhs rhs = e (Binary { op; lhs; rhs })
-let arg ?label ?(inout = false) value : arg = { label = Option.map id label; inout; value; span = sp }
+
+let arg ?label ?(inout = false) value : arg =
+  { label = Option.map id label; inout; value; span = sp }
+
 let call f args = e (Call { callee = f; args })
 let dot target name = e (Field { target; name = id name })
 let pbind n = p (Pat_bind (id n))
@@ -39,17 +42,20 @@ let fsig ?(generics = []) ?ret ?(using = []) name params : fn_sig =
   { name = id name; generics; params; ret; using; span = sp }
 
 let fn_decl sig_ stmts : fn_decl = { sig_; body = blk stmts; span = sp }
-
 let decl ?doc ?(attrs = []) ?(pub = false) d : decl = { doc; attrs; pub; decl = d; span = sp }
-
 let attr ?args name : attribute = { name = id name; args; span = sp }
 
 let field ?doc ?(attrs = []) ?(pub = false) ?default name ty : field =
   { doc; attrs; pub; name = id name; ty; default; span = sp }
 
 let variant ?doc ?(fields = Vf_none) name : variant = { doc; name = id name; fields; span = sp }
-let generic ?(comptime = false) ?(bounds = []) name : generic = { comptime; name = id name; bounds; span = sp }
-let file ?doc ?(imports = []) m decls : file = { doc; module_path = path m; imports; decls; span = sp }
+
+let generic ?(comptime = false) ?(bounds = []) name : generic =
+  { comptime; name = id name; bounds; span = sp }
+
+let file ?doc ?(imports = []) m decls : file =
+  { doc; module_path = path m; imports; decls; span = sp }
+
 let import d : import = { import = d; span = sp }
 let print_decl d = print_endline (Print.decl d)
 let print_expr ex = print_endline (Print.expr ex)
@@ -66,9 +72,16 @@ let%expect_test "file with doc comment and every import form" =
         [
           import (Import { path = path "std.fmt"; items = None; alias = None });
           import
-            (Import { path = path "std.http"; items = Some [ item "Server"; item "Request" ~alias:"Req" ]; alias = None });
+            (Import
+               {
+                 path = path "std.http";
+                 items = Some [ item "Server"; item "Request" ~alias:"Req" ];
+                 alias = None;
+               });
           import (Import { path = path "egide.pg"; items = None; alias = Some (id "pg") });
-          import (Import_go { package = "k8s.io/client-go/kubernetes"; package_span = sp; alias = id "kube" });
+          import
+            (Import_go
+               { package = "k8s.io/client-go/kubernetes"; package_span = sp; alias = id "kube" });
         ]
       [ decl (Const { comptime = false; name = id "LIMIT"; ty = None; value = int "10" }) ]
   in
@@ -94,7 +107,11 @@ let%expect_test "struct, enum, trait, impl and type declarations of spec 3.3" =
             name = id "Article";
             generics = [];
             fields =
-              [ field "name" (tn "str"); field "price" (tn "Money"); field "stock" (tn "int") ~default:(int "0") ];
+              [
+                field "name" (tn "str");
+                field "price" (tn "Money");
+                field "stock" (tn "int") ~default:(int "0");
+              ];
           }));
   print_decl
     (decl ~pub:true
@@ -116,7 +133,14 @@ let%expect_test "struct, enum, trait, impl and type declarations of spec 3.3" =
             name = id "Display";
             generics = [];
             supertraits = [];
-            items = [ { doc = None; item = Ti_sig (fsig "display" [ self_param By_read ] ~ret:(tn "str")); span = sp } ];
+            items =
+              [
+                {
+                  doc = None;
+                  item = Ti_sig (fsig "display" [ self_param By_read ] ~ret:(tn "str"));
+                  span = sp;
+                };
+              ];
           }));
   let display_body =
     e
@@ -149,21 +173,39 @@ let%expect_test "struct, enum, trait, impl and type declarations of spec 3.3" =
                       {
                         attrs = [];
                         pub = false;
-                        fn_ = fn_decl (fsig "display" [ self_param By_read ] ~ret:(tn "str")) [ s (Expr display_body) ];
+                        fn_ =
+                          fn_decl
+                            (fsig "display" [ self_param By_read ] ~ret:(tn "str"))
+                            [ s (Expr display_body) ];
                       };
                   span = sp;
                 };
               ];
           }));
-  print_decl (decl (Type { name = id "UserId"; generics = []; newtype = true; ty = tn "int"; where_ = None }));
-  let range_check = e (Compare { first = int "1"; rest = [ (Le, e Self); (Le, int "65535") ] }) in
   print_decl
-    (decl (Type { name = id "Port"; generics = []; newtype = true; ty = tn "u16"; where_ = Some range_check }));
+    (decl
+       (Type { name = id "UserId"; generics = []; newtype = true; ty = tn "int"; where_ = None }));
+  let range_check = e (Compare { first = int "1"; rest = [ (Le, e Self); (Le, int "65535") ] }) in
   print_decl
     (decl
        (Type
-          { name = id "Headers"; generics = []; newtype = false; ty = tapp "Map" [ tn "str"; tapp "List" [ tn "str" ] ];
-            where_ = None }));
+          {
+            name = id "Port";
+            generics = [];
+            newtype = true;
+            ty = tn "u16";
+            where_ = Some range_check;
+          }));
+  print_decl
+    (decl
+       (Type
+          {
+            name = id "Headers";
+            generics = [];
+            newtype = false;
+            ty = tapp "Map" [ tn "str"; tapp "List" [ tn "str" ] ];
+            where_ = None;
+          }));
   [%expect
     {|
     (struct pub Article (field name str) (field price Money) (field stock int (default (int 0))))
@@ -201,7 +243,9 @@ let%expect_test "function declaration with attributes, generics, modes, defaults
     (decl ~doc:"Copies." ~pub:true
        ~attrs:[ attr "test"; attr "derive" ~args:[ x "Eq"; x "Show" ]; attr "acyclic" ~args:[] ]
        (Fn (fn_decl f [ s (Return None) ])));
-  print_decl (decl ~pub:true (Const { comptime = true; name = id "N"; ty = Some (tn "int"); value = int "4" }));
+  print_decl
+    (decl ~pub:true
+       (Const { comptime = true; name = id "N"; ty = Some (tn "int"); value = int "4" }));
   [%expect
     {|
     (fn pub copy_into
@@ -222,7 +266,8 @@ let%expect_test "function declaration with attributes, generics, modes, defaults
     |}]
 
 (* spec: SYN-003 *)
-let%expect_test "trait with supertraits, provided method and associated type; impl with associated type" =
+let%expect_test
+    "trait with supertraits, provided method and associated type; impl with associated type" =
   print_decl
     (decl
        (Trait
@@ -232,11 +277,19 @@ let%expect_test "trait with supertraits, provided method and associated type; im
             supertraits = [ tn "Len"; tn "Show" ];
             items =
               [
-                { doc = Some "Element type."; item = Ti_type { name = id "Item"; bound = Some (tn "Eq") }; span = sp };
+                {
+                  doc = Some "Element type.";
+                  item = Ti_type { name = id "Item"; bound = Some (tn "Eq") };
+                  span = sp;
+                };
                 { doc = None; item = Ti_type { name = id "Key"; bound = None }; span = sp };
                 {
                   doc = None;
-                  item = Ti_fn (fn_decl (fsig "empty" [ self_param By_read ] ~ret:(tn "bool")) [ s (Expr (bool true)) ]);
+                  item =
+                    Ti_fn
+                      (fn_decl
+                         (fsig "empty" [ self_param By_read ] ~ret:(tn "bool"))
+                         [ s (Expr (bool true)) ]);
                   span = sp;
                 };
               ];
@@ -271,7 +324,10 @@ let%expect_test "trait with supertraits, provided method and associated type; im
             name = id "Shape";
             generics = [ generic "N" ];
             variants =
-              [ variant ~doc:"A circle." "Circle" ~fields:(Vf_positional [ tn "N" ]); variant "Rect" ~fields:(Vf_positional [ tn "N"; tn "N" ]) ];
+              [
+                variant ~doc:"A circle." "Circle" ~fields:(Vf_positional [ tn "N" ]);
+                variant "Rect" ~fields:(Vf_positional [ tn "N"; tn "N" ]);
+              ];
           }));
   print_decl
     (decl
@@ -335,7 +391,13 @@ let%expect_test "every statement form of SYN-012" =
       s
         (Let
            {
-             pat = p (Pat_ctor { path = path "Some"; fields = [ Fp_field { label = None; pat = pbind "v"; span = sp } ] });
+             pat =
+               p
+                 (Pat_ctor
+                    {
+                      path = path "Some";
+                      fields = [ Fp_field { label = None; pat = pbind "v"; span = sp } ];
+                    });
              ty = None;
              value = x "opt";
              else_ = Some (blk [ s (Return None) ]);
@@ -357,14 +419,26 @@ let%expect_test "every statement form of SYN-012" =
       s Continue;
       s (Defer (call (dot (x "f") "close") []));
       s (Yield (x "n"));
-      s (Expr (e (If { branches = [ { cond = x "a"; body; span = sp }; { cond = x "b"; body; span = sp } ]; else_ = None })));
+      s
+        (Expr
+           (e
+              (If
+                 {
+                   branches =
+                     [ { cond = x "a"; body; span = sp }; { cond = x "b"; body; span = sp } ];
+                   else_ = None;
+                 })));
       s (For { pat = pbind "i"; iter = x "xs"; body });
       s (While { cond = bool true; body });
       s (Loop body);
       s
         (With
            {
-             items = [ { name = Some (id "f"); value = call (x "open") [ arg (str "a") ]; span = sp }; { name = None; value = x "lock"; span = sp } ];
+             items =
+               [
+                 { name = Some (id "f"); value = call (x "open") [ arg (str "a") ]; span = sp };
+                 { name = None; value = x "lock"; span = sp };
+               ];
              body;
            });
       s (Given { caps = [ x "net"; x "clock" ]; body });
@@ -398,20 +472,47 @@ let%expect_test "every statement form of SYN-012" =
 let%expect_test "operators, calls, postfix forms, slices, conditional and pipe" =
   List.iter print_expr
     [
-      call (x "send") [ arg (x "msg"); arg ~label:"urgent" (bool true); arg ~inout:true (x "buf"); arg ~label:"out" ~inout:true (x "o") ];
+      call (x "send")
+        [
+          arg (x "msg");
+          arg ~label:"urgent" (bool true);
+          arg ~inout:true (x "buf");
+          arg ~label:"out" ~inout:true (x "o");
+        ];
       e (Try (call (dot (x "db") "ping") []));
       e (Index { target = x "xs"; index = int "0" });
-      e (Index { target = x "xs"; index = e (Range { lo = Some (x "a"); hi = Some (x "b"); inclusive = false }) });
-      e (Index { target = x "xs"; index = e (Range { lo = None; hi = Some (x "b"); inclusive = true }) });
-      e (Index { target = x "xs"; index = e (Range { lo = Some (x "a"); hi = None; inclusive = false }) });
+      e
+        (Index
+           {
+             target = x "xs";
+             index = e (Range { lo = Some (x "a"); hi = Some (x "b"); inclusive = false });
+           });
+      e
+        (Index
+           { target = x "xs"; index = e (Range { lo = None; hi = Some (x "b"); inclusive = true }) });
+      e
+        (Index
+           {
+             target = x "xs";
+             index = e (Range { lo = Some (x "a"); hi = None; inclusive = false });
+           });
       e (Range { lo = None; hi = None; inclusive = false });
       bin Pow (x "a") (bin Pow (x "b") (x "c"));
       e (Unary { op = Neg; operand = e (Unary { op = Bit_not; operand = x "a" }) });
       e (Unary { op = Not; operand = x "ok" });
-      bin Add (bin Mul (x "a") (x "b")) (bin Rem (x "c") (bin Div (x "d") (bin Sub (x "e") (x "f"))));
-      bin Bit_or (bin Bit_xor (x "a") (bin Bit_and (x "b") (bin Shl (x "c") (bin Shr (x "d") (x "e"))))) (x "f");
+      bin Add
+        (bin Mul (x "a") (x "b"))
+        (bin Rem (x "c") (bin Div (x "d") (bin Sub (x "e") (x "f"))));
+      bin Bit_or
+        (bin Bit_xor (x "a") (bin Bit_and (x "b") (bin Shl (x "c") (bin Shr (x "d") (x "e")))))
+        (x "f");
       bin Or (bin And (x "a") (x "b")) (x "c");
-      e (Compare { first = x "a"; rest = [ (Lt, x "b"); (Le, x "c"); (Eq, x "d"); (Ne, x "e"); (Gt, x "f"); (Ge, x "g") ] });
+      e
+        (Compare
+           {
+             first = x "a";
+             rest = [ (Lt, x "b"); (Le, x "c"); (Eq, x "d"); (Ne, x "e"); (Gt, x "f"); (Ge, x "g") ];
+           });
       e (Paren (bin Bit_and (x "a") (x "b")));
       e (Cond { cond = x "c"; then_ = x "a"; else_ = x "b" });
       bin Pipe (x "x") (call (x "f") [ arg (x "a") ]);
@@ -454,7 +555,13 @@ let%expect_test "literals, collections and comprehensions" =
       e (Lit (Bytes "\x00\xff"));
       e (Lit (Char (Uchar.of_int 0xE9)));
       e (Lit (Char (Uchar.of_int 0x0A)));
-      e (Lit (Template { prefix = id "sql"; parts = [ Text { text = "select {"; span = sp }; Interp (x "q") ] }));
+      e
+        (Lit
+           (Template
+              {
+                prefix = id "sql";
+                parts = [ Text { text = "select {"; span = sp }; Interp (x "q") ];
+              }));
       bool false;
       e (Tuple []);
       e (Tuple [ x "a" ]);
@@ -462,9 +569,16 @@ let%expect_test "literals, collections and comprehensions" =
       e (Set [ int "1" ]);
       e (Map []);
       e (Map [ entry (str "a") (int "1") ]);
-      e (Comprehension { kind = Comp_list (x "e"); clauses = [ for_ (pbind "p") (x "xs"); if_ (x "c"); for_ (pbind "q") (x "ys") ] });
+      e
+        (Comprehension
+           {
+             kind = Comp_list (x "e");
+             clauses = [ for_ (pbind "p") (x "xs"); if_ (x "c"); for_ (pbind "q") (x "ys") ];
+           });
       e (Comprehension { kind = Comp_set (x "e"); clauses = [ for_ (pbind "p") (x "xs") ] });
-      e (Comprehension { kind = Comp_map (entry (x "k") (x "v")); clauses = [ for_ (pbind "p") (x "xs") ] });
+      e
+        (Comprehension
+           { kind = Comp_map (entry (x "k") (x "v")); clauses = [ for_ (pbind "p") (x "xs") ] });
       e (Comprehension { kind = Comp_iter (x "e"); clauses = [ for_ (pbind "p") (x "xs") ] });
     ];
   [%expect
@@ -498,7 +612,11 @@ let%expect_test "if expression with else, match with guards and unsafe block" =
     (e
        (If
           {
-            branches = [ { cond = x "a"; body = one (int "1"); span = sp }; { cond = x "b"; body = one (int "2"); span = sp } ];
+            branches =
+              [
+                { cond = x "a"; body = one (int "1"); span = sp };
+                { cond = x "b"; body = one (int "2"); span = sp };
+              ];
             else_ = Some (one (int "3"));
           }));
   print_expr
@@ -508,11 +626,17 @@ let%expect_test "if expression with else, match with guards and unsafe block" =
             scrutinee = x "v";
             arms =
               [
-                { pat = pbind "n"; guard = Some (e (Compare { first = x "n"; rest = [ (Gt, int "0") ] })); body = one (x "n"); span = sp };
+                {
+                  pat = pbind "n";
+                  guard = Some (e (Compare { first = x "n"; rest = [ (Gt, int "0") ] }));
+                  body = one (x "n");
+                  span = sp;
+                };
                 { pat = p Pat_wild; guard = None; body = one (int "0"); span = sp };
               ];
           }));
-  print_expr (e (Unsafe { reason = "FFI handle"; reason_span = sp; body = one (call (x "raw") []) }));
+  print_expr
+    (e (Unsafe { reason = "FFI handle"; reason_span = sp; body = one (call (x "raw") []) }));
   [%expect
     {|
     (if (path a) (block (int 1)) (elif (path b) (block (int 2))) (else (block (int 3))))
@@ -526,11 +650,16 @@ let%expect_test "short lambdas, function literals and trailing blocks" =
   print_expr (e (Lambda { params = [ lparam "a"; lparam "b" ]; body = bin Add (x "a") (x "b") }));
   print_expr (e (Lambda { params = []; body = call (x "now") [] }));
   print_expr (e (Lambda { params = [ lparam "x" ~ty:(tn "int") ]; body = x "x" }));
-  print_expr (e (Lambda { params = [ lparam ~mode:Inout "acc"; lparam ~mode:Take "v" ]; body = x "acc" }));
+  print_expr
+    (e (Lambda { params = [ lparam ~mode:Inout "acc"; lparam ~mode:Take "v" ]; body = x "acc" }));
   print_expr
     (e
        (Fn_lit
-          { params = [ lparam "req" ~ty:(tn "Request") ]; ret = Some (tn "Response"); body = blk [ s (Expr (call (x "ok") [])) ] }));
+          {
+            params = [ lparam "req" ~ty:(tn "Request") ];
+            ret = Some (tn "Response");
+            body = blk [ s (Expr (call (x "ok") [])) ];
+          }));
   (* server.get("/health") fn(req): … *)
   print_expr
     (e
@@ -549,7 +678,11 @@ let%expect_test "short lambdas, function literals and trailing blocks" =
                          value = call (dot (call (dot (x "db") "ping") []) "is_ok") [];
                          else_ = None;
                        });
-                  s (Expr (call (dot (x "Response") "json") [ arg (e (Map [ { key = str "ok"; value = x "ok"; span = sp } ])) ]));
+                  s
+                    (Expr
+                       (call
+                          (dot (x "Response") "json")
+                          [ arg (e (Map [ { key = str "ok"; value = x "ok"; span = sp } ])) ]));
                 ];
           }));
   (* retry(attempts: 3, delay: 200.ms) fn: … *)
@@ -559,10 +692,20 @@ let%expect_test "short lambdas, function literals and trailing blocks" =
           {
             callee =
               call (x "retry")
-                [ arg ~label:"attempts" (int "3"); arg ~label:"delay" (e (Lit (Duration { amount = "200"; unit = Ms }))) ];
+                [
+                  arg ~label:"attempts" (int "3");
+                  arg ~label:"delay" (e (Lit (Duration { amount = "200"; unit = Ms })));
+                ];
             params = [];
             body =
-              blk [ s (Expr (call (dot (x "api") "put") [ arg (str "/tenants"); arg ~label:"json" (x "t") ])) ];
+              blk
+                [
+                  s
+                    (Expr
+                       (call
+                          (dot (x "api") "put")
+                          [ arg (str "/tenants"); arg ~label:"json" (x "t") ]));
+                ];
           }));
   [%expect
     {|
@@ -597,10 +740,19 @@ let%expect_test "every pattern form of SYN-050" =
   show (p (Pat_lit (lit_pat (Char (Uchar.of_char 'z')))));
   show (p (Pat_lit (lit_pat (Bool true))));
   show (p (Pat_range { lo = lit_pat (Int "1"); hi = lit_pat (Int "9"); inclusive = true }));
-  show (p (Pat_range { lo = lit_pat ~negated:true (Int "9"); hi = lit_pat (Int "0"); inclusive = false }));
+  show
+    (p
+       (Pat_range
+          { lo = lit_pat ~negated:true (Int "9"); hi = lit_pat (Int "0"); inclusive = false }));
   show (ctor "Circle" [ fp ~label:"radius" (pbind "r") ]);
   show (ctor "Circle" [ fp (p Pat_wild) ]);
-  show (p (Pat_or [ ctor "Rect" [ fp (pbind "w"); fp (pbind "h") ]; ctor "Square" [ fp (p (Pat_as { pat = pbind "w"; name = id "h" })) ] ]));
+  show
+    (p
+       (Pat_or
+          [
+            ctor "Rect" [ fp (pbind "w"); fp (pbind "h") ];
+            ctor "Square" [ fp (p (Pat_as { pat = pbind "w"; name = id "h" })) ];
+          ]));
   show (ctor "shapes.Point" [ fp ~label:"x" (pbind "x"); Fp_rest sp ]);
   show (ctor "Unit" []);
   show (p (Pat_tuple [ pbind "a"; p Pat_wild ]));
@@ -648,14 +800,23 @@ let%expect_test "spans mode prints the span of every node" =
 
 (* spec: SYN-012 — span atoms do not displace the subject of a node; a place prints its span on the outermost step *)
 let%expect_test "spans mode on hand-built nodes" =
-  let at l c1 c2 = Egide_source.Span.make ~file:"t.egd" ~start:{ line = l; col = c1 } ~stop:{ line = l; col = c2 } in
+  let at l c1 c2 =
+    Egide_source.Span.make ~file:"t.egd" ~start:{ line = l; col = c1 } ~stop:{ line = l; col = c2 }
+  in
   let ident name sp : ident = { name; span = sp } in
-  let target = { expr = Path { segments = [ ident "f" (at 1 1 2) ]; span = at 1 1 2 }; span = at 1 1 2 } in
+  let target =
+    { expr = Path { segments = [ ident "f" (at 1 1 2) ]; span = at 1 1 2 }; span = at 1 1 2 }
+  in
   let callee : expr = { expr = Call { callee = target; args = [] }; span = at 1 1 4 } in
-  let pl : place = { root = ident "t" (at 2 1 2); steps = [ Place_field (ident "n" (at 2 3 4)) ]; span = at 2 1 4 } in
-  let st : stmt = { stmt = Assign { place = pl; op = Add_assign; value = callee }; span = at 2 1 9 } in
+  let pl : place =
+    { root = ident "t" (at 2 1 2); steps = [ Place_field (ident "n" (at 2 3 4)) ]; span = at 2 1 4 }
+  in
+  let st : stmt =
+    { stmt = Assign { place = pl; op = Add_assign; value = callee }; span = at 2 1 9 }
+  in
   print_endline (Print.stmt ~spans:true st);
-  [%expect {| (+= @2:1-2:9 (dot @2:1-2:4 t@2:1-2:2 n@2:3-2:4) (call @1:1-1:4 (path @1:1-1:2 f@1:1-1:2))) |}]
+  [%expect
+    {| (+= @2:1-2:9 (dot @2:1-2:4 t@2:1-2:2 n@2:3-2:4) (call @1:1-1:4 (path @1:1-1:2 f@1:1-1:2))) |}]
 
 let%expect_test "long nodes break after their leading atoms, deterministically" =
   let long = List.init 8 (fun i -> arg (x (Printf.sprintf "argument_number_%d" i))) in
@@ -683,7 +844,8 @@ let%expect_test "pp_* formatters print the same text as the string functions" =
   Format.printf "%a@." Print.pp_ty (tn "int");
   Format.printf "%a@." Print.pp_stmt (s Continue);
   Format.printf "%a@." Print.pp_block (blk [ s Continue ]);
-  Format.printf "%a@." Print.pp_decl (decl (Const { comptime = false; name = id "A"; ty = None; value = int "1" }));
+  Format.printf "%a@." Print.pp_decl
+    (decl (Const { comptime = false; name = id "A"; ty = None; value = int "1" }));
   Format.printf "%a@." Print.pp_file (file "m" []);
   [%expect
     {|
@@ -699,12 +861,16 @@ let%expect_test "pp_* formatters print the same text as the string functions" =
 (* ---------- equality ---------- *)
 
 let%expect_test "structural equality includes spans; printed equality ignores them" =
-  let parse src = match Parse.file ~file:"t.egd" src with Some f, _ -> f | None, _ -> assert false in
+  let parse src =
+    match Parse.file ~file:"t.egd" src with Some f, _ -> f | None, _ -> assert false
+  in
   let a = parse "module m\nlet x = 1\n" and b = parse "module m\nlet x = 1\n" in
   let shifted = parse "module m\n\nlet x = 1\n" and other = parse "module m\nlet x = 2\n" in
   Printf.printf "same source: %b\n" (equal_file a b);
-  Printf.printf "shifted spans: %b, printed: %b\n" (equal_file a shifted) (Print.file a = Print.file shifted);
-  Printf.printf "different value: %b, printed: %b\n" (equal_file a other) (Print.file a = Print.file other);
+  Printf.printf "shifted spans: %b, printed: %b\n" (equal_file a shifted)
+    (Print.file a = Print.file shifted);
+  Printf.printf "different value: %b, printed: %b\n" (equal_file a other)
+    (Print.file a = Print.file other);
   Printf.printf "expr: %b %b\n" (equal_expr (int "1") (int "1")) (equal_expr (int "1") (int "01"));
   Printf.printf "pattern: %b, ty: %b, stmt: %b, block: %b, decl: %b\n"
     (equal_pattern (p Pat_wild) (pbind "_"))

@@ -1,0 +1,6 @@
+# spec: LEX-001, LEX-003
+# expect: lex-fail
+# diagnostic: E0004 at 6:4
+# A BOM-valued U+FEFF that is not at the start of the file is a forbidden character, in a comment.
+module tests.lexical.bytes_bom_mid_file_comment
+# a﻿b

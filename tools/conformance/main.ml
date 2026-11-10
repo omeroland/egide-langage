@@ -9,7 +9,12 @@ let usage =
    Runs the .egd conformance tests under PATH (files or directories; default: tests/conformance\n\
    tests/security) against the egide compiler. Options:"
 
-let die fmt = Printf.ksprintf (fun m -> prerr_endline ("run-conformance: " ^ m); exit 2) fmt
+let die fmt =
+  Printf.ksprintf
+    (fun m ->
+      prerr_endline ("run-conformance: " ^ m);
+      exit 2)
+    fmt
 
 let () =
   let egide =
@@ -21,9 +26,7 @@ let () =
   let specs =
     Arg.align
       [
-        ( "--egide",
-          Arg.Set_string egide,
-          "EXE compiler to test (default: $EGIDE or the dune build)" );
+        ("--egide", Arg.Set_string egide, "EXE compiler to test (default: $EGIDE or the dune build)");
         ( "--phase",
           Arg.Int (fun n -> phase := Some n),
           "N current phase (default: read --phase-file)" );
@@ -61,10 +64,10 @@ let () =
     |> List.map String.trim
     |> List.filter (( <> ) "")
     |> List.map (fun s ->
-           match Header.backend_of_string s with
-           | Some b when List.mem b Suite.supported_backends -> b
-           | Some _ -> die "backend %s is not supported by the runner yet" s
-           | None -> die "unknown backend %s (expected interp, go or native)" s)
+        match Header.backend_of_string s with
+        | Some b when List.mem b Suite.supported_backends -> b
+        | Some _ -> die "backend %s is not supported by the runner yet" s
+        | None -> die "unknown backend %s (expected interp, go or native)" s)
   in
   let known_rules =
     if !spec_dir = "" then None
@@ -86,7 +89,8 @@ let () =
   Suite.print_report ~verbose:!verbose ~phase cases;
   if !verbose then
     Printf.printf "finished in %.2fs, up to %d compiler runs in parallel (--jobs %d)\n"
-      (Unix.gettimeofday () -. t0) peak cfg.jobs;
+      (Unix.gettimeofday () -. t0)
+      peak cfg.jobs;
   Option.iter
     (fun f ->
       try Out_channel.with_open_bin f (fun oc -> output_string oc (Junit.to_xml cases))

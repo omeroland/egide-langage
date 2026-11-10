@@ -42,6 +42,7 @@ let escape ~attr s =
 let attr = escape ~attr:true
 let text = escape ~attr:false
 let first_line s = match String.index_opt s '\n' with Some i -> String.sub s 0 i | None -> s
+
 let counts cases =
   let count p = List.length (List.filter p cases) in
   ( List.length cases,
@@ -84,7 +85,8 @@ let to_xml cases =
           | Pass -> add "%s/>\n" open_tag
           | Fail m ->
               add "%s>\n      <failure message=\"%s\">%s</failure>\n    </testcase>\n" open_tag
-                (attr (first_line m)) (text m)
+                (attr (first_line m))
+                (text m)
           | Skip m ->
               add "%s>\n      <skipped message=\"%s\"/>\n    </testcase>\n" open_tag (attr m))
         cs;

@@ -32,7 +32,7 @@ Anything not listed in the acceptance criteria; create follow-up tasks.
 
 ## Log
 
-2026-11-10 language-architect (owner-delegated, ADR-0016): The LEX-003 set grew (ADR-0016, T-1033): review the extended forbidden set and the Unicode-version pin; F1 (diagnostic flood) is T-1034, F3 (RTL) is LEX-005/T-1037.
+2026-11-10 language-architect (owner-delegated, ADR-0016): The LEX-003 set grew (ADR-0016, T-1033): review the extended forbidden set and the Unicode-version pin; F1 (diagnostic flood) is T-1080, F3 (RTL) is LEX-005/T-1037.
 
 ## Outcome
 

@@ -1,0 +1,6 @@
+# spec: LEX-002
+# expect: lex-fail
+# diagnostic: E0003 at 6:7
+module tests.security.lone_cr_in_doc_comment
+
+## doclet is_admin = 1

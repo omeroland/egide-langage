@@ -1,0 +1,6 @@
+# spec: LEX-002
+# expect: lex-fail
+# diagnostic: E0003 at 6:4
+# A lone CR that is the last byte of the file is E0003.
+module tests.lexical.bytes_lone_cr_at_eof
+# c

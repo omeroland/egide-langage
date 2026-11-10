@@ -59,8 +59,8 @@ Choices the owner should see first:
 
 - Complexity budget: net zero or negative. Additions: one lexer rule class (forbidden set grows), one warning (W0001).
   Removed: implicit unwrap, `t.0`, ambiguous durations.
-- Security: closes F2 of the T-0006 review; F1 (diagnostic flood) and F3 (RTL) get tasks T-1034 and T-1037; Q-0014 and
+- Security: closes F2 of the T-0006 review; F1 (diagnostic flood) and F3 (RTL) get tasks T-1080 and T-1037; Q-0014 and
   Q-0019 flagged for `security-reviewer` (T-1038).
-- Implementation: T-1033 (forbidden set), T-1034 (diagnostic cap), T-1035 (layout), T-1036 (comment trivia and ERR-002
+- Implementation: T-1033 (forbidden set), T-1080 (diagnostic cap), T-1035 (layout), T-1036 (comment trivia and ERR-002
   check), T-1037 (RTL warning), T-1038 (security review); T-0003..T-0005 and T-0015 logs updated.
 - Migration: none (pre-1.0). The README and examples are updated in this PR.

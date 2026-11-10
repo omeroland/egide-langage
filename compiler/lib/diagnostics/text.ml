@@ -2,7 +2,8 @@ type unit_ = Scalar of int | Byte of int
 
 let decode s i =
   let d = String.get_utf_8_uchar s i in
-  if Uchar.utf_decode_is_valid d then (Scalar (Uchar.to_int (Uchar.utf_decode_uchar d)), Uchar.utf_decode_length d)
+  if Uchar.utf_decode_is_valid d then
+    (Scalar (Uchar.to_int (Uchar.utf_decode_uchar d)), Uchar.utf_decode_length d)
   else (Byte (Char.code s.[i]), 1)
 
 let units s =
@@ -56,7 +57,9 @@ let utf8 cp =
   Buffer.add_utf_8_uchar b (Uchar.of_int cp);
   Buffer.contents b
 
-let escaped = function Byte b -> Printf.sprintf "<0x%02X>" b | Scalar cp -> Printf.sprintf "<U+%04X>" cp
+let escaped = function
+  | Byte b -> Printf.sprintf "<0x%02X>" b
+  | Scalar cp -> Printf.sprintf "<U+%04X>" cp
 
 let display u =
   match u with

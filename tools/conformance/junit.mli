@@ -5,8 +5,7 @@ type status = Pass | Fail of string | Skip of string
 
 type case = {
   file : string;  (** Test file path, e.g. [tests/conformance/lexical/layout_bad_dedent.egd]. *)
-  name : string;
-      (** Case name: the file's base name without [.egd], plus [\[backend\]] for runs. *)
+  name : string;  (** Case name: the file's base name without [.egd], plus [[backend]] for runs. *)
   status : status;
   time : float;
 }

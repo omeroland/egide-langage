@@ -1,0 +1,6 @@
+# spec: LEX-001
+# expect: lex-fail
+# diagnostic: E0001 at 6:21
+module tests.security.overlong_bidi_override_in_comment
+
+let is_admin = 0  # ð‚€® } if is_admin

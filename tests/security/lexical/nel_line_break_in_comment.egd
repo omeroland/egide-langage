@@ -1,0 +1,6 @@
+# spec: LEX-003
+# expect: lex-fail
+# diagnostic: E0004 at 6:7
+module tests.security.nel_line_break_in_comment
+
+# notelet is_admin = 1

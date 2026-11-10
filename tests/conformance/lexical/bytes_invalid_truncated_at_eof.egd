@@ -1,0 +1,6 @@
+# spec: LEX-001
+# expect: lex-fail
+# diagnostic: E0001 at 6:5
+# A sequence truncated by the end of the file is E0001 with no final newline.
+module tests.lexical.bytes_invalid_truncated_at_eof
+# c â‚
