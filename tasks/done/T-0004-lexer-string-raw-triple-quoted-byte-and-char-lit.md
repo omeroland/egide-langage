@@ -6,7 +6,7 @@ phase: 0
 role: syntax-engineer
 depends_on: [T-0001]
 spec: [LEX-050, LEX-051, LEX-052, LEX-053, LEX-054]
-paths: [compiler/lib/syntax/, compiler/test/syntax/, tests/conformance/lexical/, tools/gen/tokens.py, CHANGELOG.md]
+paths: [compiler/lib/syntax/, compiler/test/syntax/, tests/conformance/lexical/, tools/gen/tokens.py, CHANGELOG.md, docs/diagnostics.md, tasks/blocked/, tasks/backlog/T-1080*]
 estimate: M
 labels: []
 status: done
@@ -68,6 +68,13 @@ Anything not listed in the acceptance criteria; create follow-up tasks.
   comparable); one 5 M-character string: 1.50 s / 1.60 s (same work, within noise). No regression is evidenced; these
   numbers do not isolate the lexer and the 1 M lines/s target of docs/architecture.md §5 is not assessed (the
   pipeline is below it, as noted in T-0003).
+
+2026-11-10 syntax-engineer (T-0004, review of PR #26, new commits): (1) `dedent` computes the margin first and reports E0005
+only for tabs inside the margin (index < margin) and for tabs on blank lines (Q-0051.3, extrapolated); a tab beyond the
+margin is text (test and `string_triple_tab_after_margin.egd`). (2) `b"""` is E0043 on the three quotes (Q-0051.6), body read
+as a triple-quoted string. (3) Q-0051 has a tenth case (raw triple-quoted strings are dedented) and flags items 2 and 4 as
+a non-monotone pair to settle before T-0024. (4) docs/diagnostics.md rows E0005, E0040, E0043 extended; T-1080 now also
+covers E0041/E0043/E0005 floods; raw bidi/NUL tests in `'...'`, `b"..."`, `"""..."""`; a span property.
 
 ## Outcome
 

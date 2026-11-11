@@ -26,7 +26,7 @@ pull request**. Codes are never reused.
 | E0002 | LEX-001 | byte-order mark is not allowed | allocated |
 | E0003 | LEX-002 | lone carriage return | allocated |
 | E0004 | LEX-003 | forbidden character U+{cp} ({name}) — risk: hidden or reordered source text (Trojan Source) | allocated |
-| E0005 | LEX-004 | tab character outside a string literal; indent with 4 spaces | allocated |
+| E0005 | LEX-004 | tab character outside a string literal; indent with 4 spaces. Also: a tab in the margin (or on a blank line) of a triple-quoted string (LEX-051), and a raw tab in a character literal (LEX-054) | allocated |
 | E0010 | LEX-020 | non-ASCII character in identifier | allocated |
 | E0020 | LEX-032 | unexpected indentation (the previous line does not end with `:`) | allocated |
 | E0021 | LEX-032 | indentation must increase by exactly 4 spaces | allocated |
@@ -34,10 +34,10 @@ pull request**. Codes are never reused.
 | E0023 | LEX-033 | expected an indented block after `:` | allocated |
 | E0030 | LEX-040 | malformed integer literal | allocated |
 | E0031 | LEX-041 | malformed float literal | allocated |
-| E0040 | LEX-050 | unterminated string literal | allocated |
+| E0040 | LEX-050 | unterminated string literal (also unterminated raw, byte, triple-quoted string and character literal; the span is the opening quote or quotes) | allocated |
 | E0041 | LEX-050 | invalid escape sequence `\{c}` | allocated |
 | E0042 | LEX-054 | character literal must contain exactly one character | allocated |
-| E0043 | LEX-053 | byte string accepts only printable ASCII and the escapes `\\ \" \n \t \r \0 \xHH` | allocated |
+| E0043 | LEX-053 | byte string accepts only printable ASCII and the escapes `\\ \" \n \t \r \0 \xHH` (also: no `b"""` form) | allocated |
 | E0044 | LEX-055 | unterminated or malformed interpolation in template | allocated |
 | E0050 | LEX-061 | `;` is not used in Égide; statements end at line breaks | allocated |
 | E0051 | LEX-060 | unexpected character `{c}` | allocated |

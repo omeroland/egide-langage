@@ -469,20 +469,29 @@ let leading_ws s =
 
 (* LEX-051. The dedent of Python's [textwrap.dedent], on the raw lines (before escapes are read):
    1. the line break right after the opening quotes is dropped (only when it directly follows them);
-   2. a tab in the leading whitespace of any line is E0005 (LEX-004), one diagnostic per run of tabs;
-   3. the margin is the fewest leading spaces among the lines that are not blank (blank = only spaces);
+   2. the margin is the fewest leading whitespace characters among the lines that are not blank (blank = only
+      spaces and tabs);
+   3. a tab inside the margin, or on a blank line, is E0005 (LEX-004), one diagnostic per run of tabs; a tab beyond
+      the margin is text;
    4. blank lines become empty, the others lose the margin. The line break before the closing quotes stays: the
       last line is the (blank) text before them. *)
 let dedent st (lines : chunk list) : chunk list =
   let lines = match lines with { ctext = ""; _ } :: (_ :: _ as rest) -> rest | l -> l in
+  let blank c = leading_ws c.ctext = String.length c.ctext in
+  let margin =
+    List.fold_left (fun m c -> if blank c then m else min m (leading_ws c.ctext)) max_int lines
+  in
+  (* A tab is E0005 only inside the margin (index < margin); beyond it, it is text. On a blank line, which has no
+     margin of its own and whose whitespace is dropped, any tab in its whitespace is reported (Q-0051.3). *)
   List.iter
     (fun c ->
       let lead = leading_ws c.ctext in
+      let limit = if blank c then lead else min lead margin in
       let i = ref 0 in
-      while !i < lead do
+      while !i < limit do
         if c.ctext.[!i] = '\t' then begin
           let j = ref !i in
-          while !j < lead && c.ctext.[!j] = '\t' do
+          while !j < limit && c.ctext.[!j] = '\t' do
             incr j
           done;
           report_range st ~rule:"LEX-004" ~code:"E0005" (pos_at c.cpos !i) (pos_at c.cpos !j)
@@ -492,10 +501,6 @@ let dedent st (lines : chunk list) : chunk list =
         else incr i
       done)
     lines;
-  let blank c = leading_ws c.ctext = String.length c.ctext in
-  let margin =
-    List.fold_left (fun m c -> if blank c then m else min m (leading_ws c.ctext)) max_int lines
-  in
   List.map
     (fun c ->
       if blank c then { c with ctext = "" }
@@ -601,6 +606,13 @@ let rec token st =
   | "r\"" ->
       let startp, _ = Sedlexing.lexing_positions buf in
       Some (RAW_STRING (single_line_string st ~kind:None ~scan:scan_raw_dq), startp)
+  | "b\"\"\"" ->
+      (* LEX-053 has no triple-quoted byte string (Q-0051.6): E0043 on the three quotes, the body is read as a
+         triple-quoted string so that one mistake costs one diagnostic, and the value is kept as bytes. *)
+      let startp, endp0 = Sedlexing.lexing_positions buf in
+      report_range st ~rule:"LEX-053" ~code:"E0043" (pos_at endp0 (-3)) endp0
+        "a byte string has no triple-quoted form; use b\"...\" with escapes";
+      Some (BYTES (triple_string st ~cooked:true), startp)
   | "b\"" ->
       let startp, _ = Sedlexing.lexing_positions buf in
       Some (BYTES (single_line_string st ~kind:(Some Byt) ~scan:scan_dq), startp)

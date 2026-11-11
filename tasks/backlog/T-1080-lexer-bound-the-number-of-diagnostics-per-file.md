@@ -22,6 +22,10 @@ characters: runs of identical lexical errors are collapsed, or the number of dia
 
 ## Context
 
+**Added by T-0004 review (PR #26):** E0041, E0043 and E0005 (margin of a triple-quoted string) are also reported once
+per occurrence inside literals: 200 k `\q` in one string is about 64 MB of diagnostics, 400 k about 177 MB. The bound
+applies to them too.
+
 Finding F1 of the security review of T-0006 (PR #1). T-0006 collapsed E0001 and E0005 into one diagnostic per run, but
 E0004 (forbidden character, LEX-003) and E0003 (lone CR, LEX-002) are still reported once per character. Measured on
 the T-0006 head with `egide lex`, one comment per file:

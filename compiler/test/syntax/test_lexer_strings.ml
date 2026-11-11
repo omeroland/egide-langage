@@ -334,15 +334,41 @@ let%expect_test "byte strings reject non-ASCII, controls and the other escapes" 
     E0041 8:3-8:5 invalid escape sequence `\'`
     E0041 9:3-9:5 `\x` must be followed by exactly two hexadecimal digits
     |}];
-  (* there is no rb"..." and no b"""...""": the prefix is an identifier, or the literal is the empty byte string *)
-  show "rb\"x\"\nb\"\"\"\n";
+  (* there is no rb"..." (an identifier, then a string) *)
+  show "rb\"x\"\n";
   [%expect
     {|
     1:1-1:3 IDENT("rb")
     1:3-1:6 STRING("x")
-    2:1-2:4 BYTES("")
-    2:4-2:5 STRING("")
-    E0040 2:4-2:5 unterminated string literal
+    |}];
+  (* b"""...""" is E0043 on the three quotes (Q-0051.6); the body is read as a triple-quoted string *)
+  show "b\"\"\"\n  a\n  \"\"\"\n";
+  [%expect
+    {|
+    1:1-3:6 BYTES("a\n")
+    E0043 1:2-1:5 a byte string has no triple-quoted form; use b"..." with escapes
+    |}]
+
+(* spec: LEX-003 (raw input check): a forbidden character written in a literal is E0004 in every literal form, and
+   the literal still lexes. U+202E, then NUL. *)
+let%expect_test "raw bidi and NUL characters in every literal form" =
+  show "'\xE2\x80\xAE'\nb\"\xE2\x80\xAE\"\n\"\"\"\n a\xE2\x80\xAE\n \"\"\"\n'\000'\nb\"\000\"\n\"\"\"\n \000\n\"\"\"\n";
+  [%expect
+    {|
+    1:1-1:4 CHAR(U+202E)
+    2:1-2:5 BYTES("")
+    3:1-5:5 STRING("a\226\128\174\n")
+    6:1-6:4 CHAR(U+0000)
+    7:1-7:5 BYTES("")
+    8:1-10:4 STRING("\000\n")
+    E0004 1:2-1:3 forbidden character U+202E (RIGHT-TO-LEFT OVERRIDE) — risk: hidden or reordered source text (Trojan Source)
+    E0004 2:3-2:4 forbidden character U+202E (RIGHT-TO-LEFT OVERRIDE) — risk: hidden or reordered source text (Trojan Source)
+    E0004 4:3-4:4 forbidden character U+202E (RIGHT-TO-LEFT OVERRIDE) — risk: hidden or reordered source text (Trojan Source)
+    E0004 6:2-6:3 forbidden character U+0000 (control character) — risk: hidden or reordered source text (Trojan Source)
+    E0004 7:3-7:4 forbidden character U+0000 (control character) — risk: hidden or reordered source text (Trojan Source)
+    E0004 9:2-9:3 forbidden character U+0000 (control character) — risk: hidden or reordered source text (Trojan Source)
+    E0043 2:3-2:4 character U+202E is not allowed in a byte string (printable ASCII U+0020 to U+007E only)
+    E0043 7:3-7:4 character U+0000 is not allowed in a byte string (printable ASCII U+0020 to U+007E only)
     |}]
 
 (* spec: LEX-054 *)
@@ -564,3 +590,23 @@ let%test_unit "a printed string literal lexes back to the same value" =
          let q = String.index printed '"' in
          let lit = String.sub printed q (String.rindex printed '"' - q + 1) in
          single lit = Some (Tokens.STRING v)))
+
+(* Every diagnostic span of a literal-shaped input is well formed (start not after stop, on an existing line). *)
+let%test_unit "diagnostic spans are well formed" =
+  seeded
+    (QCheck2.Test.make ~name:"spans" ~count:20000
+       QCheck2.Gen.(
+         list_size (int_range 0 40)
+           (oneof_list
+              [ "\""; "'"; "\\"; "r"; "b"; "\n"; "\r\n"; " "; "\t"; "u"; "{"; "}"; "x"; "0"; "a"; "\xC3\xA9";
+                "\"\"\""; "\\u{"; "\\x"; "\xE2\x80\xAE" ])
+         |> map (String.concat ""))
+       (fun src ->
+         let lines = 1 + List.length (String.split_on_char '\n' src) in
+         let _, diags = tokens src in
+         List.for_all
+           (fun (d : D.t) ->
+             let a = d.span.start and b = d.span.stop in
+             a.line >= 1 && a.col >= 1 && b.line <= lines
+             && (a.line < b.line || (a.line = b.line && a.col <= b.col)))
+           diags))

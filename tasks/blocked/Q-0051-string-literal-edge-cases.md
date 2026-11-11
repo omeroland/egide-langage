@@ -8,7 +8,7 @@ status: open
 ---
 ## Question
 
-**Executive summary.** T-0004 is implemented and not blocked. LEX-050..054 leave nine edge cases open, and one acceptance
+**Executive summary.** T-0004 is implemented and not blocked. LEX-050..054 leave ten edge cases open, and one acceptance
 criterion of T-0004 contradicts the rule it tests. For each, the lexer made the most conservative choice (reject or
 follow `textwrap.dedent`); the language-architect should confirm or reverse them. Labels: *established* = spec text,
 *extrapolated* = the syntax-engineer's inference.
@@ -22,15 +22,18 @@ follow `textwrap.dedent`); the language-architect should confirm or reverse them
 | 3 | A tab in the leading whitespace of a *blank* line of a triple-quoted string (LEX-051: "A tab in the margin is E0005"; blank lines are "ignored for the margin") | E0005 anyway: a tab that disappears silently from the value is the kind of invisible text LEX-004 exists to exclude | ignore tabs on blank lines |
 | 4 | Text on the opening line (`"""  abc`) takes part in the margin | Yes, with its spaces, exactly as `textwrap.dedent` sees the text (`"""  abc"""` is `"abc"`) | exclude the first line from the margin |
 | 5 | Closing: `"""a""""` | A triple-quoted string ends at the first unescaped `"""`; the fourth quote opens a new literal (here an unterminated one, E0040). A value ending in `"` is written `\"` | Python also does this; Rust-style raw strings use `#` fences |
-| 6 | `b"""…"""` | Not in LEX-053. Lexed as the empty byte string `b""` followed by the literal that starts at the third quote | reject `b"""` explicitly (E0043) |
+| 6 | `b"""…"""` | Not in LEX-053. *Implemented after review:* E0043 on the three quotes; the body is read as a triple-quoted string (value kept as bytes) | allow a triple-quoted byte string (needs a spec sentence) |
 | 7 | Which code for a bad escape in a byte string | E0043 for the escapes that exist elsewhere but not here (`\u`, `\{`, `\}`) and for raw characters; E0041 for unknown escapes (`\q`, `\'`) and a malformed `\xHH` (as for `\u{…}` in a string) | E0043 for all |
 | 8 | A raw tab inside `'…'` (LEX-054 gives no code) | E0005 (LEX-004: a tab outside a string literal), message says to write `'\t'`; the value is still the tab | E0042 |
 | 9 | `\` immediately before a line break in `"…"` | E0041 (backslash at end of line) and, because the line break ends the literal, E0040 | E0040 only |
+| 10 | `r"""…"""` is dedented (LEX-051 says "triple-quoted strings", LEX-052 "process no escapes") | Yes, dedent applies to raw triple-quoted strings (extrapolation of LEX-051 + LEX-052; tested: `r"""` expect test and `string_triple.egd`) | raw triple-quoted strings keep their margin |
+
+**Items 2 and 4 are a non-monotone pair to settle before T-0024 (`egide fmt`) and the stdlib.** Item 2 (a first line holding only spaces stays as an empty line) and item 4 (text on the opening line counts for the margin) are not monotone: moving text after `"""` onto its own line, or the reverse, changes the line count and may change the margin, so a formatter that re-flows a literal could change its value (extrapolated; to be confirmed with a counter-example once T-0024 exists). Tests that pin extrapolated behaviour (items 2, 3, 4, 10): `triple-quoted details`, `a tab in the margin...`, `string_triple_tab_after_margin.egd`, `string_fail_triple_tab_blank_line.egd`, `r"""` cases. They are labelled *extrapolated* in comments.
 
 Also noted: `\xHH` is not an escape of strings or characters (E0041); `r"C:\dir\"` is valid (a raw string ends at the first
 `"`); a literal with a bad escape in `'…'` or an unterminated literal has the value U+FFFD and no second diagnostic.
 
 ## Recommendation / next steps
 
-- Decide 2, 3, 6 (the only ones that could make a valid program invalid later); the others can stay as implemented.
+- Decide 2 and 4 together (before T-0024 and the stdlib), and 3, 6 (the only ones that could make a valid program invalid later); the others can stay as implemented.
 - Amend the T-0004 criterion 3 (case 1) and add one sentence to LEX-051 for cases 2-4 and one to LEX-053 for case 6.
