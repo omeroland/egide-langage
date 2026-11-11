@@ -76,6 +76,8 @@ pull request**. Codes are never reused.
 | E0601 | LEX-055, CT-041 | template `{prefix}` (result type `{Sink}`) does not accept a format specifier (`:spec`) — sinks take none, risk: unreviewed channel into `{Sink}` | allocated |
 | E0602 | CT-040 | `@template` of the reserved standard prefix `{prefix}` outside `std` | allocated |
 | E0610 | CT-002 | top-level `let` or `comptime` argument must be pure: contains `{what}` | allocated |
+| E0611 | CT-006 | compile-time code reaches Go code ({a call, a function value, a method or an operation on a Go-typed value}); the compile-time evaluator never runs Go | proposed (ADR-0023) |
+| E0707 | TOOL-010 | the REPL cannot import Go or a package whose closure uses `import go`; use `egide run` | proposed (ADR-0023) |
 | W0001 | LEX-005 | right-to-left text in a string or comment may display the rest of the line in a different order; bind the string with `let` on its own line | allocated |
 | W0002 | LEX-011 | doc comment is not attached to a declaration | allocated |
 

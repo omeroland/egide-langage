@@ -20,7 +20,12 @@
 ## 13.1 Execution modes
 
 - **[TOOL-010]** The REPL, `egide run` and `egide test` use the bytecode interpreter that also evaluates `comptime`
-  code (CT-005). Semantics MUST be identical to compiled code (INT-020); only performance differs.
+  code (CT-005). Semantics MUST be identical to compiled code (INT-020); only performance differs. The interpreter has
+  no Go interface in any mode (CT-006). Therefore a program whose package closure (the package and its dependencies,
+  transitively) uses `import go` is not run by it: `egide run` and `egide test` build such a program with the Go backend
+  (chapter 11) and execute the result; INT-020 does not apply to them, since it excludes Go interop. The REPL applies the
+  same closure test at every import: `import go`, and the import of any Égide package whose closure uses `import go`, is
+  E0707.
 - **[TOOL-011] Scripts.** A single `.egd` file without manifest can be run with `egide run`. It may declare dependencies
   in a leading comment block, resolved and locked into a cache keyed by the file's content hash:
 
