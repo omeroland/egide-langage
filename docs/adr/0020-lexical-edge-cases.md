@@ -54,8 +54,8 @@ that it is no longer an extrapolation.
 | 8 | Raw tab inside `'…'` | **Confirm E0005** (hint "write `'\t'`"). Already in the catalogue; LEX-054 now names the code. |
 | 9 | `\` directly before a line break in `"…"` | **Confirm** E0041 then E0040: two distinct causes (an escape that does not exist, a literal that ends at the break). Stated in LEX-050. |
 | 10 | `r"""…"""` is dedented | **Confirm.** LEX-051 dedents on raw source lines before escape processing, so raw and plain triple-quoted strings are treated alike. Stated in LEX-052. |
-| 11 | A line holding only U+00A0 (security review F3) | **Reject**: in a triple-quoted string, a `Zs` character other than U+0020 that is the first non-space character of a content line is **E0046** (hint: write `\u{A0}`). Details in 2.2. |
-| 12 | `r#"…"#` (security review F4) | **Reject explicitly**: an identifier token `r`, `b`, `rb` or `br` immediately followed by `#"` or `##` is **E0047** (hint: "Égide has no `#`-fenced raw strings; use `r"…"` or a triple-quoted string"). Details in 2.3. |
+| 11 | A line holding only U+00A0 (security review F3) | **Reject**: in a triple-quoted string, a blank-rendering character (`Zs` other than U+0020, or U+2800) that is the first non-space character of a content line **or of the closing-delimiter line** is **E0046**. Details in 2.2. |
+| 12 | `r#"…"#` (security review F4) | **Reject explicitly**: any identifier token immediately followed by `#"` is **E0047** (hint: "Égide has no `#`-fenced raw strings; use `r"…"` or a triple-quoted string"). Details in 2.3. |
 
 #### 2.1 Items 2 and 4: one rule that removes the pair
 
@@ -94,8 +94,28 @@ identical and give different values. LEX-004 and E0051 already exclude invisible
 closes the same class inside the one place where whitespace is semantic. Alternatives: treat every `Zs` as blank
 (rejected: then an NBSP-only line silently disappears from the value, which is the same invisibility in another form);
 leave as is (rejected: *established* hazard, cheap fix). The rule is mechanical: after the run of U+0020 at the start of
-a content line, the next character is not a `Zs` other than U+0020 (E0046). Mid-line NBSP stays legal text (LEX-003); an
-NBSP written as `\u{A0}` is a visible escape and stays legal.
+a line, the next character is not blank-rendering (E0046). Mid-line NBSP stays legal text (LEX-003); an NBSP written as
+`\u{A0}` is a visible escape and stays legal.
+
+*Revised after the security review of this PR (two blockers):*
+
+- **Closing-delimiter line (established, reproduced by the reviewer on `main`).** A literal whose last content line is
+  four spaces then U+00A0 before the closing quotes yields `secret` + LF + U+00A0, visually identical to the same
+  literal without the NBSP. LEX-051 now says E0046 also applies to the characters before the closing `"""` on its line,
+  which removes the question whether that line is a "content line".
+- **U+2800 (emerging: a blank cell in the fonts the reviewer knows).** Category `So`, so neither LEX-003 nor `Zs`
+  reaches it. E0046 is extended to "`Zs` other than U+0020, or U+2800", both read from the Unicode 16.0.0 table that
+  LEX-003 already embeds, so no second table exists. Still *extrapolated*: I know of no other blank-rendering character
+  outside the sets LEX-003 covers (`Cc`, Default_Ignorable such as U+3164 and U+FFA0, U+2028/2029); a pinned
+  visual-blank property is the robust form if more are found.
+- **The remedy `\u{A0}` does not exist in every form.** `r"""` and the templates other than `f` process no escapes
+  (LEX-052, LEX-055; `f` unescapes, so `\u{A0}` works in `f"""`). LEX-051 now gives a remedy per form: plain and `f`
+  strings write `\u{A0}`; raw and other templates cannot start a line with such a character and must put text before it
+  or use a plain string. This is a deliberate, accepted restriction of those forms, and the E0046 message names the
+  remedy that applies.
+- Ordering (reviewer N1/N2): "line break" is the LF of the normalised stream (LEX-002); diagnostics are in source order
+  and E0045 is primary (the literal is still scanned to its closing `"""`, so E0040 appears only if there is none). The
+  first draft's example `"""a""""` was contradictory and is replaced by a content line ending in four quotes.
 
 #### 2.3 Item 12 and `#`-fenced raw strings
 
@@ -103,8 +123,10 @@ NBSP written as `\u{A0}` is a visible escape and stays legal.
 the line, so the rest of the line, including a `"`, is silently a comment. With `let p = r#"…"#` and a bound variable
 `r`, this even type-checks. The narrowest fix that fails closed is a lexical error on the exact shape; supporting
 Rust's fences (`r#"…"#`) is rejected because a second raw form would violate "one obvious way" while `"""` and `r"""`
-already cover text with quotes. A comment directly after the identifier `r` with no space (`r#"` or `r##`) has no
-legitimate use, so the false-positive cost is nil.
+already cover text with quotes. The hazard is not specific to `r`: it exists for any identifier glued to `#"` (`re#"…"#`, `f#"…"#`), so E0047 covers every
+identifier token immediately followed by `#"` (security review N3). The first draft's `##` clause is dropped (`b## note`
+is a false positive with no security value). A comment starting with `"` and glued to an identifier has no legitimate
+use, so the false-positive cost is nil.
 
 ### 3. Q-0052 (`rb"x"`)
 
@@ -118,7 +140,8 @@ other than `r` and `b`) makes `rb"x"` the template prefix `rb`. T-0005 implement
 | C | `rb` `IDENT`, then `STRING` | Rejected as in the question: `rb"x"` and `rb "x"` would mean the same, contradicting the significance of "immediately followed" for every other prefix. |
 
 B is a special case in the lexer (two names), which is the cost against A. The cost is one comparison in
-`Lexer.template` and two test expectations (T-0005 tests the A behaviour). The reservation covers exactly the
+`Lexer.template` and two test expectations (T-0005 tests the A behaviour). CT-040 carries the reservation: `@template("rb")`, `"br"`, `"r"` and `"b"` are E0602 (security review N4), otherwise a
+package could register a prefix the language has reserved. The reservation covers exactly the
 concatenations of the built-in prefixes, so it is a principle, not a list: other names remain free. The owner may
 prefer A; then only the sentence in LEX-053 and the exclusion list of LEX-055 change back, and item 12 keeps `rb` and
 `br` out of its list.
@@ -131,8 +154,8 @@ Apply the decisions of the tables above. The spec edits are in this PR (ch. 2) a
 | Code | Rule | Message |
 |------|------|---------|
 | E0045 | LEX-051 | the opening `"""` of a triple-quoted string must be followed by a line break; content starts on the next line |
-| E0046 | LEX-051 | a no-break or other non-ASCII space at the start of a content line of a triple-quoted string; write `\u{A0}` |
-| E0047 | LEX-052 | Égide has no `#`-fenced raw strings; use `r"…"` or a triple-quoted string |
+| E0046 | LEX-051 | a blank-rendering character (`Zs` other than U+0020, U+2800) at the start of a content line or of the closing-delimiter line; remedy per literal form |
+| E0047 | LEX-052 | Égide has no `#`-fenced raw strings (an identifier directly followed by `#"`); use `r"…"` or a triple-quoted string |
 
 Extended: E0043 (LEX-053) also covers `rb"` and `br"`; E0031 (LEX-041) also covers a leading zero in the integer part.
 No existing rule id is removed or renumbered; no new rule id is created (the new text sits in existing rules).
@@ -147,11 +170,15 @@ blank (2.2), Rust-style fences (2.3).
 - Complexity budget: net neutral. One form of multi-line string instead of two; five restrictions that replace
   extrapolated behaviour with an error; no new feature. Three diagnostics added.
 - Security: strengthens the invisible-text discipline of LEX-003/004/E0051 inside triple-quoted strings (INT-005 is not
-  concerned). No relaxation. `security-reviewer` should confirm that E0046 is sufficient for F3 (it does not cover a
-  `Zs` after the first non-space character, which does not affect the margin).
+  concerned). No relaxation. `security-reviewer` reviewed this PR: E0046 as first drafted was not sufficient for F3 and is
+  extended (section 2.2). It still does not cover a blank-rendering character after the first non-space character, which
+  does not affect the margin or the visible shape of the line.
 - Implementation (follow-up tasks proposed for the orchestrator, none created by this PR): `syntax-engineer`: lexer
   changes for E0045, E0046, E0047, the leading-zero float rule and `rb`/`br`, about 40 lines (*extrapolated*);
-  `test-engineer`: rewrite the T-0004 tests and `string_triple*.egd` files that put text on the opening line, add
+  `test-engineer`: rewrite the T-0004 tests and `string_triple*.egd` files that put text on the opening line (the
+  reviewer found `string_triple.egd` lines 5, 10, 11, `string_raw.egd` line 8 and probably
+  `template_fail_multiline_string_in_single_line.egd` line 7; none is in ADR-0018's migration count of 3.5, which task
+  T-1108 should extend), add
   negative tests for each new code and a property test for re-indentation invariance. Items confirmed by this ADR need
   tests only if none exists.
 - Migration: pre-1.0, no released code. The stdlib is 11 lines; no triple-quoted string exists outside tests.
