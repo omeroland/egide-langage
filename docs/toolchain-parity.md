@@ -132,7 +132,7 @@ All flags below were read from `go help testflag`, `go help build`, `go help cac
 
 | ID | Go tool | Src | Égide equivalent | Spec state | Disposition | Phase | Role | Tasks | Note |
 |----|---------|-----|------------------|------------|-------------|-------|------|-------|------|
-| F01 | `go test -race` | L | INT-002; residual egide test --race (Go backend) | Covered | Replace | 6 | tooling | T-1129 | races only through GoRef/unsafe (GO-032, MEM-070) |
+| F01 | `go test -race` | L | INT-002; `egide test --race` is unavailable on the Go backend (needs cgo, ADR-0024 E0708) until a cgo story exists | Covered | Replace | 6 | tooling | T-1129 | races only through GoRef/unsafe (GO-032, MEM-070); the race detector itself is deferred |
 | F02 | `-msan, -asan` | L | none now; --sanitize on native backend | Excluded | Exclude | 7 | native-backend | none | cgo-oriented; revisit with the C backend |
 | F03 | `-fuzz, -fuzztime, -fuzzminimizetime` | L | egide test --fuzz | Partial | Provide | 6 | tooling | T-1130 | @property exists, coverage guidance does not (TOOL-030) |
 | F04 | `-bench, -benchtime, -benchmem` | L | egide bench | Partial | Provide | 6 | tooling | T-1127 | docs/testing.md only; not in spec 13 |
@@ -297,7 +297,7 @@ nothing of chapter 13 beyond `lex`/`parse` exists yet (phase 0).
 | T-1126 | Coverage of compiled binaries and `egide cover merge` | tooling-engineer | 6 | T-1125, T-0081 | task |
 | T-1127 | `egide bench` | tooling-engineer | 6 | T-0081, T-1122, T-1121 | task |
 | T-1128 | `--cpuprofile` / `--memprofile` in test and bench | tooling-engineer | 6 | T-1127, T-1152 | task |
-| T-1129 | `egide test --race` for Go-backend programs with Go interop or unsafe | tooling-engineer | 6 | T-0081, T-1122, T-1121 | task |
+| T-1129 | `egide test --race` for Go-backend programs with Go interop or unsafe: blocked by ADR-0024 (E0708), to be re-planned | tooling-engineer | 6 | T-0081, T-1122, T-1121 | task |
 | T-1130 | Coverage-guided `egide test --fuzz` | tooling-engineer | 6 | T-1125, T-1122, T-1121 | task |
 | T-1131 | `egide audit`: breaches, trust points, overrides, JSON | tooling-engineer | 6 | T-0092, T-1039 | task |
 | T-1132 | `egide audit`: known vulnerabilities with reachability | tooling-engineer | 6 | T-1131, T-0083, T-1121 | task |

@@ -32,44 +32,65 @@ fn tenant_namespaces(cs: kube.Clientset) -> Result[List[str], GoError] using go:
 
 - **[GO-046] Go build environment.** Type information, classification (GO-042) and the final build of the Go closure (the
   Go packages named by `import go` and everything they import) follow these rules, so that no code of a dependency runs
-  during compilation (INT-005, PKG-042). The **user-package closure** is the Go packages of the modules of `[go]` and the
-  non-standard packages they import; the standard library belongs to the pinned toolchain and is classified by the
-  reviewed list (GO-041), not by file analysis.
-  1. *cgo.* The closure is analysed and built with `CGO_ENABLED=0`. The compiler scans the directory of every package of the
-     user-package closure for files of the kinds `.c .cc .cpp .cxx .m .mm .h .S .swig .swigcxx .syso` (Go assembly `.s` is
-     allowed and classified impure, GO-042.2) and compares them with the set the build compiles: any such file is E0706,
-     whether or not the tuple compiles it, because Go drops a stray C source silently when cgo is off and fails when it is
-     on. A package that needs cgo to build (no Go file is selectable without it) is also E0706. A Go file that imports `"C"`
-     and is excluded by the tuple, with a pure-Go fallback, is never compiled and is not an error.
-     *Native backend (GO-003).* The `c-archive` build needs cgo for the export glue. The glue package has one fixed template
-     file that holds `import "C"` and the preamble, whose bytes are embedded in the compiler and checked against their hash
-     (the hash subject is the template, not the per-program output), and per-program files in the same package without
-     `import "C"`. Every program-derived string written into any glue file is an ASCII identifier of the Égide grammar
-     (ADR-0010), never a doc comment, tag or string literal. With `CGO_ENABLED=1` the user-package closure MUST select the
-     same Go files as with `0` (otherwise E0706); the standard library is exempt, since with cgo on `net` and `os/user`
-     select cgo files of the pinned toolchain, which the list classifies per tuple (`CGO_ENABLED` is a tuple member). The C
-     compiler and linker then run, so `CC`, `CXX`, `CGO_CFLAGS`, `CGO_CXXFLAGS`, `CGO_LDFLAGS` and `PKG_CONFIG` are set by
-     the compiler to a pinned compiler (absolute path), fixed flags and a disabled `pkg-config`, the `PATH` holds only the
-     pinned toolchain directories, and the identity of the C toolchain (version and SHA-256 of the compiler and linker
-     binaries) is recorded in the lock (PKG-043). The C toolchain is part of the trusted computing base. Phase 7 (T-0100)
-     confirms this mechanism or replaces it with a separate process;
+  during compilation or at load time outside what GO-042 classifies (INT-005, PKG-042). The **user-package
+  closure** is the Go packages of the modules of `[go]` and the non-standard packages they import; the standard library
+  belongs to the pinned toolchain and is classified by the reviewed list (GO-041), not by file analysis.
+  1. *cgo and its equivalents.* The closure is analysed and built with `CGO_ENABLED=0`. The compiler scans every package of
+     the user-package closure and reports E0706 for: a file of the kinds `.c .cc .cpp .cxx .m .mm .h .S .swig .swigcxx
+     .syso` (Go assembly `.s` is allowed and impure, GO-042.2), whether or not the tuple compiles it, because Go drops a
+     stray C source silently when cgo is off and fails when it is on; a package that needs cgo to build; and any
+     `//go:cgo_*` or `//go:wasmimport` directive in a Go file (`//go:cgo_import_dynamic` is accepted by the Go compiler
+     in an ordinary file under `CGO_ENABLED=0` and makes the binary load a shared library before `main`). On the Go
+     backend a Go file that imports `"C"` and is excluded by the tuple, with a pure-Go fallback, is never compiled and is not
+     an error. As defence in depth the compiler checks the produced binary: it MUST be statically linked (no dynamic
+     interpreter, no dynamic-library dependency outside a per-operating-system allow-list), otherwise the build fails
+     (E0710).
+     *Native backend (GO-003).* The `c-archive` build needs cgo to export symbols, and `//export` works only in a file that
+     imports `"C"`. The glue is therefore split into two packages. The **template package** is fixed: its bytes (the only
+     file that imports `"C"`, with the preamble) are embedded in the compiler and checked against their hash, and it exports
+     only fixed symbols (for example one dispatcher `egide_call(id, buf, len)`). The **program package** holds everything
+     derived from the program; it does not import `"C"`, contains no comment produced from program data, and is reached by
+     the template only through a fixed interface. Every identifier in it carries a fixed prefix (`egide_`) and is checked
+     against Go keywords, predeclared identifiers and the prefixes `_C` and `_cgo`, so that it can neither redefine `error`,
+     `nil`, `len` or `true` for the template nor collide with generated code. The hash subject is the template, the
+     interface and this mangling rule. With `CGO_ENABLED=1` the compiler compares every list that the Go tool reports for
+     each package of the user-package closure (Go, cgo, ignored Go, C-family, assembly, `.syso` and the rest) with the lists at
+     `CGO_ENABLED=0`, and requires the cgo list to be empty: a package with an `import "C"` file in it is E0706 even though
+     its list of plain Go files is the same in both modes. The pure-Go-fallback exemption does not exist on the native
+     backend. The standard library is exempt (with cgo on, `net` and `os/user` select cgo files of the pinned toolchain,
+     which the list classifies per tuple). The C compiler and linker then run, so `CC`, `CXX`, `CGO_CFLAGS`, `CGO_CXXFLAGS`,
+     `CGO_LDFLAGS` and `PKG_CONFIG` are set by the compiler to a pinned compiler (absolute path), fixed flags and a disabled
+     `pkg-config`, and the `PATH` holds only the pinned toolchain directories. The lock records the identity of the C toolchain
+     as the hash of its whole tree (the compiler driver executes `cc1`, `as` and the linker, and reads headers and runtime
+     objects). The C toolchain is part of the trusted computing base. Phase 7 (T-0100) confirms this mechanism or replaces it
+     with a separate process;
   2. *Toolchain.* `GOTOOLCHAIN=local`: the pinned toolchain is the only one that runs and none is downloaded. The compiler
      extracts the verified distribution into its own read-only directory and, before **every** `go` start, recomputes the hash
-     of the installed `GOROOT` tree and compares it with the lock. The lock holds the version, the hash of the archive and the
-     hash of the tree (PKG-043). The pinning policy is Q-0042;
-  3. *Environment.* Every `go` process is started by the compiler with an explicit environment, and every variable not
-     listed here is removed: the pinned `GOROOT`; a private `HOME`, `TMPDIR` and `GOTMPDIR`; a **fresh, empty `GOCACHE` for each
-     build** (Go trusts its entries, so a shared cache could make the compiled bytes differ from the analysed ones);
-     `GOMODCACHE` set to the snapshot of item 4; a minimal `PATH`. `GOENV=off`, `GOFLAGS` overwritten with `-mod=readonly`,
-     `GOWORK=off`, `GOTOOLCHAIN=local`; `GOPROXY` a fixed proxy of the compiler's trust root (Q-0041) or `off`; `GOVCS=*:off`;
-     `GOSUMDB` on with its default. `GOAUTH`, `GOCACHEPROG`, `GODEBUG`, `GOPATH`, `GOBIN`, `GOFIPS140`, `GONOSUMDB`,
-     `GOPRIVATE` and `GOINSECURE` are unset. No `-toolexec`, no `-overlay`;
+     of the installed `GOROOT` tree and compares it with the lock. The tree hash is canonical: sorted relative names, file
+     modes, symlink targets and contents, and no extra file. The lock holds the version, the hash of the archive and the hash
+     of the tree. The source of truth for the first archive hash (the Go checksum database, or the signed hashes published
+     by the Go project) and the pinning policy are Q-0042;
+  3. *Environment and command line.* Every `go` process is started by the compiler with an explicit environment, and every
+     variable not listed here is removed: the pinned `GOROOT`; a private `HOME`, `TMPDIR` and `GOTMPDIR`; a **fresh, empty
+     `GOCACHE` for each build** (Go trusts its entries, so a shared cache could make the compiled bytes differ from the
+     analysed ones; the cost is that the standard library is recompiled for each build, and a compiler-owned cache that the
+     compiler keys and re-verifies may replace it); `GOMODCACHE` set to the snapshot of item 4; a `PATH` of the pinned
+     toolchain directories that contains no `git`, `hg`, `svn` or `bzr` (`go build` runs `git status` and `git log` when
+     `-buildvcs=auto`, and git honours the configuration of the repository it is run in). `GOENV=off`, `GOFLAGS`
+     overwritten, `GOWORK=off`, `GOTOOLCHAIN=local`; `GOPROXY` a fixed proxy of the compiler's trust root (Q-0041) or `off`;
+     `GOVCS=*:off`; `GOSUMDB` on with its default; `GOAUTH`, `GOCACHEPROG`, `GODEBUG`, `GOPATH`, `GOBIN`, `GOFIPS140`,
+     `GONOSUMDB`, `GOPRIVATE` and `GOINSECURE` are unset. The whole command line is generated by the compiler from a fixed
+     allow-list: `-buildvcs=false`, `-trimpath`, `-mod=readonly` and the tuple. No flag from the user or from `egide.toml`
+     reaches it, which closes `-toolexec`, `-overlay`, `-ldflags`, `-gcflags`, `-asmflags`, `-compiler`, `-modfile`, `-pkgdir`
+     and `-pgo`;
   4. *Verified bytes.* Go checks `go.sum` when it downloads a module, not each time it reads an extracted cache, and a hash
      checked before a build can be stale when `go` reads the files. The compiler therefore builds an **immutable snapshot**: it
      copies each module into a compiler-owned tree while hashing it, compares the hash with the `go.sum` lines of the lock
-     (PKG-041), makes the tree read-only (and, where the operating system allows, unreachable for writing by other
-     processes of the same user), and runs both the analysis and the build against that snapshot. The bytes analysed,
-     compiled and locked are the same. Trees produced by `egide vendor` (PKG-052) are verified the same way;
+     (PKG-041), and runs both the analysis and the build against that snapshot. Read-only permissions do not bind the owning
+     user, so the compiler uses a separate user, a read-only bind mount or a private mount namespace where the operating
+     system offers one, and in every case re-hashes the snapshot and the `GOROOT` tree after the build and before it accepts
+     any artefact, failing the build on a difference. The bytes analysed, compiled and locked are the same. Trees produced
+     by `egide vendor` (PKG-052) are verified the same way;
   5. *Module graph.* The main module of the Go build is generated by the compiler from the `[go]` sections and the lock.
      Go already ignores `vendor/`, `replace`, `exclude` and `toolchain` directives of dependencies; the live vectors are the
      main module's `vendor/` and `-mod`, `go.work` and `egide vendor` trees, which items 3 and 4 close;
@@ -77,10 +98,10 @@ fn tenant_namespaces(cs: kube.Clientset) -> Result[List[str], GoError] using go:
      of: `GOOS`, `GOARCH`, the architecture level that applies (`GOAMD64`, `GOARM`, `GOARM64`, `GO386`, `GOMIPS`,
      `GOMIPS64`, `GOPPC64`, `GORISCV64`, `GOWASM`), `GOEXPERIMENT`, `CGO_ENABLED`, the Go release tags (the toolchain
      version), and every build tag including `-tags` and the tags that flags set; `--cover` and `--fuzz` of `egide build` and
-     `egide test` change the tuple. The build modes `-race`, `-msan` and `-asan` require cgo and are unavailable on the Go
-     backend: E0708. The lock records the classification per (tuple, package, function) (PKG-043). A build under a tuple that
-     has no classification in the lock is E0707 until `egide lock --target` has analysed it and the drift check (GO-043) has
-     passed, so cross-compiling needs `egide lock --target` for each target.
+     `egide test` change the tuple. The build modes `-race`, `-msan`, `-asan`, `-buildmode=c-shared` and `plugin` require cgo
+     and are unavailable on the Go backend: E0708. The lock records the classification per (tuple, Go package, function)
+     (PKG-043). A build under a tuple that has no classification in the lock is E0707 until `egide lock --target` has analysed
+     it and the drift check (GO-043) has passed, so cross-compiling needs `egide lock --target` for each target.
 
 ## 11.2 The security boundary
 
@@ -144,7 +165,8 @@ types** and **auditable**.
   everything it may call, bottoming out at standard-library functions classified by GO-041. The analysis is
   conservative:
   1. a call through an interface value or a function value may call anything, unless the value comes from Égide;
-  2. `unsafe`, cgo, `//go:linkname`, assembly and `reflect` calls that can reach unexported state classify as impure;
+  2. `unsafe`, cgo, `//go:linkname`, assembly, `reflect` calls that can reach unexported state, a function without a Go
+     body and any `//go:wasmimport` classify as impure;
   3. writing an exported package-level variable classifies as impure.
   The result is recorded per function in `egide.lock` (PKG-040).
 - **[GO-043] Drift detection.** When a new version of a Go module changes the classification of a function called by

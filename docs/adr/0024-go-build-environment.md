@@ -39,7 +39,7 @@ behaviour); the third-pass review reproduced several points with Go 1.24.7 (the 
 Alternative to an explicit tuple: analyse the union of constraint combinations. Rejected: combinatorial, and it classifies
 files no build compiles.
 
-### 2. GO-003 (native backend) and cgo (A2; third pass B-1, B-2)
+### 2. GO-003 (native backend) and cgo (A2; third pass B-1, B-2; the glue design is superseded by section 5, B-2')
 
 *Emerging* (recalled): `-buildmode=c-archive` needs cgo, and `CGO_ENABLED` is a property of one `go build`.
 
@@ -68,10 +68,26 @@ The lock keys the classification by **(build tuple, declaring package, function)
 ADR-0022 (PKG-040), stated once in PKG-043. Cross-compiling needs `egide lock --target` per target (documentation item for
 `egide build --target`).
 
+### 5. Fourth-pass review (all reproduced by the reviewer with Go 1.24.7 on linux/amd64; the list targets 1.25)
+
+| Finding | Evidence | Resolution |
+|---------|----------|------------|
+| B-1': an ordinary `.go` file with `//go:cgo_import_dynamic _ _ "/path/lib.so"` builds under `CGO_ENABLED=0`; the binary has `NEEDED lib.so` and the library's constructor runs before `main`. `go list` shows no cgo file, nothing in E0706, GO-042.2 or the init rule catches it. The other `//go:cgo_*` pragmas tried (`cgo_ldflag`, `cgo_export_dynamic`, `cgo_import_static`, `cgo_dynamic_linker`) are rejected by the compiler. `//go:wasmimport` on a body-less function builds under `GOOS=wasip1` | established (reproduced) | GO-046.1 scans Go files for `//go:cgo_*` and `//go:wasmimport` (E0706); GO-042.2 adds "a function without a Go body and any `//go:wasmimport`" to the impure list; defence in depth: the produced binary on the Go backend must be static (no dynamic interpreter, no dependency outside a per-OS allow-list), else E0710 |
+| B-2': `//export` in a file without `import "C"` exports nothing (no symbol, no header); and in a two-file package a second file can redefine `error`, `nil`, `len`, `true` for the first with no diagnostic, so the hash of the template does not fix its behaviour | established (reproduced) | the template package exports only fixed symbols (one dispatcher); all program-derived Go lives in a separate package reached through a fixed interface, with no `import "C"`, no program-data comments, and identifiers prefixed and checked against keywords, predeclared names, `_C` and `_cgo`. Hash subject: template, interface, mangling rule. (The first split in section 2 is superseded) |
+| B-3': for a package with `x.go` (`import "C"`) and `y.go`, `GoFiles` is the same at `CGO_ENABLED=0` and `1`; only `CgoFiles` changes, so an equality test on `GoFiles` passes a cgo file | established (reproduced) | compare every list the Go tool reports; require `CgoFiles` empty under `CGO_ENABLED=1`; the pure-Go-fallback exemption exists on the Go backend only |
+| B-4': `go build` runs `git status` and `git log` from `PATH` under the default `-buildvcs=auto`, and git honours the repository's configuration (`core.fsmonitor`, recalled), so building an untrusted clone executes project-controlled code | established (reproduced with a stub `git`); the fsmonitor step emerging | the whole command line comes from a fixed allow-list (`-buildvcs=false`, `-trimpath`, `-mod=readonly`, the tuple); no user or manifest flag reaches it; `PATH` contains no `git`, `hg`, `svn`, `bzr` |
+| 1 TOCTOU: read-only permissions do not bind the owning user; `go` execs `compile` and `link` from the tree for seconds after the check | extrapolated | separate user, read-only bind mount or mount namespace where available; always re-hash snapshot and tree after the build and fail on a difference; canonical tree hash defined |
+| 2 consistency: `docs/toolchain-parity.md` F01 and T-1129 still listed `egide test --race` as covered | established | both edited in this PR; ADR-0019 line 42 still lists `--race` (that ADR is not edited here: it needs the same note when it is accepted). `c-shared` and `plugin` are added to E0708 |
+| 3 C-toolchain identity of two binaries | extrapolated | the hash of the whole tree |
+| 4 a fresh empty `GOCACHE` recompiles the standard library on every build | emerging | stated as a cost; a compiler-owned, compiler-verified cache may replace it later |
+| 5 provenance of the first toolchain archive hash | n/a | kept on Q-0042/Q-0041 |
+| 6 normative text cited ADR numbers | established | the spec text cites rule ids only |
+
 ## Decision
 
-Apply the spec diff: GO-046, GO-003 (one sentence), PKG-042, PKG-043, diagnostics E0706, E0707 and E0708 (E07xx; codes are
-allocated in merge order: ADR-0022 E0701-E0703, ADR-0025 E0704-E0705, this ADR E0706-E0708, ADR-0023 E0709).
+Apply the spec diff: GO-046, GO-003 (one sentence), PKG-042, PKG-043, diagnostics E0706, E0707, E0708 and E0710 (E07xx; codes are
+allocated so that the catalogue stays sorted: ADR-0022 E0701-E0703, ADR-0025 E0704-E0705, this ADR E0706-E0708 and E0710,
+ADR-0023 E0709; this is not the stack order).
 
 ## Alternatives considered
 
