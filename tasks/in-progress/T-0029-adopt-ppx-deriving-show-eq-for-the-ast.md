@@ -6,12 +6,12 @@ phase: 0
 role: syntax-engineer
 depends_on: [T-0008]
 spec: []
-paths: [dune-project, egide.opam, compiler/lib/syntax/dune, compiler/lib/syntax/ast.ml, compiler/lib/syntax/ast.mli, compiler/test/syntax/]
+paths: [dune-project, egide.opam, compiler/lib/syntax/dune, compiler/lib/syntax/ast.ml, compiler/lib/syntax/ast.mli, compiler/lib/syntax/print.mli, compiler/test/syntax/, CHANGELOG.md]
 estimate: S
 labels: []
-status: backlog
-claimed_by:
-claimed_at:
+status: in-progress
+claimed_by: syntax-engineer/session_01NLgEFTLJgCm5Sfk4YuTzRp
+claimed_at: 2026-11-10
 ---
 
 ## Goal
