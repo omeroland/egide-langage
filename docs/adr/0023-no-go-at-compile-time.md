@@ -68,7 +68,7 @@ and Go interop; empty today), not E0612, because it is not a comptime error.
 - Precedence: a construct matching both CT-002 (E0610) and CT-006 is E0611.
 - The per-bypass conformance tests (section 2), `comptime let n = math.MaxInt64` (must pass) and `comptime let s =
   time.Second.String()` (E0611) become a `test-engineer` task at acceptance; the code of the REPL is E0709 so that codes
-  are allocated in merge order (ADR-0022 E0701-E0703, ADR-0025 E0704-E0705, ADR-0024 E0706-E0708).
+  are allocated so that the catalogue stays sorted (ADR-0022 E0701-E0703, ADR-0025 E0704-E0705, ADR-0024 E0706-E0708).
 
 ## Decision
 
