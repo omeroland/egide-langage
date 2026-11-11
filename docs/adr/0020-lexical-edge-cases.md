@@ -55,7 +55,7 @@ that it is no longer an extrapolation.
 | 9 | `\` directly before a line break in `"…"` | **Confirm** E0041 then E0040: two distinct causes (an escape that does not exist, a literal that ends at the break). Stated in LEX-050. |
 | 10 | `r"""…"""` is dedented | **Confirm.** LEX-051 dedents on raw source lines before escape processing, so raw and plain triple-quoted strings are treated alike. Stated in LEX-052. |
 | 11 | A line holding only U+00A0 (security review F3) | **Reject**: in a triple-quoted string, a blank-rendering character (`Zs` other than U+0020, or U+2800) that is the first non-space character of a content line **or of the closing-delimiter line** is **E0046**. Details in 2.2. |
-| 12 | `r#"…"#` (security review F4) | **Reject explicitly**: any identifier token immediately followed by `#"` is **E0047** (hint: "Égide has no `#`-fenced raw strings; use `r"…"` or a triple-quoted string"). Details in 2.3. |
+| 12 | `r#"…"#` (security review F4) | **Reject explicitly**: any identifier token immediately followed by one or more `#` and then `"` (`ident #+ "`) is **E0047** (hint: "Égide has no `#`-fenced raw strings; use `r"…"` or a triple-quoted string"). Details in 2.3. |
 
 #### 2.1 Items 2 and 4: one rule that removes the pair
 
@@ -118,7 +118,7 @@ a line, the next character is not blank-rendering (E0046). Mid-line NBSP stays l
   spaces. LEX-051 now makes U+0009, as the first character after the U+0020 run of a content line or of the closing line,
   E0005 whatever the margin. A tab later in a line stays legal text.
 - **Residual (second pass, N3, extrapolated).** Private-use (`Co`) and unassigned (`Cn`) code points are outside LEX-003 and
-  E0046 and some fonts render them blank. Not closed here: a pinned "renders blank" property would close the class
+  E0046 and some fonts render them blank. Not closed here: several `Lo` code points are also blank-rendering in many fonts (U+115F, U+1160, U+3164, U+FFA0; *emerging*, recalled from the Unicode tables, not re-fetched; PR #31, the LEX-003 forbidden-set extension, may already cover some, to be checked before choosing). A pinned "renders blank" property would close the class
   and needs the owner's appetite for a larger table; recorded as a known residual. `egide fmt` must not trim or normalise a
   trailing NBSP (it behaves like a trailing space). The re-indentation test (N4) must include a tab after the margin and
   `f"""` interpolations that span lines.
@@ -167,7 +167,7 @@ Apply the decisions of the tables above. The spec edits are in this PR (ch. 2) a
 |------|------|---------|
 | E0045 | LEX-051 | the opening `"""` of a triple-quoted string must be followed by a line break; content starts on the next line |
 | E0046 | LEX-051 | a blank-rendering character (`Zs` other than U+0020, U+2800) at the start of a content line or of the closing-delimiter line; remedy per literal form |
-| E0047 | LEX-052 | Égide has no `#`-fenced raw strings (an identifier directly followed by `#"`); use `r"…"` or a triple-quoted string |
+| E0047 | LEX-052 | Égide has no `#`-fenced raw strings (an identifier directly followed by one or more `#` and then `"`); use `r"…"` or a triple-quoted string |
 
 Extended: E0043 (LEX-053) also covers `rb"` and `br"`; E0031 (LEX-041) also covers a leading zero in the integer part.
 No existing rule id is removed or renumbered; no new rule id is created (the new text sits in existing rules).
