@@ -164,19 +164,27 @@ fn f(x: int) -> int:          # FN IDENT ( IDENT : IDENT ) -> IDENT :
   subject to LEX-006 in every tool output and to SYN-018 where a tool consumes it). Any other escape is an error (E0041).
   A raw LF inside `"…"` is an error (E0040). A `\` directly before a line break is E0041, and the line break
   then ends the literal (E0040). `\xHH` is not an escape of strings or characters (E0041).
-- **[LEX-051]** Triple-quoted strings `"""…"""` span lines. The opening `"""` MUST be followed immediately by a line
-  break (E0045): no character, not even a space, may stand between them, so `"""abc"""` and `""""""` are E0045. The common leading indentation of their content lines
+- **[LEX-051]** Triple-quoted strings `"""…"""` span lines. A "line break" in this rule is the LF of the normalised stream
+  (LEX-002; a lone CR, U+2028, U+2029 and U+0085 are rejected earlier, E0003 and E0004). The opening `"""` MUST be
+  followed immediately by a line break (E0045): no character, not even a space, may stand between them, so `"""abc"""`
+  and `""""""` are E0045. Diagnostics are reported in source order; after E0045 the literal is still scanned to its
+  closing `"""` for recovery, so E0040 is reported only if there is none. The common leading indentation of their content lines
   is removed, as with Python's `textwrap.dedent`, but on the **raw source lines before escape processing**; whitespace-only
   lines are ignored for the margin and become empty; the line break after the opening `"""` is dropped and the
-  line break before the closing `"""` is kept. A tab in the margin, or on a blank line, is E0005 (LEX-004). After the
-  run of U+0020 at the start of a content line, the next character MUST NOT be a `Zs` character other than U+0020
-  (E0046; write `\u{A0}` if it is wanted). The literal ends at the first closing `"""`; a fourth quote opens a new literal
-  (`"""a""""` is E0040), so a value ending in `"` is written `\"`. **Re-indentation invariance:** adding or removing the
+  line break before the closing `"""` is kept. A tab in the margin, or on a blank line, is E0005 (LEX-004). On every
+  content line, and on the line that holds the closing `"""` (for the characters before it), the first character after the
+  run of U+0020 at the start of the line MUST NOT be a blank-rendering character: a `Zs` character other than U+0020, or
+  U+2800 (E0046; both sets are those of the Unicode 16.0.0 table embedded for LEX-003). The remedy depends on the
+  literal: in a plain `"""` string and in an `f"""` template write `\u{A0}` (`f` unescapes, LEX-055); in `r"""` and in the
+  other templates, which process no escapes, the character cannot start a line: put text before it or use a plain
+  string (the restriction is accepted for these forms). The literal ends at the first closing `"""`; a fourth quote opens
+  a new literal (a content line `a""""` is the value `a` followed by a literal that starts at the fourth quote and
+  is E0040 if unterminated), so a value ending in `"` is written `\"`. **Re-indentation invariance:** adding or removing the
   same number of leading U+0020 on every content line and on the line of the closing `"""` does not change the value.
 - **[LEX-052]** Raw strings `r"…"` and `r"""…"""` process no escapes; `r"""…"""` is dedented like any triple-quoted string
-  (LEX-051). A raw string ends at the first `"` (`r"C:\dir\"` is valid). There are no `#`-fenced raw strings: an
-  identifier token `r`, `b`, `rb` or `br` immediately followed by `#"` or `##` is E0047, because `#` would otherwise
-  silently start a comment.
+  (LEX-051). A raw string ends at the first `"` (`r"C:\dir\"` is valid). There are no `#`-fenced raw strings: any
+  identifier token immediately followed by `#"` (`r#"…"#`, `re#"…"#`, `f#"…"#`) is E0047, because the `#` would
+  otherwise silently start a comment that swallows the rest of the line.
 - **[LEX-053]** Byte strings `b"…"` have type `Bytes` and accept printable ASCII (`U+0020`–`U+007E`) and the escapes
   `\\ \" \n \t \r \0 \xHH`; no `\u{…}` (E0043) and no other character (E0043); an escape that exists
   elsewhere but not here (`\{`, `\}`) is E0043, an escape that exists nowhere (`\q`, `\'`) or a malformed `\xHH` is E0041.
