@@ -92,10 +92,7 @@ types** and **auditable**.
   conservative:
   1. a call through an interface value or a function value may call anything, unless the value comes from Égide;
   2. `unsafe`, cgo, `//go:linkname`, assembly and `reflect` calls that can reach unexported state classify as impure;
-  3. writing an exported package-level variable classifies as impure;
-  4. a function value that is passed as an argument, stored in a package-level variable or in a field, or started with
-     `go` or `defer`, counts as called by the function that does it (so a callback registered with `image.RegisterFormat`
-     or `sql.Register` is classified through the registering function, and this applies to the roots of GO-045).
+  3. writing an exported package-level variable classifies as impure.
   The result is recorded per function in `egide.lock` (PKG-040).
 - **[GO-043] Drift detection.** When a new version of a Go module changes the classification of a function called by
   the Égide program, `egide lock` fails and prints the per-function capability diff.
@@ -103,10 +100,13 @@ types** and **auditable**.
   `[go.overrides] "<import path>.Func" = { class = "pure", reason = "…" }` (a method is keyed
   `"<import path>.<Type>.<Method>"`). Like `@go_threadsafe` (GO-032) it asserts a property the compiler cannot check, and
   is gated like it:
-  1. only `class = "pure"` exists. The key MUST name an exported function or method of a package whose owning module
-     (as reported by the Go tool, not by string prefix) is exactly a module declared in the `[go]` section of the same
-     package. The standard library (reviewed list, GO-041), a nested or other module, `init` and variable initialisers
-     (GO-045) cannot be overridden: E0423;
+  1. only `class = "pure"` exists. The key MUST resolve to an exported function or method **declared** in a package of a
+     module that is exactly a module of the `[go]` section of the same package. Ownership is decided by the package that
+     declares the resolved object (the Go type checker's `Func.Pkg()` after alias resolution), not by the package named in
+     the key and not by string prefix. A key that resolves to a method promoted through an embedded field (`type W
+     struct{ *os.File }`, key `m.W.Write`), to a method or function of a type alias of a foreign type (`type File =
+     os.File`), to a package-level variable of function type (`var Sync = os.WriteFile`), to the standard library (reviewed
+     list, GO-041), to a nested or other module, or to `init` or a variable initialiser, is E0702;
   2. **the override applies only to the edge from Égide source of the declaring package to that exact function.** Inside
      the Go call graph the function keeps the class computed by GO-042, so Go callers of it, and Go functions that reach it,
      are classified as if there were no override. An override is never a pure leaf of the analysis;
@@ -115,43 +115,9 @@ types** and **auditable**.
      `Zs` other than U+0020; E0118), and every tool that prints it (audit, lock, SBOM) passes it through the output
      escaping of LEX-006;
   4. every package that transitively contains the override MUST list `"go_override:<import path>.<Func>"` in the `allow`
-     entries of the dependency edge (PKG-030, PKG-031, PKG-032), otherwise the build fails (E0422). The entry names the
+     entries of the dependency edge (PKG-030, PKG-031, PKG-032), otherwise the build fails (E0701). The entry names the
      function whose class the root accepts to be wrong; by item 2 no other Go function changes class because of it;
-  5. `egide audit` lists every override with its reason; `egide.lock` records it under the declaring package (PKG-040);
-  6. an overridden function is still never run at compile time (CT-006).
-- **[GO-045] Package initialisation.** Go runs the `init` functions and package-level variable initialisers of every Go
-  package linked into the program (the transitive import closure of the packages named by `import go`) before `main`,
-  with ambient authority and before any capability value exists. Blank imports (`import _ "net/http/pprof"`) run them
-  without any call, so GO-010 to GO-012 never apply. Their **init set** is therefore classified, per package, as follows.
-  1. *Standard library.* The purity list (GO-041, appendix A.4) holds one line `<import path>.init <class>` per package;
-     it covers the package's own initialisers and those of the standard packages it imports. A package without a line
-     has the class `forbidden` if A.3 lists it as `forbidden`, otherwise `go`. Only `pure` is accepted: importing a
-     standard package whose init class is not `pure` is E0425, and no `allow` entry lifts it. The packages the Égide
-     runtime links (A.5) are exempt.
-  2. *Third-party modules.* The init set is an additional root of the analysis of GO-042. A package in the closure whose
-     init set is impure requires `"go_init:<module>"` in `allow` (E0424); a separate key from `go:<module>`, so that
-     approving calls of a module does not approve initialisers it gains later. A package whose init set is
-     `forbidden` (for example any package that imports `net/http/pprof` or `expvar`, named or blank, outside the
-     standard library) is E0425 and no entry lifts it.
-  3. Cgo, `.syso` objects and any file the build does not compile are not part of the init set; GO-046 excludes them.
-  4. Drift detection (GO-043), the lock (PKG-040) and `egide audit` cover init sets. No capability can mediate an
-     initialiser; the OS sandbox (GO-013) is the only barrier left after these gates.
-- **[GO-046] Go build environment.** Type information, classification (GO-042, GO-045) and the final build of the Go
-  closure follow these rules, so that no code of a dependency runs during compilation (INT-005, PKG-042):
-  1. cgo is disabled (`CGO_ENABLED=0`). A package of the closure that has cgo files (`import "C"`), C, C++, Objective-C
-     or SWIG sources, or `.syso` objects, is E0426. (The glue the compiler generates for GO-003 is not part of the
-     closure.) Assembly is allowed and classified impure (GO-042);
-  2. the toolchain is the pinned local one (`GOTOOLCHAIN=local`; no toolchain download) and its version is recorded in
-     the lock; `GOFLAGS`, `-toolexec` and every environment variable that changes the Go build come from the compiler and
-     from nothing else (`-mod=readonly`, `GOWORK=off`);
-  3. the main module of the Go build is generated by the compiler from the `[go]` sections and the lock. `vendor/`
-     directories, `replace`, `exclude`, `go.work` and `toolchain` directives of dependencies are ignored; vendored trees
-     produced by `egide vendor` (PKG-052) are re-verified against the lock hashes before use;
-  4. the bytes analysed are the bytes compiled: both come from the module cache verified against the `go.sum` lines of
-     the lock (PKG-041);
-  5. classification depends on `GOOS`, `GOARCH` and build tags, so the lock records the tuple
-     (`GOOS`, `GOARCH`, tags, `CGO_ENABLED`) with each classification (PKG-040). A build for a tuple that is not in the
-     lock is E0427 until `egide lock --target` has analysed it and the drift check (GO-043) has passed.
+  5. `egide audit` lists every override with its reason; `egide.lock` records it under the declaring package (PKG-040).
 
 ## 11.5 Calling Égide from Go
 
