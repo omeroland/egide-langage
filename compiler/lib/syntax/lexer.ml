@@ -18,8 +18,13 @@ let num_fraction = [%sedlex.regexp? dec_digits, '.', digit, Star ident_char]
 
 (* The sign of an exponent is not an identifier character: `1e+9`, `2.5e-3`, `1E+9` (the last is E0031). *)
 let num_signed_exp =
-  [%sedlex.regexp? dec_digits, Opt ('.', digit, Star (digit | '_')), ('e' | 'E'), ('+' | '-'), digit,
-    Star ident_char]
+  [%sedlex.regexp?
+    ( dec_digits,
+      Opt ('.', digit, Star (digit | '_')),
+      ('e' | 'E'),
+      ('+' | '-'),
+      digit,
+      Star ident_char )]
 
 (* A decimal integer, a dot and an identifier: a duration (LEX-042) or `INT . IDENT`; decided by [token]. *)
 let num_dot_word = [%sedlex.regexp? dec_digits, '.', ident_start, Star ident_char]
@@ -66,7 +71,9 @@ let check_group kind g : number_error option =
 let prefixed_radix s =
   if String.length s >= 2 && s.[0] = '0' then
     match s.[1] with
-    | 'x' -> Some ("a hexadecimal", fun c -> is_digit c || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'))
+    | 'x' ->
+        Some
+          ("a hexadecimal", fun c -> is_digit c || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'))
     | 'o' -> Some ("an octal", fun c -> c >= '0' && c <= '7')
     | 'b' -> Some ("a binary", fun c -> c = '0' || c = '1')
     | _ -> None
@@ -92,20 +99,26 @@ let classify_number s : (number_kind, number_error) result =
       else if bad < String.length digits then
         err (Printf.sprintf "`%c` is not a valid digit of %s literal" digits.[bad] name)
       else match check_group Integer digits with Some e -> Error e | None -> Ok Integer)
-  | None ->
+  | None -> (
       let n = String.length s in
       let int_end = span_while (fun c -> is_digit c || c = '_') s 0 in
       let int_part = String.sub s 0 int_end in
       let frac_end =
-        if int_end < n && s.[int_end] = '.' then span_while (fun c -> is_digit c || c = '_') s (int_end + 1)
+        if int_end < n && s.[int_end] = '.' then
+          span_while (fun c -> is_digit c || c = '_') s (int_end + 1)
         else int_end
       in
-      let frac = if frac_end > int_end then Some (String.sub s (int_end + 1) (frac_end - int_end - 1)) else None in
+      let frac =
+        if frac_end > int_end then Some (String.sub s (int_end + 1) (frac_end - int_end - 1))
+        else None
+      in
       (* An exponent: `e` or `E`, an optional sign, digits. With no digit after the letter, the letter is a
          "number followed by an identifier" unless the word ends there (`1e`: an exponent without digits). *)
       let exp =
         if frac_end < n && (s.[frac_end] = 'e' || s.[frac_end] = 'E') then begin
-          let sign = if frac_end + 1 < n && (s.[frac_end + 1] = '+' || s.[frac_end + 1] = '-') then 1 else 0 in
+          let sign =
+            if frac_end + 1 < n && (s.[frac_end + 1] = '+' || s.[frac_end + 1] = '-') then 1 else 0
+          in
           let d0 = frac_end + 1 + sign in
           let d1 = span_while (fun c -> is_digit c || c = '_') s d0 in
           if d1 > d0 || d0 = n then Some (s.[frac_end], String.sub s d0 (d1 - d0), d1) else None
@@ -124,7 +137,8 @@ let classify_number s : (number_kind, number_error) result =
              Some
                ( kind,
                  Printf.sprintf "leading zero in `%s`" int_part,
-                 if kind = Integer && octal then [ Printf.sprintf "write 0o%s for octal" tail ] else [] )
+                 if kind = Integer && octal then [ Printf.sprintf "write 0o%s for octal" tail ]
+                 else [] )
            else None);
           check_group kind int_part;
           Option.bind frac (fun g -> if g = "" then None else check_group kind g);
@@ -139,15 +153,17 @@ let classify_number s : (number_kind, number_error) result =
                ( kind,
                  Printf.sprintf "`%s` directly follows the numeric literal `%s`" rest
                    (String.sub s 0 rest_start),
-                 if int_part = "0" && frac = None && exp = None && String.contains "XOB" rest.[0] then
-                   [ "integer prefixes are lowercase: 0x, 0o, 0b" ]
+                 if int_part = "0" && frac = None && exp = None && String.contains "XOB" rest.[0]
+                 then [ "integer prefixes are lowercase: 0x, 0o, 0b" ]
                  else [] ));
         ]
       in
-      match first_error checks with Some e -> Error e | None -> Ok kind
+      match first_error checks with Some e -> Error e | None -> Ok kind)
 
 let report_number st ((kind, msg, notes) : number_error) =
-  let rule, code = match kind with Integer -> ("LEX-040", "E0030") | Real -> ("LEX-041", "E0031") in
+  let rule, code =
+    match kind with Integer -> ("LEX-040", "E0030") | Real -> ("LEX-041", "E0031")
+  in
   D.Sink.report st.sink (D.error ~rule ~code ~notes (span st) msg)
 
 (* One diagnostic per malformed literal; the token is still produced so that the parser can go on. *)
@@ -175,7 +191,7 @@ let rec token st =
       let s = Sedlexing.Utf8.lexeme buf in
       match Token_table.keyword s with Some kw -> ret st kw | None -> ret st (IDENT s))
   | num_signed_exp | num_fraction | num_word -> number st (Sedlexing.Utf8.lexeme buf)
-  | num_dot_word -> (
+  | num_dot_word ->
       (* LEX-042: [5.ms] is one DURATION token only if the unit is a whole identifier. Otherwise the dot is a
          separate token ([5.msg] is [INT . IDENT]): give the lexeme back and re-match the integer alone. *)
       let lexeme = Sedlexing.Utf8.lexeme buf in
@@ -183,14 +199,12 @@ let rec token st =
       let amount = String.sub lexeme 0 dot in
       let unit = String.sub lexeme (dot + 1) (String.length lexeme - dot - 1) in
       if List.mem unit duration_units then (
-        (match classify_number amount with
-        | Ok _ -> ()
-        | Error e -> report_number st e);
+        (match classify_number amount with Ok _ -> () | Error e -> report_number st e);
         ret st (DURATION (amount, unit)))
       else begin
         Sedlexing.rollback buf;
         match%sedlex buf with dec_digits -> number st (Sedlexing.Utf8.lexeme buf) | _ -> None
-      end)
+      end
   | '"' ->
       let startp, _ = Sedlexing.lexing_positions buf in
       Some (string st (Buffer.create 16), startp)

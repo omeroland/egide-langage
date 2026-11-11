@@ -66,7 +66,8 @@ let%expect_test "duration literals are single tokens" =
     |}]
 
 (* spec: LEX-042 *)
-let%expect_test "a unit followed by an identifier character, or a non-decimal base, is INT . IDENT" =
+let%expect_test "a unit followed by an identifier character, or a non-decimal base, is INT . IDENT"
+    =
   show "5.msg\n5.s2\n5.min_value\n0x10.s\n0b1.ms\n5.s.x\n";
   [%expect
     {|
@@ -91,7 +92,8 @@ let%expect_test "a unit followed by an identifier character, or a non-decimal ba
     |}]
 
 (* spec: LEX-041, LEX-042 *)
-let%expect_test "a dot must be followed by a digit to make a float; .5 is not a float; no t.0 special case" =
+let%expect_test
+    "a dot must be followed by a digit to make a float; .5 is not a float; no t.0 special case" =
   show "1..5\n1.\n1.e3\n.5\n1.5.5\nt.0\n1e5.ms\n";
   [%expect
     {|
@@ -205,10 +207,10 @@ let%test "the lexer never raises on literal-like soup" =
   seeded
     (QCheck2.Test.make ~name:"literal soup" ~count:5000
        QCheck2.Gen.(
-         string_size ~gen:(oneof_list (List.of_seq (String.to_seq "0123456789_xobeE.+-sminuhfa ")))
+         string_size
+           ~gen:(oneof_list (List.of_seq (String.to_seq "0123456789_xobeE.+-sminuhfa ")))
            (int_range 0 24))
-       (fun s ->
-         match Lexer.tokenize ~file:"t.egd" s with _ -> true | exception _ -> false));
+       (fun s -> match Lexer.tokenize ~file:"t.egd" s with _ -> true | exception _ -> false));
   true
 
 (* spec: LEX-040: a canonical decimal integer lexes to exactly one INT token with no diagnostic. *)
@@ -230,6 +232,7 @@ let%test "amount.unit lexes to one DURATION" =
        QCheck2.Gen.(pair (int_range 0 1_000_000) (oneof_list [ "ns"; "us"; "ms"; "s"; "min"; "h" ]))
        (fun (n, u) ->
          match Lexer.tokenize ~file:"t.egd" (Printf.sprintf "%d.%s" n u) with
-         | [ { tok; _ } ], [] -> Parse.token_to_string tok = Printf.sprintf "DURATION(%S, %S)" (string_of_int n) u
+         | [ { tok; _ } ], [] ->
+             Parse.token_to_string tok = Printf.sprintf "DURATION(%S, %S)" (string_of_int n) u
          | _ -> false));
   true
