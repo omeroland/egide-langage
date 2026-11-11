@@ -128,13 +128,36 @@ types** and **auditable**.
   conservative:
   1. a call through an interface value or a function value may call anything, unless the value comes from Égide;
   2. `unsafe`, cgo, `//go:linkname`, assembly and `reflect` calls that can reach unexported state classify as impure;
-  3. writing an exported package-level variable classifies as impure.
+  3. writing an exported package-level variable classifies as impure;
+  4. a function value that is passed as an argument, stored in a package-level variable or in a field, or started with
+     `go` or `defer`, counts as called by the function that does it (so a callback registered with `image.RegisterFormat`
+     or `sql.Register` is classified through the registering function, and this applies to the roots of GO-045).
   The result is recorded per function in `egide.lock` (PKG-040).
 - **[GO-043] Drift detection.** When a new version of a Go module changes the classification of a function called by
   the Égide program, `egide lock` fails and prints the per-function capability diff.
 - **[GO-044] Overrides.** A package may declare a false positive pure with
   `[go.overrides] "module.Func" = { class = "pure", reason = "…" }`. Overrides are listed by `egide audit` and never
   apply to dependent packages.
+
+- **[GO-045] Package initialisation.** Go runs the `init` functions and package-level variable initialisers of every Go
+  package linked into the program (the transitive import closure of the packages named by `import go`) before `main`,
+  with ambient authority and before any capability value exists. Blank imports (`import _ "net/http/pprof"`) run them
+  without any call, so GO-010 to GO-012 never apply. The **init set** of a package is its `init` functions and its
+  variable initialisers; it is classified per package:
+  1. *Standard library.* The init-class test applies to **every standard package in the closure**, including those reached
+     only through a third-party package (a third party's `import _ "plugin"` is as much an error as an Égide
+     `import go "plugin"`). The purity list (GO-041, appendix A.4) holds one line `<import path>.init <class>` per package;
+     it covers the package's own initialisers and those of the standard packages it imports. A package without a line has
+     the class `forbidden` if A.3 lists it as `forbidden`, otherwise `go`. Only `pure` is accepted: any other class is
+     E0704, and no `allow` entry lifts it. The packages the Égide runtime links (A.5) are exempt;
+  2. *Third-party modules.* The init set is an additional root of the analysis of GO-042. A package whose init set is
+     impure requires `"go_init:<module>"` in `allow` (E0703), a key distinct from `go:<module>` so that approving the calls
+     of a module does not approve initialisers it gains later. A package whose init set is `forbidden` (it imports, by name
+     or blank, a standard package of class `forbidden` such as `net/http/pprof` or `expvar`) is E0704;
+  3. Cgo, `.syso` objects and any file the build does not compile are not part of the init set; GO-046 excludes them from
+     the closure;
+  4. drift detection (GO-043), the lock (PKG-043) and `egide audit` cover init sets. No capability can mediate an
+     initialiser; the OS sandbox (GO-013) is the only barrier left after these gates.
 
 ## 11.5 Calling Égide from Go
 

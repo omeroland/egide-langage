@@ -50,7 +50,7 @@ Thanks to capabilities (chapter 6), a dependency can only do what the code passe
 I/O permissions. It controls only the ways around the model.
 
 - **[PKG-030]** A dependency whose code (transitively) contains `unsafe`, C FFI, impure Go calls or `@go_threadsafe` MUST be listed with
-  the matching `allow` entries: `"unsafe"`, `"ffi:<library>"`, `"go:<module>"`, `"go_threadsafe:<go module>"` (GO-032), `"test-capabilities"`.
+  the matching `allow` entries: `"unsafe"`, `"ffi:<library>"`, `"go:<module>"`, `"go_init:<module>"` (GO-045), `"go_threadsafe:<go module>"` (GO-032), `"test-capabilities"`.
   A dependency update that introduces a new breach fails the build until the manifest is updated.
 - **[PKG-031]** `allow` entries are not transitive: every package that (transitively) depends on a breaching package
   declares it, so the breach is visible at every level.
@@ -65,7 +65,7 @@ I/O permissions. It controls only the ways around the model.
   build scripts, install hooks or post-install steps (INT-005). The same holds for the Go modules of `[go]`: their analysis
   and build run under GO-046 (no cgo, no toolchain download, no `go generate`, no inherited environment).
 - **[PKG-043]** For the Go closure `egide.lock` also records the Go toolchain version and the SHA-256 of its distribution,
-  the SHA-256 of every module directory used (GO-046.4), and, per build tuple (GO-046.6), the per-function classification.
+  the SHA-256 of every module directory used (GO-046.4), the classification of each package's initialisation (GO-045) and, per build tuple (GO-046.6), the per-function classification.
 
 ## 10.6 Reproducibility and provenance
 

@@ -37,3 +37,4 @@ requires an accepted ADR.**
 | [0018](0018-surface-syntax-familiarity.md) | Surface syntax familiarity | Proposed (owner confirmation required) |
 | [0019](0019-toolchain-parity.md) | Toolchain parity with the Go toolchain | Proposed |
 | [0024](0024-go-build-environment.md) | Go build environment: no dependency code runs during compilation | Proposed |
+| [0025](0025-go-package-initialisation.md) | Classification of Go package initialisation (`init`) | Proposed (depends on 0024) |
