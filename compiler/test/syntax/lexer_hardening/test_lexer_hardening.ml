@@ -440,8 +440,7 @@ let%expect_test "very long runs of spaces, comments, strings and tabs do not rai
 
 (* ADR-0017: the set is property-defined; the oracle (compiler/test/diagnostics/oracle) lists the properties. LF, HT
    and CR have their own rules. *)
-let is_forbidden_spec cp =
-  Forbidden_oracle.forbidden cp && cp <> 0x0A && cp <> 0x09 && cp <> 0x0D
+let is_forbidden_spec cp = Forbidden_oracle.forbidden cp && cp <> 0x0A && cp <> 0x09 && cp <> 0x0D
 
 (* Number of forbidden code points (LEX-003) in a well-formed UTF-8 string, excluding a leading BOM (LEX-001). *)
 let count_forbidden src =

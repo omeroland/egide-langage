@@ -13,6 +13,12 @@
    %{project_root}/tasks/PHASE
    %{project_root}/tools/gen/unicode-16.0.0.sha256
    (glob_files %{project_root}/tasks/done/*)))
- (libraries egide.source egide.diagnostics egide.syntax forbidden_oracle qcheck-core str)
+ (libraries
+  egide.source
+  egide.diagnostics
+  egide.syntax
+  forbidden_oracle
+  qcheck-core
+  str)
  (preprocess
   (pps ppx_expect)))

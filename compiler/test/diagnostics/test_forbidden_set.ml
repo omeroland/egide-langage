@@ -45,17 +45,62 @@ let%test "Forbidden_set.mem is total" = (not (F.mem (-1))) && not (F.mem 0x11000
 (* spec: LEX-003 — reviewer's gaps (ADR-0017 S2), TAG, Hangul fillers, CGJ, variation selectors, noncharacters *)
 let%test "the reviewer's gap list is members" =
   let gaps =
-    [ 0x17B4; 0x17B5; 0x2065; 0xFFF0; 0xFFF1; 0xFFF8; 0xE0080; 0xE00FF; 0xE01F0; 0xE0FFF; 0xE0001; 0xE0020;
-      0xE007F; 0x115F; 0x1160; 0x3164; 0xFFA0; 0x34F; 0xFE00; 0xFE0F; 0xE0100; 0xE01EF; 0x180B; 0x180F; 0xAD;
-      0xFDD0; 0xFDEF; 0xFFFE; 0xFFFF; 0x1FFFF; 0x10FFFF; 0x2028; 0x2029 ]
+    [
+      0x17B4;
+      0x17B5;
+      0x2065;
+      0xFFF0;
+      0xFFF1;
+      0xFFF8;
+      0xE0080;
+      0xE00FF;
+      0xE01F0;
+      0xE0FFF;
+      0xE0001;
+      0xE0020;
+      0xE007F;
+      0x115F;
+      0x1160;
+      0x3164;
+      0xFFA0;
+      0x34F;
+      0xFE00;
+      0xFE0F;
+      0xE0100;
+      0xE01EF;
+      0x180B;
+      0x180F;
+      0xAD;
+      0xFDD0;
+      0xFDEF;
+      0xFFFE;
+      0xFFFF;
+      0x1FFFF;
+      0x10FFFF;
+      0x2028;
+      0x2029;
+    ]
   in
-  List.for_all (fun cp -> F.mem cp || (fail "U+%04X not a member" cp; false)) gaps
+  List.for_all
+    (fun cp ->
+      F.mem cp
+      ||
+      (fail "U+%04X not a member" cp;
+       false))
+    gaps
 
 (* spec: LEX-003 — neighbours of the set are not members (no "all Cn"; Zs is handled by the lexer, not by the set) *)
-let neighbours = [ 0xAC; 0xAE; 0x378; 0x2027; 0x202F; 0xFE10; 0xFFEF; 0xE1000; 0x10FFFD; 0x20; 0x7E ]
+let neighbours =
+  [ 0xAC; 0xAE; 0x378; 0x2027; 0x202F; 0xFE10; 0xFFEF; 0xE1000; 0x10FFFD; 0x20; 0x7E ]
 
 let%test "neighbours are not members" =
-  List.for_all (fun cp -> (not (F.mem cp)) || (fail "U+%04X is a member" cp; false)) neighbours
+  List.for_all
+    (fun cp ->
+      (not (F.mem cp))
+      ||
+      (fail "U+%04X is a member" cp;
+       false))
+    neighbours
 
 (* ---- through the lexer ---- *)
 
@@ -110,7 +155,8 @@ let%test "the lexer reports E0004 for exactly the oracle set, in comments (all s
 
 let forbidden_list =
   let l = ref [] in
-  all_scalars (fun cp -> if O.forbidden cp && cp <> 0x0A && cp <> 0x0D && cp <> 0x09 then l := cp :: !l);
+  all_scalars (fun cp ->
+      if O.forbidden cp && cp <> 0x0A && cp <> 0x0D && cp <> 0x09 then l := cp :: !l);
   List.rev !l
 
 (* spec: LEX-003 — in code and in string literals as well: one E0004 each, and no E0051 for the character itself *)
@@ -125,8 +171,14 @@ let%test "every forbidden code point is E0004 in code and in strings" =
       List.for_all
         (fun ctx ->
           match lex (src ctx cp) with
-          | [ d ] -> d.code = "E0004" || (fail "U+%04X: %s" cp d.code; false)
-          | ds -> fail "U+%04X: %s" cp (codes ds); false)
+          | [ d ] ->
+              d.code = "E0004"
+              ||
+              (fail "U+%04X: %s" cp d.code;
+               false)
+          | ds ->
+              fail "U+%04X: %s" cp (codes ds);
+              false)
         [ `Code; `String ])
     forbidden_list
 
@@ -142,20 +194,34 @@ let%test "Zs other than U+0020 is accepted in comments and strings and E0051 in 
       let c = utf8 cp in
       let comment = lex ("# a" ^ c ^ "b\n") and str = lex ("let s = \"a" ^ c ^ "b\"\n") in
       let code = lex ("let x =" ^ c ^ "1\n") in
-      (comment = [] || (fail "U+%04X in comment: %s" cp (codes comment); false))
-      && (str = [] || (fail "U+%04X in string: %s" cp (codes str); false))
+      (comment = []
+      ||
+      (fail "U+%04X in comment: %s" cp (codes comment);
+       false))
+      && (str = []
+         ||
+         (fail "U+%04X in string: %s" cp (codes str);
+          false))
       &&
       match code with
-      | [ d ] -> d.code = "E0051" || (fail "U+%04X in code: %s" cp d.code; false)
-      | ds -> fail "U+%04X in code: %s" cp (codes ds); false)
+      | [ d ] ->
+          d.code = "E0051"
+          ||
+          (fail "U+%04X in code: %s" cp d.code;
+           false)
+      | ds ->
+          fail "U+%04X in code: %s" cp (codes ds);
+          false)
     (List.concat_map (fun (lo, hi) -> List.init (hi - lo + 1) (fun k -> lo + k)) O.zs)
 
 let%test "neighbours are accepted in comments and strings" =
   List.for_all
     (fun cp ->
       let c = utf8 cp in
-      lex ("# a" ^ c ^ "b\n") = [] && lex ("let s = \"a" ^ c ^ "b\"\n") = []
-      || (fail "U+%04X rejected" cp; false))
+      (lex ("# a" ^ c ^ "b\n") = [] && lex ("let s = \"a" ^ c ^ "b\"\n") = [])
+      ||
+      (fail "U+%04X rejected" cp;
+       false))
     neighbours
 
 (* spec: LEX-050 (ADR-0017) — `\u{...}` accepts every scalar value, one literal per line; surrogates and values above
@@ -165,14 +231,22 @@ let%test "\\u{...} accepts every scalar value" =
   all_scalars (fun cp -> Buffer.add_string b (Printf.sprintf "let s = \"\\u{%X}\"\n" cp));
   match lex (Buffer.contents b) with
   | [] -> true
-  | d :: _ as ds -> fail "%d diagnostics, first %s at line %d" (List.length ds) d.code d.span.start.line; false
+  | d :: _ as ds ->
+      fail "%d diagnostics, first %s at line %d" (List.length ds) d.code d.span.start.line;
+      false
 
 let%test "\\u{...} rejects surrogates and values above U+10FFFF with E0041" =
   List.for_all
     (fun h ->
       match lex (Printf.sprintf "let s = \"\\u{%s}\"\n" h) with
-      | [ d ] -> d.code = "E0041" || (fail "%s: %s" h d.code; false)
-      | ds -> fail "%s: %s" h (codes ds); false)
+      | [ d ] ->
+          d.code = "E0041"
+          ||
+          (fail "%s: %s" h d.code;
+           false)
+      | ds ->
+          fail "%s: %s" h (codes ds);
+          false)
     [ "D800"; "DBFF"; "DC00"; "DFFF"; "110000"; "FFFFFF" ]
 
 let%test "the three escapes of the acceptance criteria are accepted" =
@@ -183,7 +257,8 @@ let%test "a long line of forbidden code points is linear" =
   let n = 1_000_000 in
   let src = "# " ^ String.concat "" (List.init n (fun _ -> "\xE2\x80\xAE")) ^ "\n" in
   let ds = lex src in
-  List.length ds = n && List.for_all (fun (d : D.t) -> d.code = "E0004") ds
+  List.length ds = n
+  && List.for_all (fun (d : D.t) -> d.code = "E0004") ds
   && S.check ~file:"t.egd" (String.make 4_000_000 'a') = []
 
 (* ---- the pinned table (LEX-003: Unicode 16.0.0, embedded, never read from the host) ---- *)
@@ -204,12 +279,12 @@ let%test "the table records the pinned upstream digests" =
   let pins =
     String.split_on_char '\n' (read "../../../tools/gen/unicode-16.0.0.sha256")
     |> List.filter_map (fun l ->
-           let l = String.trim l in
-           if l = "" || l.[0] = '#' then None
-           else
-             match String.split_on_char ' ' l with
-             | digest :: rest -> Some (String.trim (String.concat " " rest), digest)
-             | [] -> None)
+        let l = String.trim l in
+        if l = "" || l.[0] = '#' then None
+        else
+          match String.split_on_char ' ' l with
+          | digest :: rest -> Some (String.trim (String.concat " " rest), digest)
+          | [] -> None)
   in
   List.sort compare pins = List.sort compare T.source_digests && List.length pins = 3
 
@@ -218,27 +293,31 @@ let%test "the table records the pinned upstream digests" =
 let pinned_table_digest = "0af5d280e38a86a8cd7768abc0aabe83"
 
 let%test "the table digest is pinned" =
-  let canonical =
-    String.concat ","
-      (Array.to_list (Array.map (Printf.sprintf "%X") T.ranges))
-  in
+  let canonical = String.concat "," (Array.to_list (Array.map (Printf.sprintf "%X") T.ranges)) in
   let d = Digest.to_hex (Digest.string canonical) in
-  d = pinned_table_digest || (Printf.printf "table digest is %s\n" d; false)
+  d = pinned_table_digest
+  ||
+  (Printf.printf "table digest is %s\n" d;
+   false)
 
 let%test "the table is flat, sorted, disjoint and non-adjacent" =
   let r = T.ranges in
   Array.length r mod 2 = 0
-  && (let ok = ref true in
-      for i = 0 to (Array.length r / 2) - 1 do
-        if r.(2 * i) > r.((2 * i) + 1) then ok := false;
-        if i > 0 && r.(2 * i) <= r.((2 * i) - 1) + 1 then ok := false
-      done;
-      !ok)
+  &&
+  let ok = ref true in
+  for i = 0 to (Array.length r / 2) - 1 do
+    if r.(2 * i) > r.((2 * i) + 1) then ok := false;
+    if i > 0 && r.(2 * i) <= r.((2 * i) - 1) + 1 then ok := false
+  done;
+  !ok
 
 (* The table module is data only: it reads nothing from the host at run time. *)
 let%test "the table module performs no I/O" =
   let src = read "../../lib/source/forbidden_table.ml" in
   let contains sub =
-    try ignore (Str.search_forward (Str.regexp_string sub) src 0); true with Not_found -> false
+    try
+      ignore (Str.search_forward (Str.regexp_string sub) src 0);
+      true
+    with Not_found -> false
   in
   not (List.exists contains [ "open_in"; "Sys."; "Unix"; "In_channel"; "Stdlib.input" ])

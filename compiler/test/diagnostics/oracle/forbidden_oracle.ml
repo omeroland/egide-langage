@@ -7,6 +7,7 @@
    and cross-checked against the Python `regex` 2024.11.6 module (Unicode 16.0.0). Both agree with the generated
    table over all 0x110000 code points. For these properties Unicode 17 (the ICU used) equals Unicode 16.0.0.
    A regenerated table cannot change the expected set: only an edit of this file can, and it is reviewed. *)
+
 [@@@ocamlformat "disable"]
 
 (* general category Cf (170 code points) *)

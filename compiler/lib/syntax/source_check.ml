@@ -39,7 +39,10 @@ let name cp =
   | 0xFFA0 -> "HALFWIDTH HANGUL FILLER"
   | _ when cp < 0x20 || (cp >= 0x7F && cp <= 0x9F) -> "control character"
   | _ when cp >= 0xE0000 && cp <= 0xE007F -> "tag character"
-  | _ when (cp >= 0xFE00 && cp <= 0xFE0F) || (cp >= 0xE0100 && cp <= 0xE01EF) || (cp >= 0x180B && cp <= 0x180D) ->
+  | _
+    when (cp >= 0xFE00 && cp <= 0xFE0F)
+         || (cp >= 0xE0100 && cp <= 0xE01EF)
+         || (cp >= 0x180B && cp <= 0x180D) ->
       "variation selector"
   | _ when cp land 0xFFFE = 0xFFFE || (cp >= 0xFDD0 && cp <= 0xFDEF) -> "noncharacter"
   | _ -> "format or default-ignorable character"
