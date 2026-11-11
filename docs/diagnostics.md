@@ -76,6 +76,8 @@ pull request**. Codes are never reused.
 | E0601 | LEX-055, CT-041 | template `{prefix}` (result type `{Sink}`) does not accept a format specifier (`:spec`) — sinks take none, risk: unreviewed channel into `{Sink}` | allocated |
 | E0602 | CT-040 | `@template` of the reserved standard prefix `{prefix}` outside `std` | allocated |
 | E0610 | CT-002 | top-level `let` or `comptime` argument must be pure: contains `{what}` | allocated |
+| E0705 | GO-046 | `{package}` needs cgo, or selects C, C++, Objective-C, SWIG sources or `.syso` objects; cgo is disabled for the Go closure (native backend: the closure selects different files with cgo enabled) | proposed (ADR-0024) |
+| E0706 | GO-046, GO-043 | no classification of the Go closure in `egide.lock` for build tuple `{tuple}`; run `egide lock --target` | proposed (ADR-0024) |
 | W0001 | LEX-005 | right-to-left text in a string or comment may display the rest of the line in a different order; bind the string with `let` on its own line | allocated |
 | W0002 | LEX-011 | doc comment is not attached to a declaration | allocated |
 

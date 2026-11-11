@@ -36,3 +36,4 @@ requires an accepted ADR.**
 | [0017](0017-security-review-resolution.md) | Resolution of the security review of ADR-0013 to ADR-0016 | Accepted (owner-delegated, review at MVP) |
 | [0018](0018-surface-syntax-familiarity.md) | Surface syntax familiarity | Proposed (owner confirmation required) |
 | [0019](0019-toolchain-parity.md) | Toolchain parity with the Go toolchain | Proposed |
+| [0024](0024-go-build-environment.md) | Go build environment: no dependency code runs during compilation | Proposed |

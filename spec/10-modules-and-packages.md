@@ -62,7 +62,10 @@ I/O permissions. It controls only the ways around the model.
   capability classification (GO-042).
 - **[PKG-041]** Builds verify every hash and signature. A mismatch is a fatal error; there is no flag to skip it.
 - **[PKG-042]** Installing or building a package never executes code of that package with authority: there are no
-  build scripts, install hooks or post-install steps (INT-005).
+  build scripts, install hooks or post-install steps (INT-005). The same holds for the Go modules of `[go]`: their analysis
+  and build run under GO-046 (no cgo, no toolchain download, no `go generate`, no inherited environment).
+- **[PKG-043]** For the Go closure `egide.lock` also records the Go toolchain version and the SHA-256 of its distribution,
+  the SHA-256 of every module directory used (GO-046.4), and, per build tuple (GO-046.6), the per-function classification.
 
 ## 10.6 Reproducibility and provenance
 
