@@ -10,11 +10,15 @@ open Egide_syntax
 open Ast
 
 let sp = Egide_source.Span.dummy
-let sp2 = Egide_source.Span.make ~file:"f.egd" ~start:{ line = 3; col = 4 } ~stop:{ line = 3; col = 9 }
+
+let sp2 =
+  Egide_source.Span.make ~file:"f.egd" ~start:{ line = 3; col = 4 } ~stop:{ line = 3; col = 9 }
+
 let gen = Node_id.Gen.create ()
 let nid () = Node_id.Gen.fresh gen
 let id ?(span = sp) name : ident = { id = nid (); name; span }
 let path s : path = { id = nid (); segments = [ id s ]; span = sp }
+
 let contains s sub =
   let n = String.length s and m = String.length sub in
   let rec go i = i + m <= n && (String.sub s i m = sub || go (i + 1)) in
@@ -57,13 +61,16 @@ let%expect_test "equal_* on ident, path, bound, arg, literal compare ids and spa
   let a = id "x" in
   let same_id_other_span = { a with span = sp2 } in
   let fresh = id "x" in
-  Printf.printf "ident: %b %b %b\n" (equal_ident a a) (equal_ident a same_id_other_span)
+  Printf.printf "ident: %b %b %b\n" (equal_ident a a)
+    (equal_ident a same_id_other_span)
     (equal_ident a fresh);
   let pa = path "m" in
   Printf.printf "path: %b %b\n" (equal_path pa pa) (equal_path pa (path "m"));
   let b : bound = { id = nid (); path = pa; args = []; span = sp } in
   Printf.printf "bound: %b %b\n" (equal_bound b b) (equal_bound b { b with id = nid () });
-  let ar : arg = { id = nid (); arg = Arg_plain { label = None; value = e (Lit (Bool true)) }; span = sp } in
+  let ar : arg =
+    { id = nid (); arg = Arg_plain { label = None; value = e (Lit (Bool true)) }; span = sp }
+  in
   Printf.printf "arg: %b %b\n" (equal_arg ar ar) (equal_arg ar { ar with span = sp2 });
   Printf.printf "literal: %b %b %b\n"
     (equal_literal (Int "1") (Int "1"))

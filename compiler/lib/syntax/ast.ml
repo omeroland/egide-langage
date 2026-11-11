@@ -12,16 +12,11 @@ let equal_span (a : span) b = a = b
    notation; [Uchar.equal] exists, so [eq] needs nothing. *)
 let pp_uchar fmt u = Format.fprintf fmt "U+%04X" (Uchar.to_int u)
 
-type ident = { id : Node_id.t; name : string; span : span }
-[@@deriving show, eq]
-type path = { id : Node_id.t; segments : ident list; span : span }
-[@@deriving show, eq]
-type duration_unit = Ns | Us | Ms | S | Min | H
-[@@deriving show, eq]
-type mode = By_read | Inout | Take | Comptime
-[@@deriving show, eq]
-type unary_op = Neg | Bit_not | Not
-[@@deriving show, eq]
+type ident = { id : Node_id.t; name : string; span : span } [@@deriving show, eq]
+type path = { id : Node_id.t; segments : ident list; span : span } [@@deriving show, eq]
+type duration_unit = Ns | Us | Ms | S | Min | H [@@deriving show, eq]
+type mode = By_read | Inout | Take | Comptime [@@deriving show, eq]
+type unary_op = Neg | Bit_not | Not [@@deriving show, eq]
 
 type binary_op =
   | Pipe
@@ -40,8 +35,7 @@ type binary_op =
   | Pow
 [@@deriving show, eq]
 
-type cmp_op = Eq | Ne | Lt | Le | Gt | Ge
-[@@deriving show, eq]
+type cmp_op = Eq | Ne | Lt | Le | Gt | Ge [@@deriving show, eq]
 
 type assign_op =
   | Simple_assign
@@ -64,7 +58,7 @@ type literal =
   | String of string
   | Raw_string of string
   | Bytes of string
-  | Char of (Uchar.t [@printer pp_uchar])
+  | Char of (Uchar.t[@printer pp_uchar])
   | Template of { prefix : ident; parts : template_part list }
   | Bool of bool
 
@@ -241,11 +235,9 @@ and decl_desc =
   | Type of { name : ident; generics : generic list; def : type_def }
   | Const of { name : ident; ty : ty option; value : expr }
 
-and type_def = Alias of ty | Newtype of { ty : ty; where_ : expr option }
-[@@deriving show, eq]
+and type_def = Alias of ty | Newtype of { ty : ty; where_ : expr option } [@@deriving show, eq]
 
-type import_item = { name : ident; alias : ident option; span : span }
-[@@deriving show, eq]
+type import_item = { name : ident; alias : ident option; span : span } [@@deriving show, eq]
 
 type import = { import : import_desc; span : span }
 
@@ -253,8 +245,7 @@ and import_desc =
   | Import of { path : path; form : import_form }
   | Import_go of { package : string; package_span : span; alias : ident }
 
-and import_form = Whole | Alias_as of ident | Items of import_item list
-[@@deriving show, eq]
+and import_form = Whole | Alias_as of ident | Items of import_item list [@@deriving show, eq]
 
 type file = { module_path : path; imports : import list; decls : decl list; span : span }
 [@@deriving show, eq]

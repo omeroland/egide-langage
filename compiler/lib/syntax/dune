@@ -1,7 +1,12 @@
 (library
  (name egide_syntax)
  (public_name egide.syntax)
- (libraries egide.source egide.diagnostics menhirLib sedlex ppx_deriving.runtime)
+ (libraries
+  egide.source
+  egide.diagnostics
+  menhirLib
+  sedlex
+  ppx_deriving.runtime)
  (preprocess
   (pps sedlex.ppx ppx_deriving.show ppx_deriving.eq)))
 

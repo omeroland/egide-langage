@@ -18,8 +18,8 @@
       [fn_decl]s. A wrapper whose identity is that of a child it always contains ([lambda_param],
       [typed_ident], [with_item], [case_arm], [if_branch], [map_entry], [attribute], [fn_sig],
       [import], and the pieces of a pattern or clause) has none: key a side table on the child's id.
-      Ids are stored in the tree, so the derived equality ({!equal_file} and the like) compares them:
-      two parses of one source are equal, two hand-built trees with distinct ids are not.
+      Ids are stored in the tree, so the derived equality ({!equal_file} and the like) compares
+      them: two parses of one source are equal, two hand-built trees with distinct ids are not.
       {b Which id keys what.} Some constructs carry several ids; passes use one convention so that
       they find each other's entries. {e Binders} (a [let] or [for] variable, a parameter, a
       generic, an item name) are keyed by the [id] of their [ident] (for [Pat_bind i], [i.id], not
@@ -45,21 +45,19 @@
 type span = Egide_source.Span.t
 
 val pp_span : Format.formatter -> span -> unit
-(** [file:line:col] of the start ({!Egide_source.Span.pp}); the derived printers use it for every [span]. *)
+(** [file:line:col] of the start ({!Egide_source.Span.pp}); the derived printers use it for every
+    [span]. *)
 
 val equal_span : span -> span -> bool
 (** Structural: file name and both positions. *)
 
-type ident = { id : Node_id.t; name : string; span : span }
-[@@deriving show, eq]
+type ident = { id : Node_id.t; name : string; span : span } [@@deriving show, eq]
 (** [IDENT]. *)
 
-type path = { id : Node_id.t; segments : ident list; span : span }
-[@@deriving show, eq]
+type path = { id : Node_id.t; segments : ident list; span : span } [@@deriving show, eq]
 (** [path = IDENT { "." IDENT }]. [segments] is never empty. *)
 
-type duration_unit = Ns | Us | Ms | S | Min | H  (** LEX-042 *)
-[@@deriving show, eq]
+type duration_unit = Ns | Us | Ms | S | Min | H  (** LEX-042 *) [@@deriving show, eq]
 
 type mode =
   | By_read  (** no keyword: read access, the default (MEM-020) *)
@@ -68,8 +66,7 @@ type mode =
   | Comptime  (** [comptime] (CT-010); only on [param], not on [lambda_param] *)
 [@@deriving show, eq]
 
-type unary_op = Neg  (** [-] *) | Bit_not  (** [~] *) | Not  (** [not] *)
-[@@deriving show, eq]
+type unary_op = Neg  (** [-] *) | Bit_not  (** [~] *) | Not  (** [not] *) [@@deriving show, eq]
 
 type binary_op =
   | Pipe  (** [|>] (SYN-037) *)
@@ -88,8 +85,7 @@ type binary_op =
   | Pow  (** [**], right-associative (LEX-062) *)
 [@@deriving show, eq]
 
-type cmp_op = Eq | Ne | Lt | Le | Gt | Ge  (** [cmp_op] *)
-[@@deriving show, eq]
+type cmp_op = Eq | Ne | Lt | Le | Gt | Ge  (** [cmp_op] *) [@@deriving show, eq]
 
 type assign_op =
   | Simple_assign  (** [=] *)
@@ -434,8 +430,7 @@ and type_def =
 
 (** {1 Files} *)
 
-type import_item = { name : ident; alias : ident option; span : span }
-[@@deriving show, eq]
+type import_item = { name : ident; alias : ident option; span : span } [@@deriving show, eq]
 (** [import_item = IDENT [ "as" IDENT ]] *)
 
 type import = { import : import_desc; span : span }
