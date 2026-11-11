@@ -615,8 +615,9 @@ let char_literal st =
 let max_template_depth = 8
 
 (* The byte offset of character [c] of the input. Characters are counted as sedlex counts them (one per scalar value);
-   the input is valid UTF-8 here (E0001 stops the lexer before). Walking from the last answer keeps a sequence of
-   queries linear. *)
+   the input is valid UTF-8 here (E0001 stops the lexer before). It walks from the last answer, so its cost is the
+   distance moved: linear for queries in source order, and a nested template asks outer positions again after the
+   inner ones, so it is linear in the nesting depth (at most 8) times the size of the source. *)
 let byte_of_cnum st c =
   while st.bc < c && st.bb < String.length st.src do
     st.bb <- st.bb + Uchar.utf_decode_length (String.get_utf_8_uchar st.src st.bb);
@@ -683,17 +684,25 @@ let add_interp_text t (p : Lexing.position) s =
 let triple_literals st opened t =
   let _, start, stop, _, blank, first, margin = triple_margin st opened t in
   let all = Buffer.contents t.text in
+  (* The ranges are asked for in source order, so a cursor on the lines only moves forward: [cur] is the last line
+     that starts before the range, and a range visits the lines from there to the one that starts after its end. *)
+  let cur = ref first in
   fun a b ->
+    while !cur + 1 < t.n && start (!cur + 1) < a do
+      incr cur
+    done;
     let out = Buffer.create (b - a) in
-    for k = first to t.n - 1 do
-      let s = start k and e = stop k in
+    let k = ref !cur in
+    while !k < t.n && (!k = !cur || start !k <= b) do
+      let s = start !k and e = stop !k in
       (* the line break before line [k] sits at offset [s]: it is literal text when [s] is in [a, b] *)
-      if k > first && s >= a && s <= b then Buffer.add_char out '\n';
+      if !k > first && s >= a && s <= b then Buffer.add_char out '\n';
       let lo = max a s and hi = min b e in
       if lo < hi then begin
-        let lo = if lo = s then if blank k then hi else min hi (lo + margin) else lo in
+        let lo = if lo = s then if blank !k then hi else min hi (lo + margin) else lo in
         if lo < hi then Buffer.add_substring out all lo (hi - lo)
-      end
+      end;
+      incr k
     done;
     Buffer.contents out
 
