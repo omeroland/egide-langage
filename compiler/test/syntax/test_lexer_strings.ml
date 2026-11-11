@@ -207,7 +207,8 @@ let%expect_test "triple-quoted dedent agrees with textwrap.dedent" =
     (fun i (content, expected) ->
       let toks, diags = tokens ("\"\"\"\n" ^ content ^ "\"\"\"") in
       match (toks, diags) with
-      | [ { tok = Tokens.STRING s; _ } ], [] when s = expected -> Printf.printf "case %d ok\n" (i + 1)
+      | [ { tok = Tokens.STRING s; _ } ], [] when s = expected ->
+          Printf.printf "case %d ok\n" (i + 1)
       | _ -> Printf.printf "case %d FAILED\n" (i + 1))
     dedent_cases;
   [%expect
@@ -250,14 +251,12 @@ let%expect_test "triple-quoted details" =
     E0040 1:8-1:9 unterminated string literal
     |}];
   show "\"\"\"abc\n  def";
-  [%expect
-    {|
+  [%expect {|
     1:1-2:6 STRING("abc\n  def")
     E0040 1:1-1:4 unterminated string literal
     |}];
   show "\"\"\"\n    a\\q\n    \"\"\"";
-  [%expect
-    {|
+  [%expect {|
     1:1-3:8 STRING("a\n")
     E0041 2:6-2:8 invalid escape sequence `\q`
     |}];
@@ -294,7 +293,16 @@ b"~ !"
 
 (* spec: LEX-053 *)
 let%expect_test "byte strings reject non-ASCII, controls and the other escapes" =
-  show "b\"\xC3\xA9\"\nb\"\t\"\nb\"\\u{41}\"\nb\"\\{\"\nb\"\\}\"\nb\"\\x4\"\nb\"\\q\"\nb\"\\'\"\nb\"\\xZZ\"\n";
+  show
+    "b\"\xC3\xA9\"\n\
+     b\"\t\"\n\
+     b\"\\u{41}\"\n\
+     b\"\\{\"\n\
+     b\"\\}\"\n\
+     b\"\\x4\"\n\
+     b\"\\q\"\n\
+     b\"\\'\"\n\
+     b\"\\xZZ\"\n";
   [%expect
     {|
     1:1-1:5 BYTES("")
@@ -374,8 +382,7 @@ let%expect_test "character literal errors" =
     E0040 1:1-1:2 unterminated character literal
     |}];
   show "'";
-  [%expect
-    {|
+  [%expect {|
     1:1-1:2 CHAR(U+FFFD)
     E0040 1:1-1:2 unterminated character literal
     |}]
@@ -386,13 +393,15 @@ let%expect_test "very large literals" =
   let count src =
     match tokens src with
     | [ { tok = Tokens.STRING s; _ } ], [] -> String.length s
-    | [ { tok = Tokens.BYTES s; _ } ], [] | [ { tok = Tokens.RAW_STRING s; _ } ], [] -> String.length s
+    | [ { tok = Tokens.BYTES s; _ } ], [] | [ { tok = Tokens.RAW_STRING s; _ } ], [] ->
+        String.length s
     | _ -> -1
   in
   Printf.printf "%d\n" (count ("\"" ^ String.make n 'a' ^ "\""));
   Printf.printf "%d\n" (count ("r\"" ^ String.make n 'a' ^ "\""));
   Printf.printf "%d\n" (count ("\"" ^ String.concat "" (List.init (n / 2) (fun _ -> "\\n")) ^ "\""));
-  Printf.printf "%d\n" (count ("b\"" ^ String.concat "" (List.init (n / 4) (fun _ -> "\\xFF")) ^ "\""));
+  Printf.printf "%d\n"
+    (count ("b\"" ^ String.concat "" (List.init (n / 4) (fun _ -> "\\xFF")) ^ "\""));
   Printf.printf "%d\n"
     (count ("\"\"\"\n" ^ String.concat "" (List.init 300_000 (fun _ -> "  line\n")) ^ "\"\"\""));
   [%expect {|
@@ -416,10 +425,14 @@ let utf8 cps =
 let scalar =
   QCheck2.Gen.(
     oneof
-      [ int_range 0 0x7F; int_range 0x80 0xD7FF; int_range 0xE000 0x10FFFF; oneof_list [ 0x202E; 0x22; 0x5C; 0x0A; 0x7B; 0x27 ] ])
+      [
+        int_range 0 0x7F;
+        int_range 0x80 0xD7FF;
+        int_range 0xE000 0x10FFFF;
+        oneof_list [ 0x202E; 0x22; 0x5C; 0x0A; 0x7B; 0x27 ];
+      ])
 
-let single tok_src =
-  match tokens tok_src with [ { tok; _ } ], [] -> Some tok | _ -> None
+let single tok_src = match tokens tok_src with [ { tok; _ } ], [] -> Some tok | _ -> None
 
 let%test_unit "never raises, tokens are ordered and inside the source" =
   seeded
@@ -427,15 +440,37 @@ let%test_unit "never raises, tokens are ordered and inside the source" =
        QCheck2.Gen.(
          list_size (int_range 0 40)
            (oneof_list
-              [ "\""; "'"; "\\"; "r"; "b"; "\n"; "\r\n"; " "; "\t"; "u"; "{"; "}"; "x"; "0"; "a"; "\xC3\xA9";
-                "\xF0\x9F\x98\x80"; "\"\"\""; "\\u{"; "\\x" ])
+              [
+                "\"";
+                "'";
+                "\\";
+                "r";
+                "b";
+                "\n";
+                "\r\n";
+                " ";
+                "\t";
+                "u";
+                "{";
+                "}";
+                "x";
+                "0";
+                "a";
+                "\xC3\xA9";
+                "\xF0\x9F\x98\x80";
+                "\"\"\"";
+                "\\u{";
+                "\\x";
+              ])
          |> map (String.concat ""))
        (fun src ->
          let toks, _ = tokens src in
          let rec ordered prev = function
            | [] -> true
            | (t : Lexer.located) :: rest ->
-               t.startp.pos_cnum >= prev && t.endp.pos_cnum >= t.startp.pos_cnum && ordered t.endp.pos_cnum rest
+               t.startp.pos_cnum >= prev
+               && t.endp.pos_cnum >= t.startp.pos_cnum
+               && ordered t.endp.pos_cnum rest
          in
          ordered 0 toks))
 
@@ -457,14 +492,21 @@ let%test_unit "a byte string written with \\xHH lexes back to its bytes" =
     (QCheck2.Test.make ~name:"bytes roundtrip" ~count:5000
        QCheck2.Gen.(string_size (int_range 0 40))
        (fun s ->
-         let lit = String.concat "" (List.map (fun c -> Printf.sprintf "\\x%02X" (Char.code c)) (List.of_seq (String.to_seq s))) in
+         let lit =
+           String.concat ""
+             (List.map
+                (fun c -> Printf.sprintf "\\x%02X" (Char.code c))
+                (List.of_seq (String.to_seq s)))
+         in
          single ("b\"" ^ lit ^ "\"") = Some (Tokens.BYTES s)))
 
 let%test_unit "a raw string keeps every character but the quote and the line break" =
   seeded
     (QCheck2.Test.make ~name:"raw roundtrip" ~count:5000
        QCheck2.Gen.(
-         string_size ~gen:(oneof [ char_range 'a' 'z'; return '\\'; return '{'; return '\t'; return ' ' ]) (int_range 0 40))
+         string_size
+           ~gen:(oneof [ char_range 'a' 'z'; return '\\'; return '{'; return '\t'; return ' ' ])
+           (int_range 0 40))
        (fun s -> single ("r\"" ^ s ^ "\"") = Some (Tokens.RAW_STRING s)))
 
 (* The reference model of LEX-051: margin = fewest leading spaces among non-blank lines. *)
@@ -478,14 +520,19 @@ let model_dedent content =
   let blank l = lead l = String.length l in
   let margin = List.fold_left (fun m l -> if blank l then m else min m (lead l)) max_int lines in
   String.concat "\n"
-    (List.map (fun l -> if blank l then "" else String.sub l margin (String.length l - margin)) lines)
+    (List.map
+       (fun l -> if blank l then "" else String.sub l margin (String.length l - margin))
+       lines)
 
 let%test_unit "triple-quoted dedent agrees with the reference model" =
   seeded
     (QCheck2.Test.make ~name:"dedent model" ~count:5000
        QCheck2.Gen.(
          list_size (int_range 1 8)
-           (map2 (fun n t -> String.make n ' ' ^ t) (int_range 0 6) (oneof_list [ ""; "a"; "bc d"; "x  " ]))
+           (map2
+              (fun n t -> String.make n ' ' ^ t)
+              (int_range 0 6)
+              (oneof_list [ ""; "a"; "bc d"; "x  " ]))
          |> map (String.concat "\n"))
        (fun content ->
          let src = "\"\"\"\n" ^ content ^ "\"\"\"" in

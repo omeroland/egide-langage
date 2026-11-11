@@ -71,7 +71,8 @@ let quote ?(bytes = false) s =
         | '\r' -> Buffer.add_string b "\\r"
         | c when bytes && (Char.code c < 0x20 || Char.code c >= 0x7f) ->
             Printf.bprintf b "\\x%02x" (Char.code c)
-        | c when Char.code c < 0x20 || Char.code c = 0x7f -> Printf.bprintf b "\\u{%X}" (Char.code c)
+        | c when Char.code c < 0x20 || Char.code c = 0x7f ->
+            Printf.bprintf b "\\u{%X}" (Char.code c)
         | c -> Buffer.add_char b c);
         go (i + 1)
       end

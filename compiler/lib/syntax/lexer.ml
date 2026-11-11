@@ -228,19 +228,20 @@ let decode_escapes st kind (p : Lexing.position) (s : string) (out : Buffer.t) :
       let c = s.[i] in
       if c = '\\' then escape i j
       else if Char.code c < 0x80 then begin
-        (if kind = Byt && (c < ' ' || c > '~') then
-           fail ~rule:"LEX-053" ~code:"E0043" j (j + 1)
-             (Printf.sprintf
-                "character U+%04X is not allowed in a byte string (printable ASCII U+0020 to U+007E only)"
-                (Char.code c))
-         else begin
-           if kind = Chr && c = '\t' then
-             (* LEX-054: a raw tab is not allowed; not counted as an error, the value stays one scalar *)
-             report_range st ~rule:"LEX-004" ~code:"E0005" (pos_at p j)
-               (pos_at p (j + 1))
-               "tab character in a character literal; write '\\t'";
-           Buffer.add_char out c
-         end);
+        if kind = Byt && (c < ' ' || c > '~') then
+          fail ~rule:"LEX-053" ~code:"E0043" j (j + 1)
+            (Printf.sprintf
+               "character U+%04X is not allowed in a byte string (printable ASCII U+0020 to U+007E \
+                only)"
+               (Char.code c))
+        else begin
+          if kind = Chr && c = '\t' then
+            (* LEX-054: a raw tab is not allowed; not counted as an error, the value stays one scalar *)
+            report_range st ~rule:"LEX-004" ~code:"E0005" (pos_at p j)
+              (pos_at p (j + 1))
+              "tab character in a character literal; write '\\t'";
+          Buffer.add_char out c
+        end;
         go (i + 1) (j + 1)
       end
       else begin
@@ -249,7 +250,8 @@ let decode_escapes st kind (p : Lexing.position) (s : string) (out : Buffer.t) :
         if kind = Byt then
           fail ~rule:"LEX-053" ~code:"E0043" j (j + 1)
             (Printf.sprintf
-               "character U+%04X is not allowed in a byte string (printable ASCII U+0020 to U+007E only)"
+               "character U+%04X is not allowed in a byte string (printable ASCII U+0020 to U+007E \
+                only)"
                (Uchar.to_int (Uchar.utf_decode_uchar d)))
         else Buffer.add_substring out s i w;
         go (i + w) (j + 1)
