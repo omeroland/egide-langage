@@ -1,0 +1,9 @@
+# spec: LEX-041, LEX-042
+# expect: lex-pass
+module tests.lexical.numeric_dot_not_float
+
+let a = 1..5
+let b = 1.max
+let c = 1.e3
+let d = 1.5.ms
+let e = .5

@@ -1,0 +1,8 @@
+# spec: LEX-040
+# expect: lex-pass
+module tests.lexical.numeric_int_decimal
+
+let a = 0
+let b = 123
+let c = 1_000_000
+let d = 9_9

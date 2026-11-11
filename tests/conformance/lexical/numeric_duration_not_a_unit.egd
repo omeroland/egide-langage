@@ -1,0 +1,9 @@
+# spec: LEX-042
+# expect: lex-pass
+module tests.lexical.numeric_duration_not_a_unit
+
+let a = 5.msg
+let b = 5.s2
+let c = 5.min_value
+let d = 0x10.s
+let e = 0b1.ms

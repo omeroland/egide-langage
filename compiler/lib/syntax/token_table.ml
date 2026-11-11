@@ -51,6 +51,7 @@ let to_string = function
   | IDENT s -> Printf.sprintf "IDENT(%S)" s
   | INT s -> Printf.sprintf "INT(%S)" s
   | FLOAT s -> Printf.sprintf "FLOAT(%S)" s
+  | DURATION (a, u) -> Printf.sprintf "DURATION(%S, %S)" a u
   | STRING s -> Printf.sprintf "STRING(%S)" s
   | KW_AND -> "and"
   | KW_AS -> "as"

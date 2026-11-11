@@ -7,6 +7,7 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
+- Lexer: integer, float and `DURATION` literals (LEX-040..042) with diagnostics E0030 and E0031 (T-0003).
 - Language specification v0.2 (`spec/`), design documents and ADR-0001 to ADR-0012.
 - Agent operating manual (`AGENTS.md`, `CLAUDE.md`, `agents/`, `.claude/`) and initial task backlog.
 - Compiler skeleton (`compiler/`): lexer with layout algorithm, minimal parser, diagnostics, `egide lex|parse` commands.

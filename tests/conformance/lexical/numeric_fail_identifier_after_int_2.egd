@@ -1,0 +1,6 @@
+# spec: LEX-040
+# expect: lex-fail
+# diagnostic: E0030 at 6:9
+module tests.lexical.numeric_fail_identifier_after_int_2
+
+let a = 12abc
