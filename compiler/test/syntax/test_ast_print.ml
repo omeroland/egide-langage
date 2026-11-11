@@ -863,13 +863,13 @@ let%expect_test "long nodes break after their leading atoms, deterministically" 
     |}]
 
 let%expect_test "pp_* formatters print the same text as the string functions" =
-  Format.printf "%a@." Print.pp_expr (bin Add (int "1") (int "2"));
-  Format.printf "%a@." Print.pp_pattern (p Pat_wild);
-  Format.printf "%a@." Print.pp_ty (tn "int");
-  Format.printf "%a@." Print.pp_stmt (s Continue);
-  Format.printf "%a@." Print.pp_block (blk [ s Continue ]);
-  Format.printf "%a@." Print.pp_decl (decl (Const { name = id "A"; ty = None; value = int "1" }));
-  Format.printf "%a@." Print.pp_file (file "m" []);
+  Format.printf "%a@." Print.pp_sexp_expr (bin Add (int "1") (int "2"));
+  Format.printf "%a@." Print.pp_sexp_pattern (p Pat_wild);
+  Format.printf "%a@." Print.pp_sexp_ty (tn "int");
+  Format.printf "%a@." Print.pp_sexp_stmt (s Continue);
+  Format.printf "%a@." Print.pp_sexp_block (blk [ s Continue ]);
+  Format.printf "%a@." Print.pp_sexp_decl (decl (Const { name = id "A"; ty = None; value = int "1" }));
+  Format.printf "%a@." Print.pp_sexp_file (file "m" []);
   [%expect
     {|
     (+ (int 1) (int 2))

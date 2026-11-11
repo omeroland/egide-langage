@@ -4,8 +4,10 @@ type span = Egide_source.Span.t
 
 (* [Egide_source.Span] has a printer but no equality, and the library is outside T-0029's paths, so the two functions
    the derivers look up by name for [span] are defined here. Spans are records of strings and integers: structural
-   equality is exact. *)
-let pp_span = Egide_source.Span.pp
+   equality is exact. [Span.pp] prints the file name raw, and a file name is attacker-controlled (LEX-006): the printer
+   here escapes it with [Escape.display], so no dangerous code point reaches a derived [show_*]. *)
+let pp_span fmt (s : span) =
+  Format.fprintf fmt "%s:%d:%d" (Egide_diagnostics.Escape.display s.file) s.start.line s.start.col
 let equal_span (a : span) b = a = b
 
 (* [Uchar.pp] does not exist in OCaml 5.2 (the floor in dune-project). Scalar values print as [U+XXXX], the Unicode

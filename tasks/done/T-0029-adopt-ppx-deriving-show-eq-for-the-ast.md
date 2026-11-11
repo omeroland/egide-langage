@@ -6,7 +6,7 @@ phase: 0
 role: syntax-engineer
 depends_on: [T-0008]
 spec: []
-paths: [dune-project, egide.opam, compiler/lib/syntax/dune, compiler/lib/syntax/ast.ml, compiler/lib/syntax/ast.mli, compiler/lib/syntax/print.mli, compiler/test/syntax/, CHANGELOG.md]
+paths: [dune-project, egide.opam, compiler/lib/syntax/dune, compiler/lib/syntax/ast.ml, compiler/lib/syntax/ast.mli, compiler/lib/syntax/print.ml, compiler/lib/syntax/print.mli, compiler/test/syntax/, CHANGELOG.md]
 estimate: S
 labels: []
 status: done
@@ -51,7 +51,9 @@ edit is to the sandbox's local opam repository only, not to the repo. CI: `.gith
 `opam install . --deps-only --with-test --with-dev-setup`, so declaring `ppx_deriving` in `dune-project` (and the
 regenerated `egide.opam`) is all it needs. *Not verified:* CI resolves the newest ppx_deriving its ppxlib allows (likely
 6.2.0, which I could not build here); the generated function names and the attributes used are the documented stable
-ones.
+ones. *Correction (review of PR #25, established from the CI logs):* CI resolves ppx_deriving 6.0.3 on OCaml 5.2 and
+6.2.0 on OCaml 5.3, and both jobs pass, so the "6.2.0 not verified" remark is obsolete. The resolution is still
+unpinned (follow-up T-1158).
 
 Decisions:
 
@@ -69,7 +71,7 @@ Decisions:
   owner prefers (then `equal_span` becomes `Egide_source.Span.equal`).
 - **`Uchar.t`.** `Uchar.pp` does not exist in OCaml 5.2, so `Char of (Uchar.t [@printer pp_uchar])` prints `U+XXXX`.
   `Uchar.equal` exists.
-- **`Print.pp_*` kept** as the S-expression formatters (task criterion 3, and the T-1006 Log: the derived `show` prints
+- **`Print.pp_*` kept** (superseded by the review round below: renamed `Print.pp_sexp_*`) as the S-expression formatters (task criterion 3, and the T-1006 Log: the derived `show` prints
   `#n` and spans on every node, which is wrong for snapshots). They shadow `Ast.pp_*` only inside print.ml, which opens
   Ast; elsewhere the qualified names differ. print.mli documents the split, ast.mli has a new "Derived functions"
   section. No S-expression output changed (all existing snapshots pass untouched). Alternative: rename the Print
@@ -79,6 +81,22 @@ Decisions:
 - **Rule 3.** Red commit: `test_ast_deriving.ml` alone, does not compile on main (`Unbound value "show_ident"`). Green
   commit: the implementation. One expectation was written from the documented ppx_deriving output format and passed
   unchanged: `{ Ast.id = #0; name = "x"; span = f.egd:3:4 }`.
+- **Rule 3, exact account.** The red commit's `test_ast_deriving.ml` also contained `Lit Nil`, a constructor that does
+  not exist (the red commit failed to compile for that reason as well as for the missing `show_ident`); the green commit
+  silently corrected it to `Lit (Bool true)`. The red state was therefore not a clean "missing feature" failure.
+- **Review round of PR #25 (code-reviewer, REQUEST_CHANGES), addressed in new commits.**
+  (1) `pp_span` no longer delegates to `Span.pp` (raw file name): it prints the file name through
+  `Egide_diagnostics.Escape.display` (LEX-006). Dependency graph source <- diagnostics <- syntax, already declared in
+  the syntax dune file, no cycle. Test: a file name with ESC, U+202E and LF; no output of `show_ident/path/expr/ty/stmt`
+  or `pp_span` contains a code point for which `Escape.is_dangerous` holds, and the single-line outputs contain no LF
+  (a plain LF in the multi-line ones is `Format` layout). Mutation check: using `s.file` again makes the test fail.
+  (2) ast.mli "Derived functions": `show`/`pp` are reserved for tests and debugging, are not covered by LEX-006 (only the
+  span's file name is escaped; string values are OCaml-escaped), have an unstable format, and no tool output may use them.
+  Suggestions: bound raised to `ppx_deriving >= 6.0.3`; the `pp_expr` ambiguity is removed by renaming the Print
+  formatters to `Print.pp_sexp_*` (cost: 7 definitions, 7 test call sites and the docs; no other caller exists), so a
+  bare `pp_expr` with `Ast` opened is always the derived one; print.ml was touched for that rename (added to `paths`).
+  Follow-ups: T-1157 (`Span.equal`), T-1158 (pin opam resolution); T-1111 got a note to extend the lint to `Ast.show_*`
+  / `Ast.pp_*`.
 - **ocamlformat** is not installed here (`make ci` prints the skip warning), so the formatting of the new lines is by
   hand; GitHub CI is the authority.
 
@@ -93,6 +111,6 @@ Tests: `compiler/test/syntax/test_ast_deriving.ml` (derived `show` record syntax
 still S-expression without ids while `Ast.pp_expr` shows them; `equal_*` on ident, path, bound, arg, literal, span compare
 ids and spans; derived equal agrees with `( = )`). Existing tests unchanged. Rules covered: none (infrastructure).
 
-Follow-ups: none created (optional: `Span.equal` in `egide.source`). Limits: verified against ppx_deriving 6.0.3 only;
+Follow-ups: T-1157 (`Span.equal` in `egide.source`), T-1158 (pin the opam resolution). Limits: built locally with 6.0.3, CI also with 6.2.0;
 ids in `show` output depend on the grammar (not stable, see node_id.mli), so do not snapshot derived `show` output of
 parsed trees.

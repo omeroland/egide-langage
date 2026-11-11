@@ -484,10 +484,10 @@ let expr ?(spans = false) ?(ids = false) e = to_string (expr (ctx spans ids) e)
 let pattern ?(spans = false) ?(ids = false) p = to_string (pattern (ctx spans ids) p)
 let ty ?(spans = false) ?(ids = false) t = to_string (ty (ctx spans ids) t)
 let pp_with f fmt v = Format.pp_print_string fmt (f v)
-let pp_file fmt v = pp_with (fun v -> file v) fmt v
-let pp_decl fmt v = pp_with (fun v -> decl v) fmt v
-let pp_stmt fmt v = pp_with (fun v -> stmt v) fmt v
-let pp_block fmt v = pp_with (fun v -> block v) fmt v
-let pp_expr fmt v = pp_with (fun v -> expr v) fmt v
-let pp_pattern fmt v = pp_with (fun v -> pattern v) fmt v
-let pp_ty fmt v = pp_with (fun v -> ty v) fmt v
+let pp_sexp_file fmt v = pp_with (fun v -> file v) fmt v
+let pp_sexp_decl fmt v = pp_with (fun v -> decl v) fmt v
+let pp_sexp_stmt fmt v = pp_with (fun v -> stmt v) fmt v
+let pp_sexp_block fmt v = pp_with (fun v -> block v) fmt v
+let pp_sexp_expr fmt v = pp_with (fun v -> expr v) fmt v
+let pp_sexp_pattern fmt v = pp_with (fun v -> pattern v) fmt v
+let pp_sexp_ty fmt v = pp_with (fun v -> ty v) fmt v
