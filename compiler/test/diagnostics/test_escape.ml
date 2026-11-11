@@ -101,10 +101,18 @@ let unescape s =
         go (i + 1))
       else
         match s.[i + 1] with
-        | '\\' -> Buffer.add_char b '\\'; go (i + 2)
-        | 'n' -> Buffer.add_char b '\n'; go (i + 2)
-        | 'r' -> Buffer.add_char b '\r'; go (i + 2)
-        | 't' -> Buffer.add_char b '\t'; go (i + 2)
+        | '\\' ->
+            Buffer.add_char b '\\';
+            go (i + 2)
+        | 'n' ->
+            Buffer.add_char b '\n';
+            go (i + 2)
+        | 'r' ->
+            Buffer.add_char b '\r';
+            go (i + 2)
+        | 't' ->
+            Buffer.add_char b '\t';
+            go (i + 2)
         | 'x' ->
             Buffer.add_char b (Char.chr (int_of_string ("0x" ^ String.sub s (i + 2) 2)));
             go (i + 4)
@@ -132,9 +140,37 @@ let gen_scalar =
   in
   let special =
     oneof_list
-      [ 0x80; 0x85; 0x9B; 0x9F; 0xA0; 0xAD; 0x61C; 0x1680; 0x200B; 0x200D; 0x200E; 0x2028; 0x2029;
-        0x202A; 0x202E; 0x202F; 0x2060; 0x2065; 0x2066; 0x2069; 0x3000; 0xFEFF; 0xFE0F; 0xFFF0;
-        0xE0001; 0xE0041; 0xE007F; 0xE0100; 0xE0FFF ]
+      [
+        0x80;
+        0x85;
+        0x9B;
+        0x9F;
+        0xA0;
+        0xAD;
+        0x61C;
+        0x1680;
+        0x200B;
+        0x200D;
+        0x200E;
+        0x2028;
+        0x2029;
+        0x202A;
+        0x202E;
+        0x202F;
+        0x2060;
+        0x2065;
+        0x2066;
+        0x2069;
+        0x3000;
+        0xFEFF;
+        0xFE0F;
+        0xFFF0;
+        0xE0001;
+        0xE0041;
+        0xE007F;
+        0xE0100;
+        0xE0FFF;
+      ]
     |> map utf8
   in
   let plain = oneof_list [ 0xE9; 0x4E2D; 0x1F389; 0x10FFFF ] |> map utf8 in
@@ -174,9 +210,37 @@ let%test "property: arbitrary bytes" =
    reviewer's gap list; it does not reject neighbours. T-1033 must keep these true. *)
 let%test "forbidden set: members and neighbours" =
   let members =
-    [ 0x00; 0x09; 0x0A; 0x1B; 0x7F; 0x85; 0x9B; 0xAD; 0x61C; 0x200B; 0x200D; 0x200E; 0x2028;
-      0x2029; 0x202E; 0x2060; 0x2065; 0x2066; 0x2069; 0xFEFF; 0xFFF0; 0xFE0F; 0xE0041; 0xE0100;
-      0x17B4; 0x3164; 0xFDD0; 0xFFFE; 0x10FFFF ]
+    [
+      0x00;
+      0x09;
+      0x0A;
+      0x1B;
+      0x7F;
+      0x85;
+      0x9B;
+      0xAD;
+      0x61C;
+      0x200B;
+      0x200D;
+      0x200E;
+      0x2028;
+      0x2029;
+      0x202E;
+      0x2060;
+      0x2065;
+      0x2066;
+      0x2069;
+      0xFEFF;
+      0xFFF0;
+      0xFE0F;
+      0xE0041;
+      0xE0100;
+      0x17B4;
+      0x3164;
+      0xFDD0;
+      0xFFFE;
+      0x10FFFF;
+    ]
   in
   let neighbours = [ 0x20; 0x41; 0xAC; 0xAE; 0xE9; 0x2764; 0xFE10; 0x1F389; 0xE1000 ] in
   List.for_all F.mem members && not (List.exists F.mem neighbours)
@@ -188,8 +252,7 @@ let%test "escape covers the forbidden set, Zs, bidi and DEL" =
   && (not (E.is_dangerous 0x20))
   && (not (E.is_dangerous 0x41))
   && List.for_all
-       (fun cp ->
-         (not (F.mem cp && Uchar.is_valid cp)) || E.is_dangerous cp)
+       (fun cp -> (not (F.mem cp && Uchar.is_valid cp)) || E.is_dangerous cp)
        (List.init 0x110 (fun i -> i * 0x1000))
 
 let read path = In_channel.with_open_bin path In_channel.input_all
@@ -205,7 +268,8 @@ let%test "provisional forbidden set is replaced by T-1033 after phase 0" =
   in
   let ok = (not F.provisional) || (phase < 1 && not done_) in
   if not ok then
-    print_endline "Forbidden_set is still provisional: wire the T-1033 table (LEX-003) behind Forbidden_set.mem";
+    print_endline
+      "Forbidden_set is still provisional: wire the T-1033 table (LEX-003) behind Forbidden_set.mem";
   ok
 
 (* ---- the stdout/stderr guard ---- *)
@@ -218,7 +282,8 @@ let%test "guard neutralises without double escaping" =
 (* ---- attack cases through every diagnostic renderer ---- *)
 
 let hostile =
-  "\x1b[1A\x1b[2K\xC2\x9B2J \xE2\x80\xAE(RLO) a\xE2\x80\x8Bb \xF3\xA0\x81\x81 \xC2\xA0 \xC2\x85 \xE2\x80\xA8 \xFF"
+  "\x1b[1A\x1b[2K\xC2\x9B2J \xE2\x80\xAE(RLO) a\xE2\x80\x8Bb \xF3\xA0\x81\x81 \xC2\xA0 \xC2\x85 \
+   \xE2\x80\xA8 \xFF"
 
 let hostile_diag =
   D.error ~rule:"LEX-003" ~code:"E0004"
@@ -278,12 +343,27 @@ let strip_comments s =
   Str.global_replace (Str.regexp "(\\*\\([^*]\\|\\*[^)]\\)*\\*)") "" s
 
 let forbidden_primitives =
-  [ "print_string"; "print_endline"; "print_char"; "prerr_endline"; "prerr_string"; "Printf.printf";
-    "Printf.eprintf"; "output_string"; "Out_channel.output"; "Out_channel.output_string"; "stdout";
-    "stderr"; "Format.print" ]
+  [
+    "print_string";
+    "print_endline";
+    "print_char";
+    "prerr_endline";
+    "prerr_string";
+    "Printf.printf";
+    "Printf.eprintf";
+    "output_string";
+    "Out_channel.output";
+    "Out_channel.output_string";
+    "stdout";
+    "stderr";
+    "Format.print";
+  ]
 
 let contains s sub =
-  try ignore (Str.search_forward (Str.regexp_string sub) s 0); true with Not_found -> false
+  try
+    ignore (Str.search_forward (Str.regexp_string sub) s 0);
+    true
+  with Not_found -> false
 
 (* spec: LEX-006 — the CLI writes to stdout/stderr only through Output (which neutralises); the
    renderers of the diagnostics library use Escape and never the raw primitives or the old Text

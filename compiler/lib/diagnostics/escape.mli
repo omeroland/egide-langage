@@ -20,14 +20,14 @@ val display : string -> string
     injective, so an escaped value cannot be confused with another. *)
 
 val display_quoted : string -> string
-(** {!display} between double quotes, with every quote inside prefixed by a backslash. For values shown in
-    human output where the boundaries matter (replacement texts of fixes). *)
+(** {!display} between double quotes, with every quote inside prefixed by a backslash. For values
+    shown in human output where the boundaries matter (replacement texts of fixes). *)
 
 val json_safe : string -> string
 (** A quoted JSON string literal (RFC 8259). Backslash, quote and the dangerous set are written with
-    JSON's own escapes: backslash, quote, [\n], [\r], [\t], [\uXXXX] (lowercase, surrogate pairs above
-    U+FFFF); an invalid byte becomes U+FFFD. No raw code point of the dangerous set appears in the
-    result and it is valid UTF-8, on one line. *)
+    JSON's own escapes: backslash, quote, [\n], [\r], [\t], [\uXXXX] (lowercase, surrogate pairs
+    above U+FFFF); an invalid byte becomes U+FFFD. No raw code point of the dangerous set appears in
+    the result and it is valid UTF-8, on one line. *)
 
 val display_unit : Text.unit_ -> string * int
 (** [display_unit u] is the {!display} form of one unit of a source excerpt and its width in

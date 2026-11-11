@@ -13,5 +13,5 @@ val units : string -> unit_ list
 (** All units of a string, in order. *)
 
 val cells : int -> int
-(** Width in terminal cells of a printable scalar value: East Asian wide characters and emoji take 2,
-    combining marks 0, everything else 1 (an approximation of [wcwidth]). *)
+(** Width in terminal cells of a printable scalar value: East Asian wide characters and emoji take
+    2, combining marks 0, everything else 1 (an approximation of [wcwidth]). *)

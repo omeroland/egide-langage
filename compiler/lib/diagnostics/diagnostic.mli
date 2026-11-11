@@ -61,8 +61,8 @@ val severity_to_string : severity -> string
 val to_human : t -> string
 (** [file:line:col: error[E0022]: message (LEX-032)], then secondary locations, notes and fixes, one
     per line. The first line is what [tools/run-conformance.sh] matches. Free text is passed through
-    {!Escape.display} (LEX-006), as are file names, notes, fix text and the excerpts, so control, bidi and
-    invisible characters are shown as [\u{H}]. *)
+    {!Escape.display} (LEX-006), as are file names, notes, fix text and the excerpts, so control,
+    bidi and invisible characters are shown as [\u{H}]. *)
 
 val render_human : sources:(string -> string option) -> t -> string
 (** As {!to_human}, with source excerpts: [sources file] returns the contents of [file] when

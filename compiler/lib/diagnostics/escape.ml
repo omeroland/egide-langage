@@ -1,6 +1,7 @@
 let is_zs_not_space cp =
-  cp = 0xA0 || cp = 0x1680 || (cp >= 0x2000 && cp <= 0x200A) || cp = 0x202F || cp = 0x205F
-  || cp = 0x3000
+  cp = 0xA0 || cp = 0x1680
+  || (cp >= 0x2000 && cp <= 0x200A)
+  || cp = 0x202F || cp = 0x205F || cp = 0x3000
 
 let is_bidi cp =
   cp = 0x061C || cp = 0x200E || cp = 0x200F
@@ -71,10 +72,11 @@ let json_safe s =
 
 let display_unit u =
   match u with
-  | Text.Scalar cp when not (is_dangerous cp || cp = 0x5C || cp = 0x0A || cp = 0x0D || cp = 0x09)
-    ->
+  | Text.Scalar cp when not (is_dangerous cp || cp = 0x5C || cp = 0x0A || cp = 0x0D || cp = 0x09) ->
       (utf8 cp, Text.cells cp)
   | _ ->
-      let s = display_of ~guard:false
-          (match u with Text.Scalar cp -> utf8 cp | Text.Byte x -> String.make 1 (Char.chr x)) in
+      let s =
+        display_of ~guard:false
+          (match u with Text.Scalar cp -> utf8 cp | Text.Byte x -> String.make 1 (Char.chr x))
+      in
       (s, String.length s)
