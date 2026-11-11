@@ -94,7 +94,6 @@ let path_s (p : path) = String.concat "." (List.map (fun (i : ident) -> i.name) 
 let path c (p : path) = named c (path_s p) p.span
 let flag b s = if b then [ Atom s ] else []
 let opt f = function None -> [] | Some v -> [ f v ]
-let doc_atoms = opt (fun d -> group "doc" [ Atom (quote d) ])
 
 let mode_flags = function
   | By_read -> []
@@ -194,10 +193,13 @@ and expr c (x : expr) =
         (first @ List.map elif elifs @ opt (fun b -> group "else" [ block c b ]) else_)
   | Match { scrutinee; arms } ->
       n ~subject:true "match" (expr c scrutinee :: List.map (case_arm c) arms)
+  | Loop b -> n "loop" [ block c b ]
+  | With { items; body } -> n "with" (List.map (with_item c) items @ [ block c body ])
+  | Given { caps; body } -> n "given" (List.map (expr c) caps @ [ block c body ])
   | Unsafe { reason; reason_span; body } ->
       n "unsafe" [ named c (quote reason) reason_span; block c body ]
   | Call { callee; args } -> n ~subject:true "call" (expr c callee :: List.map (arg c) args)
-  | Index { target; index } -> n ~subject:true "index" [ expr c target; expr c index ]
+  | Index { target; args } -> n ~subject:true "index" (expr c target :: List.map (gen_arg c) args)
   | Field { target; name } -> n ~subject:true "dot" [ expr c target; ident c name ]
   | Try e -> n "?" [ expr c e ]
   | Unary { op; operand } -> n (unary_s op) [ expr c operand ]
@@ -205,17 +207,21 @@ and expr c (x : expr) =
   | Compare { first; rest } ->
       n ~subject:true "cmp"
         (expr c first :: List.concat_map (fun (op, e) -> [ Atom (cmp_s op); expr c e ]) rest)
-  | Range { lo; hi; inclusive } ->
-      let bound = function None -> Atom "_" | Some e -> expr c e in
-      n (if inclusive then "..=" else "..") [ bound lo; bound hi ]
+  | Range { lo; hi } -> n ".." [ range_bound c lo; range_bound c hi ]
+  | Range_incl { lo; hi } -> n "..=" [ range_bound c lo; expr c hi ]
   | Cond { cond; then_; else_ } ->
       n ~subject:true "cond" [ expr c cond; expr c then_; expr c else_ ]
   | Lambda { params; body } -> n ~subject:true "lambda" [ lambda_params c params; expr c body ]
   | Fn_lit { params; ret; body } ->
       n ~subject:true "fn"
         ((lambda_params c params :: opt (fun t -> group "->" [ ty c t ]) ret) @ [ block c body ])
-  | Trailing { callee; params; body } ->
-      n ~subject:true "trailing" [ expr c callee; lambda_params c params; block c body ]
+  | Trailing_call { callee; args; params; ret; body } ->
+      n ~subject:true "trailing-call"
+        ((expr c callee :: group "args" (List.map (arg c) args) :: [ lambda_params c params ])
+        @ opt (fun t -> group "->" [ ty c t ]) ret
+        @ [ block c body ])
+
+and range_bound c = function None -> Atom "_" | Some e -> expr c e
 
 and map_entry c (m : map_entry) =
   node ~subject:true c "entry" m.span [ expr c m.key; expr c m.value ]
@@ -229,14 +235,21 @@ and case_arm c (a : case_arm) =
     ((pattern c a.pat :: opt (fun g -> group "guard" [ expr c g ]) a.guard) @ [ block c a.body ])
 
 and arg c (a : arg) =
-  let value =
-    if a.inout && a.label = None then node c "&" a.span [ expr c a.value ] else expr c a.value
-  in
-  match a.label with
-  | None -> value
-  | Some l ->
-      let value = if a.inout then group "&" [ value ] else value in
-      node c "label" a.span [ ident c l; value ]
+  match a.arg with
+  | Arg_plain { label = None; value } -> expr c value
+  | Arg_plain { label = Some l; value } -> node c "label" a.span [ ident c l; expr c value ]
+  | Arg_inout { label = None; value } -> node c "&" a.span [ expr c value ]
+  | Arg_inout { label = Some l; value } ->
+      node c "label" a.span [ ident c l; group "&" [ expr c value ] ]
+  | Arg_using (name, value) -> node c "using" a.span [ ident c name; expr c value ]
+
+and gen_arg c = function Ga_expr e -> expr c e | Ga_type_only t -> ty c t
+
+(* A bound prints like the path type it is. *)
+and bound c (b : bound) =
+  match b.args with
+  | [] -> path c b.path
+  | args -> node c "apply" b.span (path c b.path :: List.map (gen_arg c) args)
 
 and lambda_param c (p : lambda_param) =
   node c "param" p.span ((mode_flags p.mode @ [ ident c p.name ]) @ opt (ty c) p.ty)
@@ -257,7 +270,7 @@ and stmt c (st : stmt) =
   | Var { name; ty = t; value } -> n "var" ((ident c name :: annot c t) @ [ expr c value ])
   | Comptime_let { name; ty = t; value } ->
       n "let" ((Atom "comptime" :: ident c name :: annot c t) @ [ expr c value ])
-  | Assign { place = pl; op; value } -> n ~subject:true (assign_s op) [ place c pl; expr c value ]
+  | Assign { target; op; value } -> n ~subject:true (assign_s op) [ expr c target; expr c value ]
   | Return e -> n "return" (opt (expr c) e)
   | Break e -> n "break" (opt (expr c) e)
   | Continue -> n "continue" []
@@ -265,23 +278,6 @@ and stmt c (st : stmt) =
   | Yield e -> n "yield" [ expr c e ]
   | For { pat; iter; body } -> n ~subject:true "for" [ pattern c pat; expr c iter; block c body ]
   | While { cond; body } -> n ~subject:true "while" [ expr c cond; block c body ]
-  | Loop b -> n "loop" [ block c b ]
-  | With { items; body } -> n "with" (List.map (with_item c) items @ [ block c body ])
-  | Given { caps; body } -> n "given" (List.map (expr c) caps @ [ block c body ])
-
-(* A place is printed like the equivalent expression chain; the outermost step carries the span of the place. *)
-and place c (pl : place) =
-  let last = List.length pl.steps in
-  let step (i, acc) s =
-    let mk head items =
-      if i + 1 = last then node ~subject:true c head pl.span items
-      else group ~subject:true head items
-    in
-    match s with
-    | Place_field f -> (i + 1, mk "dot" [ acc; ident c f ])
-    | Place_index e -> (i + 1, mk "index" [ acc; expr c e ])
-  in
-  snd (List.fold_left step (0, ident c pl.root) pl.steps)
 
 and with_item c (w : with_item) =
   match w.name with
@@ -293,6 +289,7 @@ and pattern c (pt : pattern) =
   match pt.pat with
   | Pat_wild -> named c "_" pt.span
   | Pat_bind i -> ident c i
+  | Pat_const p -> n "const" [ path c p ]
   | Pat_lit lp -> lit_pattern c lp
   | Pat_range { lo; hi; inclusive } ->
       n (if inclusive then "..=" else "..") [ lit_pattern c lo; lit_pattern c hi ]
@@ -320,17 +317,15 @@ and ty c (t : ty) =
   let n ?subject head items = node ?subject c head t.span items in
   match t.ty with
   | Ty_path { path = p; args = [] } -> named c (path_s p) t.span
-  | Ty_path { path = p; args } -> n "apply" (path c p :: List.map (type_arg c) args)
+  | Ty_path { path = p; args } -> n "apply" (path c p :: List.map (gen_arg c) args)
   | Ty_tuple ts -> n "tuple-type" (List.map (ty c) ts)
   | Ty_fn { params; ret; using } ->
       n "fn-type"
         ((group "params" (List.map (ty c) params) :: opt (fun r -> group "->" [ ty c r ]) ret)
-        @ if using = [] then [] else [ group "using" (List.map (ty c) using) ])
-  | Ty_dyn b -> n "dyn" [ ty c b ]
+        @ if using = [] then [] else [ group "using" (List.map (bound c) using) ])
+  | Ty_dyn bs -> n "dyn" (List.map (bound c) bs)
   | Ty_self -> named c "Self" t.span
   | Ty_optional inner -> n "?" [ ty c inner ]
-
-and type_arg c = function Ta_type t -> ty c t | Ta_expr e -> expr c e
 
 (* ---------- declarations ---------- *)
 
@@ -338,14 +333,17 @@ let attribute c (a : attribute) =
   node c "@" a.span
     (ident c a.name :: opt (fun args -> group "args" (List.map (expr c) args)) a.args)
 
-let doc_attrs c doc attrs = doc_atoms doc @ List.map (attribute c) attrs
+let vis_atoms = function
+  | Private -> []
+  | Pub -> [ Atom "pub" ]
+  | Pub_package -> [ Atom "pub(package)" ]
 
 let generics c = function
   | [] -> []
   | gs ->
       let generic (g : generic) =
         node c "generic" g.span
-          ((flag g.comptime "comptime" @ [ ident c g.name ]) @ List.map (ty c) g.bounds)
+          ((flag g.comptime "comptime" @ [ ident c g.name ]) @ List.map (bound c) g.bounds)
       in
       [ group "generics" (List.map generic gs) ]
 
@@ -372,8 +370,8 @@ let fn_node c ~head ~flags ~da sp (sg : fn_sig) body =
 
 let field c (f : field) =
   node c "field" f.span
-    ((flag f.pub "pub" @ [ ident c f.name ])
-    @ doc_attrs c f.doc f.attrs
+    ((vis_atoms f.vis @ [ ident c f.name ])
+    @ List.map (attribute c) f.attrs
     @ [ ty c f.ty ]
     @ opt (fun d -> group "default" [ expr c d ]) f.default)
 
@@ -384,25 +382,23 @@ let variant c (v : variant) =
     | Vf_positional ts -> [ group "positional" (List.map (ty c) ts) ]
     | Vf_named tis -> [ group "named" (List.map (typed c) tis) ]
   in
-  node c "variant" v.span ((ident c v.name :: doc_atoms v.doc) @ fields)
+  node c "variant" v.span (ident c v.name :: fields)
 
 let trait_item c (ti : trait_item) =
-  let da = doc_atoms ti.doc in
   match ti.item with
-  | Ti_sig sg -> fn_node c ~head:"fn-sig" ~flags:[] ~da ti.span sg None
-  | Ti_fn f -> fn_node c ~head:"fn" ~flags:[] ~da ti.span f.sig_ (Some f.body)
-  | Ti_type { name; bound } -> node c "assoc-type" ti.span ((ident c name :: da) @ opt (ty c) bound)
+  | Ti_sig sg -> fn_node c ~head:"fn-sig" ~flags:[] ~da:[] ti.span sg None
+  | Ti_fn f -> fn_node c ~head:"fn" ~flags:[] ~da:[] ti.span f.sig_ (Some f.body)
+  | Ti_type { name; bound = b } -> node c "assoc-type" ti.span (ident c name :: opt (bound c) b)
 
 let impl_item c (ii : impl_item) =
   match ii.item with
-  | Ii_fn { attrs; pub; fn_ } ->
-      fn_node c ~head:"fn" ~flags:(flag pub "pub") ~da:(doc_attrs c ii.doc attrs) ii.span fn_.sig_
-        (Some fn_.body)
-  | Ii_type { name; ty = t } ->
-      node c "assoc-type" ii.span ((ident c name :: doc_atoms ii.doc) @ [ ty c t ])
+  | Ii_fn { attrs; vis; fn_ } ->
+      fn_node c ~head:"fn" ~flags:(vis_atoms vis) ~da:(List.map (attribute c) attrs) ii.span
+        fn_.sig_ (Some fn_.body)
+  | Ii_type { name; ty = t } -> node c "assoc-type" ii.span [ ident c name; ty c t ]
 
 let decl c (d : decl) =
-  let pub = flag d.pub "pub" and da = doc_attrs c d.doc d.attrs in
+  let pub = vis_atoms d.vis and da = List.map (attribute c) d.attrs in
   let n ?subject head items = node ?subject c head d.span items in
   match d.decl with
   | Fn f -> fn_node c ~head:"fn" ~flags:pub ~da d.span f.sig_ (Some f.body)
@@ -412,7 +408,7 @@ let decl c (d : decl) =
       n "enum" ((pub @ [ ident c name ]) @ da @ generics c g @ List.map (variant c) variants)
   | Trait { name; generics = g; supertraits; items } ->
       let supers =
-        if supertraits = [] then [] else [ group "supertraits" (List.map (ty c) supertraits) ]
+        if supertraits = [] then [] else [ group "supertraits" (List.map (bound c) supertraits) ]
       in
       n "trait"
         ((pub @ [ ident c name ]) @ da @ generics c g @ supers @ List.map (trait_item c) items)
@@ -423,34 +419,40 @@ let decl c (d : decl) =
         @ opt (fun t -> group "trait" [ ty c t ]) trait_
         @ generics c g
         @ List.map (impl_item c) items)
-  | Type { name; generics = g; newtype; ty = t; where_ } ->
+  | Type { name; generics = g; def } ->
+      let newtype, t, where_ =
+        match def with Alias t -> (false, t, None) | Newtype { ty = t; where_ } -> (true, t, where_)
+      in
       n "type"
         ((pub @ flag newtype "new" @ [ ident c name ])
         @ da @ generics c g
         @ [ ty c t ]
         @ opt (fun w -> group "where" [ expr c w ]) where_)
-  | Const { comptime; name; ty = t; value } ->
-      n "let"
-        ((pub @ flag comptime "comptime" @ [ ident c name ]) @ da @ annot c t @ [ expr c value ])
+  | Const { name; ty = t; value } ->
+      n "let" ((pub @ [ ident c name ]) @ da @ annot c t @ [ expr c value ])
 
 (* ---------- files ---------- *)
 
 let import c (im : import) =
-  let alias = function None -> [] | Some a -> [ Atom "as"; ident c a ] in
   match im.import with
-  | Import { path = p; items; alias = a } ->
+  | Import { path = p; form } ->
       let item (it : import_item) =
         match it.alias with
         | None -> ident c it.name
         | Some al -> List { keep = 0; items = [ ident c it.name; Atom "as"; ident c al ] }
       in
       node c "import" im.span
-        ((path c p :: opt (fun its -> group "items" (List.map item its)) items) @ alias a)
+        (path c p
+        ::
+        (match form with
+        | Whole -> []
+        | Alias_as a -> [ Atom "as"; ident c a ]
+        | Items its -> [ group "items" (List.map item its) ]))
   | Import_go { package; package_span; alias = a } ->
-      node c "import-go" im.span (named c (quote package) package_span :: alias (Some a))
+      node c "import-go" im.span [ named c (quote package) package_span; Atom "as"; ident c a ]
 
 let file_s c (f : file) =
-  let header = node c "module" f.span (path c f.module_path :: doc_atoms f.doc) in
+  let header = node c "module" f.span [ path c f.module_path ] in
   let item sx = "  " ^ to_string ~indent:2 sx in
   String.concat "\n"
     ((to_string header :: List.map (fun i -> item (import c i)) f.imports)

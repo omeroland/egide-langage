@@ -22,31 +22,33 @@
     - expressions: [(path a.b)] [(self)] [(Self)] [(paren E)] [(tuple …)] [(list …)] [(set …)]
       [(map (entry K V) …)] [(comp list|set|map|iter ELEM (for P E) (if E) …)]
       [(if C BLOCK (elif C BLOCK) … (else BLOCK))] [(match E (case P (guard E) BLOCK) …)]
-      [(unsafe "reason" BLOCK)] [(call F ARG …)] with [ARG] = [E], [(& E)] or [(label name ARG)];
-      [(index E E)] [(dot E name)] [(? E)] [(- E)] [(~ E)] [(not E)] [(OP L R)] for binary operators
+      [(unsafe "reason" BLOCK)] [(loop BLOCK)] [(with ITEM … BLOCK)] with [ITEM] = [E] or
+      [(bind x E)]; [(given E … BLOCK)]; [(call F ARG …)] with [ARG] = [E], [(& E)],
+      [(using x E)] or [(label name ARG)]; [(index E GA …)] with [GA] an expression or a type
+      (indexing, slicing and instantiation, SYN-042) [(dot E name)] [(? E)] [(- E)] [(~ E)] [(not E)] [(OP L R)] for binary operators
       written as in the source ([+], [|>], [and], …), [(cmp A < B <= C)], [(.. LO HI)] /
       [(..= LO HI)] with [_] for an absent bound, [(cond C THEN ELSE)], [(lambda (params …) E)],
-      [(fn (params …) (-> T) BLOCK)], [(trailing CALLEE (params …) BLOCK)], with params
+      [(fn (params …) (-> T) BLOCK)], [(trailing-call CALLEE (args ARG …) (params …) (-> T) BLOCK)], with params
       [(param [inout|take] x [T])]
     - statements: an expression statement is its expression; [(let P (: T) E (else BLOCK))]
-      [(var x (: T) E)] [(let comptime x (: T) E)] [(= PLACE E)] / [(+= PLACE E)] … [(return [E])]
+      [(var x (: T) E)] [(let comptime x (: T) E)] [(= TARGET E)] / [(+= TARGET E)] … ([TARGET] is an expression) [(return [E])]
       [(break [E])] [(continue)] [(defer E)] [(yield E)] [(for P E BLOCK)] [(while E BLOCK)]
-      [(loop BLOCK)] [(with ITEM … BLOCK)] with [ITEM] = [E] or [(bind x E)]; [(given E … BLOCK)]
       [(block S …)]
-    - patterns: [_] [x] literal, [(- LIT)], [(.. LO HI)] / [(..= LO HI)], [(ctor Path FP …)] with
+    - patterns: [_] [x] [(const Path)] literal, [(- LIT)], [(.. LO HI)] / [(..= LO HI)], [(ctor Path FP …)] with
       [FP] = [P], [(label x P)] or [..]; [(tuple P …)] [(list LP …)] with [LP] = [P], [..] or
       [(.. rest)]; [(| P Q …)] [(as P x)]
-    - types: [Name] [(apply Name ARG …)] [(tuple-type T …)]
-      [(fn-type (params T …) (-> T) (using T …))] [(dyn T)] [Self] [(? T)]
+    - types: [Name] [(apply Name GA …)] [(tuple-type T …)]
+      [(fn-type (params T …) (-> T) (using B …))] [(dyn B …)] [Self] [(? T)], with [B] a bound
+      printed like a path type
     - declarations:
-      [(fn [pub] name (doc "…") (@ attr (args E …)) (generics (generic [comptime] T BOUND …))
+      [(fn [pub|pub(package)] name (@ attr (args E …)) (generics (generic [comptime] T BOUND …))
        (params (param [mode] x T (default E)) | (param [mode] self)) (-> T) (using (x T) …) BLOCK)],
       [(fn-sig …)] (same without block), [(struct [pub] Name … (field [pub] x T (default E)))],
       [(enum [pub] Name … (variant A) (variant B (positional T …)) (variant C (named (x T) …)))],
       [(trait [pub] Name … (supertraits T …) ITEM …)] with [(assoc-type Name [BOUND])] items,
       [(impl [pub] SELF (trait T) (generics …) ITEM …)] with [(assoc-type Name T)] items,
-      [(type [pub] [new] Name (generics …) T (where E))], [(let [pub] [comptime] NAME (: T) E)]
-    - files: [(module a.b (doc "…"))] [(import a.b)] [(import a.b (items x (y as z)) as w)]
+      [(type [pub] [new] Name (generics …) T (where E))], [(let [pub|pub(package)] NAME (: T) E)]
+    - files: [(module a.b)] [(import a.b)] [(import a.b (items x (y as z)) as w)]
       [(import-go "pkg" as name)] *)
 
 val file : ?spans:bool -> Ast.file -> string
