@@ -260,6 +260,9 @@ let%test "triple-quoted template with one interpolation per line is linear" =
    LEX-055 allows only in a triple-quoted template: E0044 at the opening brace) *)
 let%expect_test "multi-line token in a single-line template's interpolation" =
   show "f\"{\"\"\"\nx\"\"\"}\"\n";
-  [%expect {||}];
+  [%expect {|
+    1:1-2:7 TEMPLATE("f", [{STRING("x")}])
+    E0044 1:3-2:6 a line break inside an interpolation is only allowed in a triple-quoted template
+    |}];
   show "f\"\"\"{\"\"\"\nx\"\"\"}\"\"\"\n";
-  [%expect {||}]
+  [%expect {| 1:1-2:9 TEMPLATE("f", [{STRING("x")}]) |}]

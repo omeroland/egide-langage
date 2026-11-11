@@ -1026,7 +1026,11 @@ and interpolation st ~triple t =
   in
   let finish spec =
     let _, close_e = Sedlexing.lexing_positions buf in
-    if !toks = [] then
+    (* a triple-quoted string is a token that spans lines without [token] seeing a line break *)
+    if (not triple) && close_e.Lexing.pos_lnum <> open_s.Lexing.pos_lnum then
+      report_range st ~rule:"LEX-055" ~code:"E0044" open_s close_e
+        "a line break inside an interpolation is only allowed in a triple-quoted template"
+    else if !toks = [] then
       report_range st ~rule:"LEX-055" ~code:"E0044" open_s close_e "empty interpolation";
     if triple then begin
       let b0 = byte_of_cnum st open_s.Lexing.pos_cnum

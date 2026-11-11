@@ -334,7 +334,8 @@ let%expect_test "byte strings reject non-ASCII, controls and the other escapes" 
     E0041 9:3-9:5 `\x` must be followed by exactly two hexadecimal digits
     |}];
   (* there is no raw byte string rb"...": LEX-053 gives no meaning to r or b before another prefix, and by LEX-055 `rb` is
-     an ordinary template prefix (a template with one literal part) *)
+     an ordinary template prefix (a template with one literal part). Open question Q-0052 (tasks/blocked) asks whether
+     `rb"..."` should instead be an error; this expectation follows the current lexer, not a decision *)
   show "rb\"x\"\n";
   [%expect {| 1:1-1:6 TEMPLATE("rb", ["x"]) |}];
   (* b"""...""" is E0043 on the three quotes (Q-0051.6); the body is read as a triple-quoted string *)
