@@ -32,6 +32,8 @@ Anything not listed in the acceptance criteria; create follow-up tasks.
 
 ## Log
 
+2026-11-10 syntax-engineer (T-1030 review): E0121 (SYN-053, ADR-0017: unused lowercase binding equal to a variant or constant of the scrutinee type ignoring case) is reported here, not by the parser; T-1031's list had it by mistake.
+
 ## Outcome
 
 

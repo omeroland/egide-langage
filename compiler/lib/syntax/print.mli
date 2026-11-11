@@ -25,7 +25,7 @@
       [(unsafe "reason" BLOCK)] [(loop BLOCK)] [(with ITEM … BLOCK)] with [ITEM] = [E] or
       [(bind x E)]; [(given E … BLOCK)]; [(call F ARG …)] with [ARG] = [E], [(& E)], [(using x E)]
       or [(label name ARG)]; [(index E GA …)] with [GA] an expression or a type (indexing, slicing
-      and instantiation, SYN-042) [(dot E name)] [(? E)] [(- E)] [(~ E)] [(not E)] [(OP L R)] for
+      and instantiation, SYN-042); [(dot E name)] [(? E)] [(- E)] [(~ E)] [(not E)] [(OP L R)] for
       binary operators written as in the source ([+], [|>], [and], …), [(cmp A < B <= C)],
       [(.. LO HI)] / [(..= LO HI)] with [_] for an absent bound, [(cond C THEN ELSE)],
       [(lambda (params …) E)], [(fn (params …) (-> T) BLOCK)],

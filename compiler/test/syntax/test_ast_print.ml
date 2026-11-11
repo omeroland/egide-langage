@@ -24,12 +24,17 @@ let tn name = t (Ty_path { path = path name; args = [] })
 (* A type written as a generic argument is an expression until resolution (SYN-042): a path is a [Path], an
    application is an [Index], a type-only form stays a type. *)
 let rec ga_of_ty (ty : ty) : gen_arg =
+  let expr_of_ga = function
+    | Ga_expr ex -> ex
+    | Ga_type_only _ -> invalid_arg "ga_of_ty: type-only form nested in an expression"
+  in
   match ty.ty with
   | Ty_path { path = pa; args = [] } -> Ga_expr (e (Path pa))
   | Ty_path { path = pa; args } -> Ga_expr (e (Index { target = e (Path pa); args }))
-  | Ty_optional inner -> (
-      match ga_of_ty inner with Ga_expr ex -> Ga_expr (e (Try ex)) | Ga_type_only _ as g -> g)
-  | _ -> Ga_type_only ty
+  | Ty_tuple ts -> Ga_expr (e (Tuple (List.map (fun t -> expr_of_ga (ga_of_ty t)) ts)))
+  | Ty_self -> Ga_expr (e Self_type)
+  | Ty_optional inner -> Ga_expr (e (Try (expr_of_ga (ga_of_ty inner))))
+  | Ty_fn _ | Ty_dyn _ -> Ga_type_only ty
 
 let tapp name args = t (Ty_path { path = path name; args = List.map ga_of_ty args })
 let bound ?(args = []) name : bound = { path = path name; args; span = sp }
@@ -984,6 +989,17 @@ let%expect_test "generic arguments: instantiation, type-only forms, several argu
     (index (path cache) (path Key) (fn-type (params int) (-> (? int))))
     (index (path decode) (index (path Map) (path str) (path int)))
     (index (path x) (dyn Show Eq))
+    |}]
+
+(* spec: SYN-042 — a tuple, [Self] or optional type used as a generic argument is an expression ([Tuple],
+   [Self_type], [Try]); only [fn] and [dyn] forms stay types *)
+let%expect_test "generic argument that is a tuple, Self or optional type" =
+  print_endline (Print.ty (tapp "Map" [ tn "str"; t (Ty_tuple [ tn "int"; tn "str" ]) ]));
+  print_endline (Print.ty (tapp "Box" [ t Ty_self; t (Ty_optional (tn "int")) ]));
+  [%expect
+    {|
+    (apply Map (path str) (tuple (path int) (path str)))
+    (apply Box (Self) (? (path int)))
     |}]
 
 (* spec: SYN-041, TYP-006 — types are paren-free; (T,) is a distinct one-element tuple type; an optional function

@@ -6,7 +6,7 @@ phase: 0
 role: syntax-engineer
 depends_on: [T-0008]
 spec: [SYN-005, SYN-015, SYN-042, SYN-053, SYN-065]
-paths: [compiler/lib/syntax/ast.ml, compiler/lib/syntax/ast.mli, compiler/lib/syntax/print.ml, compiler/test/syntax/]
+paths: [compiler/lib/syntax/ast.ml, compiler/lib/syntax/ast.mli, compiler/lib/syntax/print.ml, compiler/lib/syntax/parser.mly, compiler/test/syntax/]
 estimate: M
 labels: []
 status: done
@@ -24,14 +24,14 @@ Decided by owner-delegated architect in ADR-0013, ADR-0014 and ADR-0015. Must la
 
 ## Acceptance criteria
 
-- [ ] One `If` node (no `if_stmt`/`if_expr` split); `Match`, `Loop`, `With`, `Given`, `Lambda`, `Trailing_call`, `Unsafe` are expressions; statements wrap them (`Stmt.Expr`)
-- [ ] `place` is replaced by a postfix expression as assignment target (Q-0008); `Arg` has `Inout of expr`, `Using of ident * expr`
-- [ ] `Index of expr * gen_arg list` with `gen_arg = Expr | Type_only of ty`; `slice_or_index` and `type_arg` are gone (ADR-0014)
-- [ ] Types: `Paren`-free, `Tuple1`, `Fn_type` with `using` bounds list, `Dyn of bound list`
-- [ ] Patterns: `Pat_const of path` distinct from `Pat_bind of ident` (SYN-053); literal patterns gain duration, raw string, bytes
-- [ ] `visibility = Private | Pub | Pub_package`; `struct`/`impl` bodies may be empty; `Import` alias xor items; `Type_decl` where only under `new`
-- [ ] `file.doc` and per-node `doc` are removed or left `None` until ADR-0016 (Q-0012) is implemented
-- [ ] Printer snapshots updated and reviewed; `make ci` green
+- [x] One `If` node (no `if_stmt`/`if_expr` split); `Match`, `Loop`, `With`, `Given`, `Lambda`, `Trailing_call`, `Unsafe` are expressions; statements wrap them (`Stmt.Expr`)
+- [x] `place` is replaced by a postfix expression as assignment target (Q-0008); `Arg` has `Inout of expr`, `Using of ident * expr`
+- [x] `Index of expr * gen_arg list` with `gen_arg = Expr | Type_only of ty`; `slice_or_index` and `type_arg` are gone (ADR-0014)
+- [x] Types: `Paren`-free, `Tuple1`, `Fn_type` with `using` bounds list, `Dyn of bound list`
+- [x] Patterns: `Pat_const of path` distinct from `Pat_bind of ident` (SYN-053); literal patterns gain duration, raw string, bytes
+- [x] `visibility = Private | Pub | Pub_package`; `struct`/`impl` bodies may be empty; `Import` alias xor items; `Type_decl` where only under `new`
+- [x] `file.doc` and per-node `doc` are removed or left `None` until ADR-0016 (Q-0012) is implemented
+- [x] Printer snapshots updated and reviewed; `make ci` green
 
 ## Out of scope
 
@@ -63,13 +63,23 @@ Decisions (each an interpretation of the accepted grammar, not a spec change):
   and impl items; an `Impl` always has `Private`.
 - `Pat_lit` still holds a `literal` (it would be a second literal type to restrict it); the invariant (no `Template`,
   `negated` only on numbers and durations) is documented and belongs to the parser (T-0012).
-- Doc comments: all `doc` fields and `file.doc` are removed (not left `None`): ADR-0016 puts comments in a side table
-  (T-1036), so a field would only invite a second source of truth.
+- Doc comments: all `doc` fields and `file.doc` are removed (not left `None`) for this task, because nothing fills them
+  until the parser attaches `##` runs (LEX-011, ADR-0016, Q-0012 option A: `doc : string option` on attachable nodes
+  plus a comment table in `Ast.file`). My first rationale ("a side table makes a field a second source of truth") misread
+  ADR-0016: the parser does attach `##` to nodes. T-1036 must reintroduce `doc` (see its Log), or record a decision to
+  keep docs out of the tree.
 - `Index` `args` hold expressions, and a type written as a path is an expression until resolution (SYN-042), so
   `Ty_path.args` of `Map[str, int]` print as `(apply Map (path str) (path int))`.
-- parser.mly was touched outside the declared paths, only to construct the new record shapes of the seed subset
+- parser.mly (added to this task's `paths` after review) was touched only to construct the new record shapes of the seed subset
   (`file`, `import`, top-level `let`): no grammar change. T-1006 also lists parser.mly in its paths, so expect a
   trivial textual conflict there.
+- Rule 3 (tests first) deviation, recorded after review: the implementation was written before the tests. Accepted by
+  the reviewer for a pure type-shape refactor, because the red state is a compile error of the old tests against the
+  new types (and the new tests do not compile on `main` c4c4df4: unbound `gen_arg`). The reviewer's mutation check
+  (9 one-line mutations of print.ml, all caught by at least one snapshot) shows the tests discriminate.
+- Review fixes (second round): `ga_of_ty` test helper no longer builds trees the AST forbids (tuple and `Self` are
+  expressions, `?` is kept), with a snapshot for a tuple/`Self`/optional argument; T-1036, T-1031, T-0009, T-1006,
+  T-0032 Logs updated; Q-0023 (`_x`) and Q-0024 (E0104 wording) opened.
 - `make ci`: ocamlformat 0.28.1 does not build here, so the format check is skipped locally; code was formatted by
   hand to the repository profile (margin 100). The GitHub CI is the authority.
 
@@ -89,6 +99,7 @@ Tests: `compiler/test/syntax/test_ast_print.ml` (existing snapshots updated, 11 
 SYN-003, SYN-012, SYN-015, SYN-024, SYN-030, SYN-033, SYN-040, SYN-041, SYN-042, SYN-043, SYN-050, SYN-053, SYN-062,
 TYP-006, CAP-032).
 
-Follow-ups: T-1041, Q-0022 (blocking T-0009). Known limitation: invariants that the types do not encode (SYN-012
+Follow-ups: T-1041, Q-0022 (blocks only `@go_threadsafe` in T-0009), Q-0023, Q-0024.
+Tests were written after the code (see the Log). Known limitation: invariants that the types do not encode (SYN-012
 place check, SYN-065, SYN-017/018, SYN-053 case rules, const-block restriction, `self` position) are parser checks
 (T-1031).

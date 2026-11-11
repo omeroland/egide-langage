@@ -2,7 +2,7 @@
 id: Q-0022
 rule: SYN-023, SYN-018, GO-032
 raised_by: syntax-engineer/session_01NLgEFTLJgCm5Sfk4YuTzRp (T-1030)
-blocking: [T-0009]
+blocking: []
 severity: medium
 status: open
 ---
@@ -38,5 +38,7 @@ C. Make the reason positional: `@go_threadsafe("reason")`. No grammar change; lo
 ## Recommendation
 
 A (labelled arguments only where the table needs them; the closed attribute set keeps the surface small). The AST
-change is local (`attribute.args`). Until decided, `attribute.args` stays `expr list option` and T-0009 must not
-claim to parse `@go_threadsafe`.
+change is local (`attribute.args`). Until decided, `attribute.args` stays `expr list option`. Only `@go_threadsafe` is blocked (T-0009 carves that test
+out; its Log says so). Option A does not change the E0107 attribute PoC
+(`tests/security/syntax/cover_annotation_in_attribute_argument.egd`, `@derive((a: int))`): a parenthesised item is still
+an `expr`, so the cover check applies unchanged.
