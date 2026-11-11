@@ -173,7 +173,8 @@ fn f(x: int) -> int:          # FN IDENT ( IDENT : IDENT ) -> IDENT :
   lines are ignored for the margin and become empty; the line break after the opening `"""` is dropped and the
   line break before the closing `"""` is kept. A tab in the margin, or on a blank line, is E0005 (LEX-004). On every
   content line, and on the line that holds the closing `"""` (for the characters before it), the first character after the
-  run of U+0020 at the start of the line MUST NOT be a blank-rendering character: a `Zs` character other than U+0020, or
+  run of U+0020 at the start of the line MUST NOT be U+0009 (E0005, whatever the margin: `    <TAB>secret` would render as
+  eight spaces and hold a tab) and MUST NOT be a blank-rendering character: a `Zs` character other than U+0020, or
   U+2800 (E0046; both sets are those of the Unicode 16.0.0 table embedded for LEX-003). The remedy depends on the
   literal: in a plain `"""` string and in an `f"""` template write `\u{A0}` (`f` unescapes, LEX-055); in `r"""` and in the
   other templates, which process no escapes, the character cannot start a line: put text before it or use a plain
@@ -183,7 +184,7 @@ fn f(x: int) -> int:          # FN IDENT ( IDENT : IDENT ) -> IDENT :
   same number of leading U+0020 on every content line and on the line of the closing `"""` does not change the value.
 - **[LEX-052]** Raw strings `r"…"` and `r"""…"""` process no escapes; `r"""…"""` is dedented like any triple-quoted string
   (LEX-051). A raw string ends at the first `"` (`r"C:\dir\"` is valid). There are no `#`-fenced raw strings: any
-  identifier token immediately followed by `#"` (`r#"…"#`, `re#"…"#`, `f#"…"#`) is E0047, because the `#` would
+  identifier token immediately followed by one or more `#` and then `"` (`r#"…"#`, `r##"…"##`, `re#"…"#`) is E0047, because the `#` would
   otherwise silently start a comment that swallows the rest of the line.
 - **[LEX-053]** Byte strings `b"…"` have type `Bytes` and accept printable ASCII (`U+0020`–`U+007E`) and the escapes
   `\\ \" \n \t \r \0 \xHH`; no `\u{…}` (E0043) and no other character (E0043); an escape that exists

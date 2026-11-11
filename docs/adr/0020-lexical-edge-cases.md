@@ -113,6 +113,15 @@ a line, the next character is not blank-rendering (E0046). Mid-line NBSP stays l
   strings write `\u{A0}`; raw and other templates cannot start a line with such a character and must put text before it
   or use a plain string. This is a deliberate, accepted restriction of those forms, and the E0046 message names the
   remedy that applies.
+- **Tab after the margin (second pass, N1, established: reproduced by the reviewer on `main`).** LEX-003 allows HT in
+  strings and E0005 covered only "the margin", so `    <TAB>secret` was accepted and holds a tab that renders like eight
+  spaces. LEX-051 now makes U+0009, as the first character after the U+0020 run of a content line or of the closing line,
+  E0005 whatever the margin. A tab later in a line stays legal text.
+- **Residual (second pass, N3, extrapolated).** Private-use (`Co`) and unassigned (`Cn`) code points are outside LEX-003 and
+  E0046 and some fonts render them blank. Not closed here: a pinned "renders blank" property would close the class
+  and needs the owner's appetite for a larger table; recorded as a known residual. `egide fmt` must not trim or normalise a
+  trailing NBSP (it behaves like a trailing space). The re-indentation test (N4) must include a tab after the margin and
+  `f"""` interpolations that span lines.
 - Ordering (reviewer N1/N2): "line break" is the LF of the normalised stream (LEX-002); diagnostics are in source order
   and E0045 is primary (the literal is still scanned to its closing `"""`, so E0040 appears only if there is none). The
   first draft's example `"""a""""` was contradictory and is replaced by a content line ending in four quotes.
@@ -124,8 +133,11 @@ the line, so the rest of the line, including a `"`, is silently a comment. With 
 `r`, this even type-checks. The narrowest fix that fails closed is a lexical error on the exact shape; supporting
 Rust's fences (`r#"…"#`) is rejected because a second raw form would violate "one obvious way" while `"""` and `r"""`
 already cover text with quotes. The hazard is not specific to `r`: it exists for any identifier glued to `#"` (`re#"…"#`, `f#"…"#`), so E0047 covers every
-identifier token immediately followed by `#"` (security review N3). The first draft's `##` clause is dropped (`b## note`
-is a false positive with no security value). A comment starting with `"` and glued to an identifier has no legitimate
+identifier token immediately followed by one or more `#` and then `"` (`ident #+ "`). The second pass found that the
+intermediate wording ("`#"`") missed `r##"…"##`, where the character after `r` is `#` then `#`; reasoned from the text, not
+run. `b## note` and `b## "note"` stay untouched (a space intervenes), so the first draft's false positive does not return.
+E0047 depends on `#` being the comment character, which ADR-0018 keeps (its decision 12); if the open alternative `//` were
+taken, E0047 must be re-derived. A comment starting with `"` and glued to an identifier has no legitimate
 use, so the false-positive cost is nil.
 
 ### 3. Q-0052 (`rb"x"`)
