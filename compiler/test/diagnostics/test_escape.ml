@@ -269,14 +269,17 @@ let contains s sub =
 let%test "forbidden set is backed by the generated table from phase 1" =
   let phase = int_of_string (String.trim (read "../../../tasks/PHASE")) in
   let done_ =
-    Array.exists (fun f -> String.starts_with ~prefix:"T-1033" f) (Sys.readdir "../../../tasks/done")
+    Array.exists
+      (fun f -> String.starts_with ~prefix:"T-1033" f)
+      (Sys.readdir "../../../tasks/done")
   in
   let table = Sys.file_exists "../../lib/source/forbidden_table.ml" in
   let wired = contains (read "../../lib/diagnostics/forbidden_set.ml") "Forbidden_table" in
   let ok = (phase < 1 && not done_) || (table && wired) in
   if not ok then
     print_endline
-      "Forbidden_set is still the hand-written set: wire compiler/lib/source/forbidden_table.ml (T-1033)";
+      "Forbidden_set is still the hand-written set: wire compiler/lib/source/forbidden_table.ml \
+       (T-1033)";
   ok
 
 (* ---- the stdout/stderr guard ---- *)
@@ -343,14 +346,12 @@ let%expect_test "messages escape values and backslashes" =
       note: a\nb \\u{1B}[2K
     |}]
 
-
 (* ---- full sweep over every Unicode scalar value (security review of T-1039, candidate 1) ---- *)
 
 (* Independent, hand-written oracle (not Forbidden_set): Cc, C1, Zs, bidi, the Cf and DICP groups of
    LEX-003 and the noncharacters. *)
 let oracle_wide cp =
-  oracle_dangerous cp
-  || cp = 0x034F
+  oracle_dangerous cp || cp = 0x034F
   || (cp >= 0x0600 && cp <= 0x0605)
   || cp = 0x06DD || cp = 0x070F
   || (cp >= 0x115F && cp <= 0x1160)
@@ -368,7 +369,8 @@ let%test "sweep: every scalar value is escaped when the oracle says so, and neve
   for cp = 0 to 0x10FFFF do
     if not (cp >= 0xD800 && cp <= 0xDFFF) then begin
       let s = utf8 cp in
-      if oracle_wide cp && not (E.is_dangerous cp) then bad := Printf.sprintf "U+%04X missed" cp :: !bad;
+      if oracle_wide cp && not (E.is_dangerous cp) then
+        bad := Printf.sprintf "U+%04X missed" cp :: !bad;
       let outs = [ E.display s; E.neutralize s; E.neutralize_line s; E.json_safe s ] in
       if List.exists leaks outs then bad := Printf.sprintf "U+%04X leaks" cp :: !bad;
       (* display and neutralize_line never emit a raw LF *)
@@ -382,13 +384,29 @@ let%test "sweep: every scalar value is escaped when the oracle says so, and neve
 (* ---- log-injection matrix (candidate 2): a separator in any field never forges an output line ---- *)
 
 let separators =
-  [ "\n"; "\r\n"; "\r"; "\xC2\x85"; "\xE2\x80\xA8"; "\xE2\x80\xA9"; "\x0B"; "\x0C"; "\\n"; "\\\n";
-    "\x00"; "\xE2\x80"; "\xC0\x8A"; "\xED\xA0\x80" ]
+  [
+    "\n";
+    "\r\n";
+    "\r";
+    "\xC2\x85";
+    "\xE2\x80\xA8";
+    "\xE2\x80\xA9";
+    "\x0B";
+    "\x0C";
+    "\\n";
+    "\\\n";
+    "\x00";
+    "\xE2\x80";
+    "\xC0\x8A";
+    "\xED\xA0\x80";
+  ]
 
 let lines s = List.length (String.split_on_char '\n' s)
 
 let starts_fake s =
-  List.exists (fun l -> String.starts_with ~prefix:"FAKE" (String.trim l)) (String.split_on_char '\n' s)
+  List.exists
+    (fun l -> String.starts_with ~prefix:"FAKE" (String.trim l))
+    (String.split_on_char '\n' s)
 
 let injection_diag sep =
   let p = "x" ^ sep ^ "FAKE: error[E9999]: pwned" in
@@ -401,9 +419,7 @@ let injection_diag sep =
 
 let%test "injection matrix: no forged line, same line count as a benign payload" =
   let _, benign = injection_diag " " in
-  let render d src =
-    [ D.to_human d; D.render_human ~sources:(fun _ -> Some src) d; D.to_json d ]
-  in
+  let render d src = [ D.to_human d; D.render_human ~sources:(fun _ -> Some src) d; D.to_json d ] in
   let base = List.map lines (render benign "x FAKE: error[E9999]: pwned\n") in
   List.for_all
     (fun sep ->
@@ -427,7 +443,12 @@ let%test "neutralize_line escapes LF and keeps backslash" =
 let tokens src =
   let n = String.length src in
   let toks = ref [] in
-  let is_id c = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c = '_' || c = '\'' in
+  let is_id c =
+    (c >= 'a' && c <= 'z')
+    || (c >= 'A' && c <= 'Z')
+    || (c >= '0' && c <= '9')
+    || c = '_' || c = '\''
+  in
   let rec skip_string i =
     if i >= n then i
     else match src.[i] with '"' -> i + 1 | '\\' -> skip_string (i + 2) | _ -> skip_string (i + 1)
@@ -435,7 +456,9 @@ let tokens src =
   (* a quoted string opens with an open brace, lowercase letters or underscores, then a bar *)
   let quoted_end i =
     let j = ref (i + 1) in
-    while !j < n && ((src.[!j] >= 'a' && src.[!j] <= 'z') || src.[!j] = '_') do incr j done;
+    while !j < n && ((src.[!j] >= 'a' && src.[!j] <= 'z') || src.[!j] = '_') do
+      incr j
+    done;
     if !j < n && src.[!j] = '|' then begin
       let close = "|" ^ String.sub src (i + 1) (!j - i - 1) ^ "}" in
       match Str.search_forward (Str.regexp_string close) src (!j + 1) with
@@ -456,41 +479,83 @@ let tokens src =
     if i < n then
       let c = src.[i] in
       if c = '(' && i + 1 < n && src.[i + 1] = '*' then go (comment (i + 2) 1)
-      else if c = '"' then (toks := "\"" :: !toks; go (skip_string (i + 1)))
-      else if c = '{' && quoted_end i <> None then
-        (toks := "\"" :: !toks; go (Option.get (quoted_end i)))
-      else if c = '\'' && i + 2 < n && src.[i + 1] <> '\\' && src.[i + 2] = '\'' then
-        (toks := "'" :: !toks; go (i + 3))
+      else if c = '"' then (
+        toks := "\"" :: !toks;
+        go (skip_string (i + 1)))
+      else if c = '{' && quoted_end i <> None then (
+        toks := "\"" :: !toks;
+        go (Option.get (quoted_end i)))
+      else if c = '\'' && i + 2 < n && src.[i + 1] <> '\\' && src.[i + 2] = '\'' then (
+        toks := "'" :: !toks;
+        go (i + 3))
       else if c = '\'' && i + 1 < n && src.[i + 1] = '\\' then
-        (match String.index_from_opt src (i + 2) '\'' with
-         | Some k -> toks := "'" :: !toks; go (k + 1)
-         | None -> go (i + 1))
+        match String.index_from_opt src (i + 2) '\'' with
+        | Some k ->
+            toks := "'" :: !toks;
+            go (k + 1)
+        | None -> go (i + 1)
       else if is_id c && not (c = '\'') then begin
         (* identifier path: A.B.c, dots included *)
         let j = ref i in
         let continue = ref true in
         while !continue do
-          while !j < n && is_id src.[!j] do incr j done;
+          while !j < n && is_id src.[!j] do
+            incr j
+          done;
           if !j + 1 < n && src.[!j] = '.' && is_id src.[!j + 1] && src.[!j + 1] <> '\'' then incr j
           else continue := false
         done;
         toks := String.sub src i (!j - i) :: !toks;
         go !j
       end
-      else (if c <> ' ' && c <> '\n' && c <> '\t' && c <> '\r' then toks := String.make 1 c :: !toks; go (i + 1))
+      else (
+        if c <> ' ' && c <> '\n' && c <> '\t' && c <> '\r' then toks := String.make 1 c :: !toks;
+        go (i + 1))
   in
   go 0;
   List.rev !toks
 
-let restricted_modules = [ "Format"; "Fmt"; "Unix"; "Out_channel"; "Stdlib"; "Printf"; "Logs"; "Eio" ]
+let restricted_modules =
+  [ "Format"; "Fmt"; "Unix"; "Out_channel"; "Stdlib"; "Printf"; "Logs"; "Eio" ]
+
 let safe_printf = [ "sprintf"; "ksprintf"; "bprintf"; "asprintf" ]
 
 let banned_values =
-  [ "print_string"; "print_bytes"; "print_char"; "print_int"; "print_float"; "print_endline";
-    "print_newline"; "prerr_string"; "prerr_bytes"; "prerr_char"; "prerr_int"; "prerr_float";
-    "prerr_endline"; "prerr_newline"; "stdout"; "stderr"; "output"; "output_string"; "output_bytes";
-    "output_char"; "output_substring"; "output_byte"; "flush"; "flush_all"; "printf"; "eprintf";
-    "fprintf"; "ifprintf"; "kfprintf"; "pr"; "epr"; "std_formatter"; "err_formatter" ]
+  [
+    "print_string";
+    "print_bytes";
+    "print_char";
+    "print_int";
+    "print_float";
+    "print_endline";
+    "print_newline";
+    "prerr_string";
+    "prerr_bytes";
+    "prerr_char";
+    "prerr_int";
+    "prerr_float";
+    "prerr_endline";
+    "prerr_newline";
+    "stdout";
+    "stderr";
+    "output";
+    "output_string";
+    "output_bytes";
+    "output_char";
+    "output_substring";
+    "output_byte";
+    "flush";
+    "flush_all";
+    "printf";
+    "eprintf";
+    "fprintf";
+    "ifprintf";
+    "kfprintf";
+    "pr";
+    "epr";
+    "std_formatter";
+    "err_formatter";
+  ]
 
 (* Violations in [src]; [Printf.sprintf] and friends are the only allowed use of restricted modules. *)
 let lint_violations src =
@@ -509,16 +574,19 @@ let lint_violations src =
     | ("open" | "include") :: p :: rest ->
         (* any open of a restricted module hides later unqualified uses *)
         (match String.split_on_char '.' p with
-         | m :: _ when List.mem m restricted_modules -> add ("open " ^ p)
-         | _ -> ());
+        | m :: _ when List.mem m restricted_modules -> add ("open " ^ p)
+        | _ -> ());
         walk rest
     | "module" :: _ :: "=" :: p :: rest ->
         (match String.split_on_char '.' p with
-         | m :: _ when List.mem m restricted_modules -> add ("alias " ^ p)
-         | _ -> ());
+        | m :: _ when List.mem m restricted_modules -> add ("alias " ^ p)
+        | _ -> ());
         walk rest
     | t :: rest ->
-        if t <> "\"" && t <> "'" && String.length t > 0 && (t.[0] >= 'A' && t.[0] <= 'z' || t.[0] = '_')
+        if
+          t <> "\"" && t <> "'"
+          && String.length t > 0
+          && ((t.[0] >= 'A' && t.[0] <= 'z') || t.[0] = '_')
         then check_path t;
         walk rest
     | [] -> ()

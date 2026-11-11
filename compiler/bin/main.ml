@@ -18,7 +18,9 @@ let read_file path =
   try Ok (In_channel.with_open_bin path In_channel.input_all) with Sys_error m -> Error m
 
 let print_diags json diags =
-  List.iter (fun d -> (if json then Output.eline (D.to_json d) else Output.eblock (D.to_human d))) diags
+  List.iter
+    (fun d -> if json then Output.eline (D.to_json d) else Output.eblock (D.to_human d))
+    diags
 
 let () =
   let args = List.tl (Array.to_list Sys.argv) in
@@ -32,7 +34,8 @@ let () =
           (* Machine mode stays machine-only: the I/O error is a JSON line, not text (F5). *)
           let msg = "egide: " ^ m in
           if json then
-            Output.eline (Printf.sprintf {|{"kind":"io_error","message":%s}|} (Escape.json_safe msg))
+            Output.eline
+              (Printf.sprintf {|{"kind":"io_error","message":%s}|} (Escape.json_safe msg))
           else Output.eline (Escape.display msg);
           exit 1
       | Ok src ->
