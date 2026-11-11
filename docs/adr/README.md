@@ -34,3 +34,4 @@ requires an accepted ADR.**
 | [0015](0015-parser-contract-decisions-at-mvp-start.md) | Parser-contract decisions at the start of the MVP | Accepted (owner-delegated, review at MVP) |
 | [0016](0016-lexical-and-semantic-decisions-at-mvp-start.md) | Lexical and semantic decisions at the start of the MVP | Accepted (owner-delegated, review at MVP) |
 | [0017](0017-security-review-resolution.md) | Resolution of the security review of ADR-0013 to ADR-0016 | Accepted (owner-delegated, review at MVP) |
+| [0018](0018-surface-syntax-familiarity.md) | Surface syntax familiarity | Proposed (owner confirmation required) |
