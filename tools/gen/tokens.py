@@ -22,7 +22,7 @@ PUNCT = [  # (text, token) — longest first is handled by sedlex's longest matc
  (":","COLON"),("@","AT"),("(","LPAREN"),(")","RPAREN"),("[","LBRACKET"),("]","RBRACKET"),("{","LBRACE"),
  ("}","RBRACE")]
 
-VALUED = [("IDENT","string"),("INT","string"),("FLOAT","string"),("DURATION","string * string"),("STRING","string"),("BYTES","string"),("CHAR","Uchar.t")]
+VALUED = [("IDENT","string"),("INT","string"),("FLOAT","string"),("DURATION","string * string"),("STRING","string"),("RAW_STRING","string"),("BYTES","string"),("CHAR","Uchar.t")]
 LAYOUT = ["NEWLINE","INDENT","DEDENT","EOF"]
 
 def main():

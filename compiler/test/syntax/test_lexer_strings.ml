@@ -59,7 +59,7 @@ let%expect_test "unicode escapes accept every scalar value" =
     3:1-3:13 STRING("\244\143\191\191")
     4:1-4:8 STRING("\000")
     5:1-5:11 STRING("\226\128\174")
-    6:1-6:18 STRING("\237\159\191\238\128\128")
+    6:1-6:19 STRING("\237\159\191\238\128\128")
     |}]
 
 (* spec: LEX-050; acceptance criterion: invalid escape -> E0041 at the backslash *)
@@ -131,7 +131,7 @@ let%expect_test "unterminated strings" =
   show "\"ab\r\nx";
   [%expect
     {|
-    1:1-1:5 STRING("ab")
+    1:1-1:4 STRING("ab")
     2:1-2:2 IDENT("x")
     E0040 1:1-1:2 unterminated string literal
     |}]
@@ -151,17 +151,17 @@ rb"x"
 |x};
   [%expect
     {|
-    1:1-1:11 STRING("C:\\dir\\")
-    2:1-2:12 STRING("\\n\\u{zz}")
-    3:1-3:4 STRING("")
-    4:1-4:10 STRING("a\\")
+    1:1-1:11 RAW_STRING("C:\\dir\\")
+    2:1-2:12 RAW_STRING("\\n\\u{zz}")
+    3:1-3:4 RAW_STRING("")
+    4:1-4:10 RAW_STRING("a\\")
     5:1-5:3 IDENT("rb")
     5:3-5:6 STRING("x")
     |}];
   show "r\"abc\nx";
   [%expect
     {|
-    1:1-1:6 STRING("abc")
+    1:1-1:6 RAW_STRING("abc")
     2:1-2:2 IDENT("x")
     E0040 1:2-1:3 unterminated string literal
     |}]
@@ -177,7 +177,7 @@ let%expect_test "triple-quoted strings" =
 |x};
   [%expect
     {|
-    1:1-1:11 STRING("one")
+    1:1-1:10 STRING("one")
     2:1-5:8 STRING("hello\n  world\n")
     6:1-6:7 STRING("")
     |}]
@@ -258,12 +258,12 @@ let%expect_test "triple-quoted details" =
   show "\"\"\"\n    a\\q\n    \"\"\"";
   [%expect
     {|
-    1:1-3:8 STRING("a")
+    1:1-3:8 STRING("a\n")
     E0041 2:6-2:8 invalid escape sequence `\q`
     |}];
   (* raw triple-quoted: dedent applies, escapes do not *)
   show "r\"\"\"\n    a\\n\n    \"\"\"";
-  [%expect {| 1:1-3:8 STRING("a\\n\n") |}]
+  [%expect {| 1:1-3:8 RAW_STRING("a\\n\n") |}]
 
 (* spec: LEX-051, LEX-004: a tab in the margin is E0005 *)
 let%expect_test "a tab in the margin of a triple-quoted string" =
@@ -298,14 +298,14 @@ let%expect_test "byte strings reject non-ASCII, controls and the other escapes" 
   [%expect
     {|
     1:1-1:5 BYTES("")
-    2:1-2:4 BYTES("")
+    2:1-2:5 BYTES("")
     3:1-3:10 BYTES("{41}")
     4:1-4:6 BYTES("")
     5:1-5:6 BYTES("")
     6:1-6:7 BYTES("")
     7:1-7:6 BYTES("")
     8:1-8:6 BYTES("")
-    9:1-9:9 BYTES("ZZ")
+    9:1-9:8 BYTES("ZZ")
     E0043 1:3-1:4 character U+00E9 is not allowed in a byte string (printable ASCII U+0020 to U+007E only)
     E0043 2:3-2:4 character U+0009 is not allowed in a byte string (printable ASCII U+0020 to U+007E only)
     E0043 3:3-3:5 escape `\u` is not allowed in a byte string; the escapes are `\\ \" \n \t \r \0 \xHH`
@@ -386,7 +386,7 @@ let%expect_test "very large literals" =
   let count src =
     match tokens src with
     | [ { tok = Tokens.STRING s; _ } ], [] -> String.length s
-    | [ { tok = Tokens.BYTES s; _ } ], [] -> String.length s
+    | [ { tok = Tokens.BYTES s; _ } ], [] | [ { tok = Tokens.RAW_STRING s; _ } ], [] -> String.length s
     | _ -> -1
   in
   Printf.printf "%d\n" (count ("\"" ^ String.make n 'a' ^ "\""));
@@ -398,9 +398,9 @@ let%expect_test "very large literals" =
   [%expect {|
     3000000
     3000000
-    3000000
+    1500000
     750000
-    1800000
+    1500000
     |}]
 
 (* ---- properties ---- *)
@@ -465,7 +465,7 @@ let%test_unit "a raw string keeps every character but the quote and the line bre
     (QCheck2.Test.make ~name:"raw roundtrip" ~count:5000
        QCheck2.Gen.(
          string_size ~gen:(oneof [ char_range 'a' 'z'; return '\\'; return '{'; return '\t'; return ' ' ]) (int_range 0 40))
-       (fun s -> single ("r\"" ^ s ^ "\"") = Some (Tokens.STRING s)))
+       (fun s -> single ("r\"" ^ s ^ "\"") = Some (Tokens.RAW_STRING s)))
 
 (* The reference model of LEX-051: margin = fewest leading spaces among non-blank lines. *)
 let model_dedent content =
@@ -490,3 +490,20 @@ let%test_unit "triple-quoted dedent agrees with the reference model" =
        (fun content ->
          let src = "\"\"\"\n" ^ content ^ "\"\"\"" in
          single src = Some (Tokens.STRING (model_dedent content))))
+
+(* A value that holds a forbidden or bidirectional code point (only possible through `\u{H}`) is printed with an escape,
+   so that the printed AST is safe to display (LEX-006) and lexes back to the same value (LEX-003 would reject it). *)
+let%test_unit "a printed string literal lexes back to the same value" =
+  seeded
+    (QCheck2.Test.make ~name:"print then lex" ~count:5000
+       QCheck2.Gen.(list_size (int_range 0 20) scalar)
+       (fun cps ->
+         let v = utf8 cps in
+         let sp = Egide_source.Span.dummy in
+         let gen = Node_id.Gen.create () in
+         let e = { Ast.id = Node_id.Gen.fresh gen; expr = Ast.Lit (Ast.String v); span = sp } in
+         (* the printer shows [(string "...")]: take the quoted atom *)
+         let printed = Print.expr e in
+         let q = String.index printed '"' in
+         let lit = String.sub printed q (String.rindex printed '"' - q + 1) in
+         single lit = Some (Tokens.STRING v)))

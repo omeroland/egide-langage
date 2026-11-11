@@ -175,6 +175,394 @@ let number st lexeme =
       report_number st e;
       ret st (match kind with Integer -> INT lexeme | Real -> FLOAT lexeme)
 
+(* ---- String, byte-string and character literals (LEX-050..054) ----
+   A literal is read in two steps. First a scanner collects the raw text between the delimiters, deciding only where
+   the literal ends (a backslash protects `\\` and the quote of a cooked literal; a raw literal has no protection).
+   Then [decode_escapes] turns the raw text into the value and reports every bad escape with its own span. LEX-003
+   (forbidden characters, also inside literals) is checked on the raw input by [Source_check] before any token is
+   read, so an escape such as `\u{202E}` is the only way a forbidden code point reaches a value (LEX-050, ADR-0017). *)
+
+module Esc = Egide_diagnostics.Escape
+module Span = Egide_source.Span
+
+type literal_kind = Cooked | Chr | Byt
+
+(* All text of one literal body is single-line (a triple-quoted body is split into lines first), so the scalar value
+   at index [j] of a chunk that starts at [p] is at column [p.col + j]. *)
+type chunk = { cpos : Lexing.position; ctext : string }
+
+let pos_at (p : Lexing.position) j = { p with Lexing.pos_cnum = p.Lexing.pos_cnum + j }
+
+let report_range st ~rule ~code p0 p1 msg =
+  D.Sink.report st.sink (D.error ~rule ~code (Span.of_lexing p0 p1) msg)
+
+let hex_value c =
+  match c with
+  | '0' .. '9' -> Some (Char.code c - 48)
+  | 'a' .. 'f' -> Some (Char.code c - 87)
+  | 'A' .. 'F' -> Some (Char.code c - 55)
+  | _ -> None
+
+let byte_string_escapes = "`\\\\ \\\" \\n \\t \\r \\0 \\xHH`"
+
+(* Applies the escapes of [s] (LEX-050, LEX-053, LEX-054) and appends the value to [out] (UTF-8 for [Cooked] and
+   [Chr], bytes for [Byt]). [p] is the position of the first scalar of [s]. Every bad escape is one diagnostic on
+   the escape itself (E0041, or E0043 for a byte string); it is skipped and decoding goes on. Returns the number
+   of bad escapes and bad characters. *)
+let decode_escapes st kind (p : Lexing.position) (s : string) (out : Buffer.t) : int =
+  let n = String.length s in
+  let errs = ref 0 in
+  let fail ~rule ~code j0 j1 msg =
+    incr errs;
+    report_range st ~rule ~code (pos_at p j0) (pos_at p j1) msg
+  in
+  let bad_escape j j1 msg = fail ~rule:"LEX-050" ~code:"E0041" j j1 msg in
+  let byte_escape_not_allowed j what =
+    fail ~rule:"LEX-053" ~code:"E0043" j (j + 2)
+      (Printf.sprintf "escape `\\%s` is not allowed in a byte string; the escapes are %s" what
+         byte_string_escapes)
+  in
+  (* [i]: byte index, [j]: scalar index of the same position. *)
+  let rec go i j =
+    if i < n then begin
+      let c = s.[i] in
+      if c = '\\' then escape i j
+      else if Char.code c < 0x80 then begin
+        (if kind = Byt && (c < ' ' || c > '~') then
+           fail ~rule:"LEX-053" ~code:"E0043" j (j + 1)
+             (Printf.sprintf
+                "character U+%04X is not allowed in a byte string (printable ASCII U+0020 to U+007E only)"
+                (Char.code c))
+         else begin
+           if kind = Chr && c = '\t' then
+             (* LEX-054: a raw tab is not allowed; not counted as an error, the value stays one scalar *)
+             report_range st ~rule:"LEX-004" ~code:"E0005" (pos_at p j)
+               (pos_at p (j + 1))
+               "tab character in a character literal; write '\\t'";
+           Buffer.add_char out c
+         end);
+        go (i + 1) (j + 1)
+      end
+      else begin
+        let d = String.get_utf_8_uchar s i in
+        let w = Uchar.utf_decode_length d in
+        if kind = Byt then
+          fail ~rule:"LEX-053" ~code:"E0043" j (j + 1)
+            (Printf.sprintf
+               "character U+%04X is not allowed in a byte string (printable ASCII U+0020 to U+007E only)"
+               (Uchar.to_int (Uchar.utf_decode_uchar d)))
+        else Buffer.add_substring out s i w;
+        go (i + w) (j + 1)
+      end
+    end
+  and escape i j =
+    if i + 1 >= n then begin
+      bad_escape j (j + 1) "invalid escape sequence: a backslash at the end of the line";
+      go (i + 1) (j + 1)
+    end
+    else begin
+      let e = s.[i + 1] in
+      let simple ch =
+        Buffer.add_char out ch;
+        go (i + 2) (j + 2)
+      in
+      match e with
+      | '\\' -> simple '\\'
+      | '"' -> simple '"'
+      | 'n' -> simple '\n'
+      | 't' -> simple '\t'
+      | 'r' -> simple '\r'
+      | '0' -> simple '\000'
+      | '\'' when kind = Chr -> simple '\''
+      | ('{' | '}') when kind = Cooked -> simple e
+      | ('{' | '}' | 'u') when kind = Byt ->
+          byte_escape_not_allowed j (String.make 1 e);
+          go (i + 2) (j + 2)
+      | 'u' when kind <> Byt -> unicode i j
+      | 'x' when kind = Byt -> hex_byte i j
+      | _ ->
+          (* an unknown escape: the backslash and the whole scalar that follows, shown escaped (LEX-006) *)
+          let w = Uchar.utf_decode_length (String.get_utf_8_uchar s (i + 1)) in
+          bad_escape j (j + 2)
+            (Printf.sprintf "invalid escape sequence `\\%s`" (Esc.display (String.sub s (i + 1) w)));
+          go (i + 1 + w) (j + 2)
+    end
+  and hex_byte i j =
+    (* `\xHH`: exactly two hexadecimal digits (LEX-053) *)
+    let digit k = if i + k < n then hex_value s.[i + k] else None in
+    match (digit 2, digit 3) with
+    | Some a, Some b ->
+        Buffer.add_char out (Char.chr ((a * 16) + b));
+        go (i + 4) (j + 4)
+    | d2, _ ->
+        let used = if d2 = None then 2 else 3 in
+        bad_escape j (j + used) "`\\x` must be followed by exactly two hexadecimal digits";
+        go (i + used) (j + used)
+  and unicode i j =
+    (* `\u{H…}`: 1 to 6 hexadecimal digits, a Unicode scalar value (LEX-050). Everything consumed is ASCII, so
+       bytes and scalars advance together. *)
+    if i + 2 >= n || s.[i + 2] <> '{' then begin
+      bad_escape j (j + 2) "`\\u` must be followed by `{`, 1 to 6 hexadecimal digits and `}`";
+      go (i + 2) (j + 2)
+    end
+    else begin
+      let rec digits m acc cnt =
+        match if m < n then hex_value s.[m] else None with
+        | Some v -> digits (m + 1) (if cnt < 7 then (acc * 16) + v else acc) (cnt + 1)
+        | None -> (m, acc, cnt)
+      in
+      let m, v, cnt = digits (i + 3) 0 0 in
+      let closed = m < n && s.[m] = '}' in
+      let stop = if closed then m + 1 else m in
+      let len = stop - i in
+      let err msg =
+        bad_escape j (j + len) msg;
+        go stop (j + len)
+      in
+      if not closed then err "missing `}` after the hexadecimal digits of `\\u{`"
+      else if cnt = 0 then err "`\\u{}` needs 1 to 6 hexadecimal digits"
+      else if cnt > 6 then err "`\\u{...}` takes at most 6 hexadecimal digits"
+      else if v > 0x10FFFF then
+        err (Printf.sprintf "U+%X is above U+10FFFF, so it is not a Unicode scalar value" v)
+      else if v >= 0xD800 && v <= 0xDFFF then
+        err (Printf.sprintf "U+%X is a surrogate, so it is not a Unicode scalar value" v)
+      else begin
+        Buffer.add_utf_8_uchar out (Uchar.of_int v);
+        go stop (j + len)
+      end
+    end
+  in
+  go 0 0;
+  !errs
+
+(* E0040, pointing at the opening quote(s): [delim] columns ending at [opened]. *)
+let unterminated st ~rule ~what opened delim =
+  report_range st ~rule ~code:"E0040" (pos_at opened (-delim)) opened
+    (Printf.sprintf "unterminated %s" what)
+
+(* Scanners. Each returns [true] when it consumed the closing delimiter. At a line break or the end of the input it
+   returns [false]; the line break is given back (LEX-050: a raw LF inside `"…"` is an error), so the next token
+   starts on the following line and one bad literal costs one diagnostic. A lone CR is E0003 (Source_check) and is
+   kept in the text, as before. *)
+let rec scan_dq st raw =
+  let buf = st.buf in
+  match%sedlex buf with
+  | '"' -> true
+  | "\\\\" | "\\\"" ->
+      Buffer.add_string raw (Sedlexing.Utf8.lexeme st.buf);
+      scan_dq st raw
+  | '\\' ->
+      Buffer.add_char raw '\\';
+      scan_dq st raw
+  | '\n' | "\r\n" ->
+      Sedlexing.rollback st.buf;
+      false
+  | '\r' ->
+      Buffer.add_char raw '\r';
+      scan_dq st raw
+  | Plus (Compl ('"' | '\\' | '\n' | '\r')) ->
+      Buffer.add_string raw (Sedlexing.Utf8.lexeme st.buf);
+      scan_dq st raw
+  | _ -> false (* end of input *)
+
+let rec scan_raw_dq st raw =
+  let buf = st.buf in
+  match%sedlex buf with
+  | '"' -> true
+  | '\n' | "\r\n" ->
+      Sedlexing.rollback st.buf;
+      false
+  | '\r' ->
+      Buffer.add_char raw '\r';
+      scan_raw_dq st raw
+  | Plus (Compl ('"' | '\n' | '\r')) ->
+      Buffer.add_string raw (Sedlexing.Utf8.lexeme st.buf);
+      scan_raw_dq st raw
+  | _ -> false
+
+let rec scan_sq st raw =
+  let buf = st.buf in
+  match%sedlex buf with
+  | '\'' -> true
+  | "\\\\" | "\\'" ->
+      Buffer.add_string raw (Sedlexing.Utf8.lexeme st.buf);
+      scan_sq st raw
+  | '\\' ->
+      Buffer.add_char raw '\\';
+      scan_sq st raw
+  | '\n' | "\r\n" ->
+      Sedlexing.rollback st.buf;
+      false
+  | '\r' ->
+      Buffer.add_char raw '\r';
+      scan_sq st raw
+  | Plus (Compl ('\'' | '\\' | '\n' | '\r')) ->
+      Buffer.add_string raw (Sedlexing.Utf8.lexeme st.buf);
+      scan_sq st raw
+  | _ -> false
+
+(* The raw lines of a triple-quoted literal. CR LF is normalised to LF (LEX-002). *)
+type triple = { mutable lines : chunk list; cur : Buffer.t; mutable cur_pos : Lexing.position }
+
+let push_line t =
+  t.lines <- { cpos = t.cur_pos; ctext = Buffer.contents t.cur } :: t.lines;
+  Buffer.clear t.cur
+
+let rec scan_triple_cooked st t =
+  let buf = st.buf in
+  match%sedlex buf with
+  | "\"\"\"" ->
+      push_line t;
+      true
+  | "\\\\" | "\\\"" ->
+      Buffer.add_string t.cur (Sedlexing.Utf8.lexeme st.buf);
+      scan_triple_cooked st t
+  | '\\' ->
+      Buffer.add_char t.cur '\\';
+      scan_triple_cooked st t
+  | '\n' | "\r\n" ->
+      push_line t;
+      t.cur_pos <- snd (Sedlexing.lexing_positions st.buf);
+      scan_triple_cooked st t
+  | '\r' ->
+      Buffer.add_char t.cur '\r';
+      scan_triple_cooked st t
+  | Plus (Compl ('"' | '\\' | '\n' | '\r')) ->
+      Buffer.add_string t.cur (Sedlexing.Utf8.lexeme st.buf);
+      scan_triple_cooked st t
+  | '"' ->
+      Buffer.add_char t.cur '"';
+      scan_triple_cooked st t
+  | _ ->
+      push_line t;
+      false
+
+let rec scan_triple_raw st t =
+  let buf = st.buf in
+  match%sedlex buf with
+  | "\"\"\"" ->
+      push_line t;
+      true
+  | '\n' | "\r\n" ->
+      push_line t;
+      t.cur_pos <- snd (Sedlexing.lexing_positions st.buf);
+      scan_triple_raw st t
+  | '\r' ->
+      Buffer.add_char t.cur '\r';
+      scan_triple_raw st t
+  | Plus (Compl ('"' | '\n' | '\r')) ->
+      Buffer.add_string t.cur (Sedlexing.Utf8.lexeme st.buf);
+      scan_triple_raw st t
+  | '"' ->
+      Buffer.add_char t.cur '"';
+      scan_triple_raw st t
+  | _ ->
+      push_line t;
+      false
+
+let leading_ws s =
+  let n = String.length s in
+  let rec go i = if i < n && (s.[i] = ' ' || s.[i] = '\t') then go (i + 1) else i in
+  go 0
+
+(* LEX-051. The dedent of Python's [textwrap.dedent], on the raw lines (before escapes are read):
+   1. the line break right after the opening quotes is dropped (only when it directly follows them);
+   2. a tab in the leading whitespace of any line is E0005 (LEX-004), one diagnostic per run of tabs;
+   3. the margin is the fewest leading spaces among the lines that are not blank (blank = only spaces);
+   4. blank lines become empty, the others lose the margin. The line break before the closing quotes stays: the
+      last line is the (blank) text before them. *)
+let dedent st (lines : chunk list) : chunk list =
+  let lines = match lines with { ctext = ""; _ } :: (_ :: _ as rest) -> rest | l -> l in
+  List.iter
+    (fun c ->
+      let lead = leading_ws c.ctext in
+      let i = ref 0 in
+      while !i < lead do
+        if c.ctext.[!i] = '\t' then begin
+          let j = ref !i in
+          while !j < lead && c.ctext.[!j] = '\t' do
+            incr j
+          done;
+          report_range st ~rule:"LEX-004" ~code:"E0005" (pos_at c.cpos !i) (pos_at c.cpos !j)
+            "tab character in the margin of a triple-quoted string; indent with spaces";
+          i := !j
+        end
+        else incr i
+      done)
+    lines;
+  let blank c = leading_ws c.ctext = String.length c.ctext in
+  let margin =
+    List.fold_left (fun m c -> if blank c then m else min m (leading_ws c.ctext)) max_int lines
+  in
+  List.map
+    (fun c ->
+      if blank c then { c with ctext = "" }
+      else
+        {
+          cpos = pos_at c.cpos margin;
+          ctext = String.sub c.ctext margin (String.length c.ctext - margin);
+        })
+    lines
+
+(* Each reader is called right after its opening delimiter was matched. *)
+let single_line_string st ~kind ~scan =
+  let _, opened = Sedlexing.lexing_positions st.buf in
+  let raw = Buffer.create 32 in
+  let closed = scan st raw in
+  if not closed then unterminated st ~rule:"LEX-050" ~what:"string literal" opened 1;
+  match kind with
+  | None -> Buffer.contents raw
+  | Some k ->
+      let out = Buffer.create (Buffer.length raw) in
+      ignore (decode_escapes st k opened (Buffer.contents raw) out);
+      Buffer.contents out
+
+let triple_string st ~cooked =
+  let _, opened = Sedlexing.lexing_positions st.buf in
+  let t = { lines = []; cur = Buffer.create 64; cur_pos = opened } in
+  let closed = if cooked then scan_triple_cooked st t else scan_triple_raw st t in
+  if not closed then unterminated st ~rule:"LEX-050" ~what:"string literal" opened 3;
+  let out = Buffer.create 64 in
+  List.iteri
+    (fun i c ->
+      if i > 0 then Buffer.add_char out '\n';
+      if cooked then ignore (decode_escapes st Cooked c.cpos c.ctext out)
+      else Buffer.add_string out c.ctext)
+    (dedent st (List.rev t.lines));
+  Buffer.contents out
+
+let replacement = Uchar.of_int 0xFFFD
+
+(* LEX-054. A literal with a bad escape or no closing quote is E0041 / E0040 only, so that one mistake costs one
+   diagnostic; its value is U+FFFD. *)
+let char_literal st =
+  let _, opened = Sedlexing.lexing_positions st.buf in
+  let raw = Buffer.create 8 in
+  if not (scan_sq st raw) then begin
+    unterminated st ~rule:"LEX-054" ~what:"character literal" opened 1;
+    replacement
+  end
+  else begin
+    let _, closing = Sedlexing.lexing_positions st.buf in
+    let out = Buffer.create 8 in
+    let errs = decode_escapes st Chr opened (Buffer.contents raw) out in
+    let value = Buffer.contents out in
+    let count =
+      let rec go i k =
+        if i >= String.length value then k
+        else go (i + Uchar.utf_decode_length (String.get_utf_8_uchar value i)) (k + 1)
+      in
+      go 0 0
+    in
+    if errs > 0 then replacement
+    else if count <> 1 then begin
+      report_range st ~rule:"LEX-054" ~code:"E0042" (pos_at opened (-1)) closing
+        (Printf.sprintf "character literal must contain exactly one character, found %d" count);
+      replacement
+    end
+    else Uchar.utf_decode_uchar (String.get_utf_8_uchar value 0)
+  end
+
 let rec token st =
   let buf = st.buf in
   match%sedlex buf with
@@ -205,9 +593,24 @@ let rec token st =
         Sedlexing.rollback buf;
         match%sedlex buf with dec_digits -> number st (Sedlexing.Utf8.lexeme buf) | _ -> None
       end
+  | "r\"\"\"" ->
+      let startp, _ = Sedlexing.lexing_positions buf in
+      Some (RAW_STRING (triple_string st ~cooked:false), startp)
+  | "r\"" ->
+      let startp, _ = Sedlexing.lexing_positions buf in
+      Some (RAW_STRING (single_line_string st ~kind:None ~scan:scan_raw_dq), startp)
+  | "b\"" ->
+      let startp, _ = Sedlexing.lexing_positions buf in
+      Some (BYTES (single_line_string st ~kind:(Some Byt) ~scan:scan_dq), startp)
+  | "\"\"\"" ->
+      let startp, _ = Sedlexing.lexing_positions buf in
+      Some (STRING (triple_string st ~cooked:true), startp)
   | '"' ->
       let startp, _ = Sedlexing.lexing_positions buf in
-      Some (string st (Buffer.create 16), startp)
+      Some (STRING (single_line_string st ~kind:(Some Cooked) ~scan:scan_dq), startp)
+  | '\'' ->
+      let startp, _ = Sedlexing.lexing_positions buf in
+      Some (CHAR (char_literal st), startp)
   | "**" -> ret st STARSTAR
   | "==" -> ret st EQEQ
   | "!=" -> ret st NEQ
@@ -277,44 +680,6 @@ and comment st =
       report_tab st;
       comment st
   | _ -> () (* at LF or end of file: nothing matched, so nothing is consumed *)
-
-(* LEX-050 (seed subset): plain strings with the escapes backslash, quote, n, t, r and 0. *)
-and string st acc =
-  let buf = st.buf in
-  match%sedlex buf with
-  | '"' -> STRING (Buffer.contents acc)
-  | "\\\\" ->
-      Buffer.add_char acc '\\';
-      string st acc
-  | "\\\"" ->
-      Buffer.add_char acc '"';
-      string st acc
-  | "\\n" ->
-      Buffer.add_char acc '\n';
-      string st acc
-  | "\\t" ->
-      Buffer.add_char acc '\t';
-      string st acc
-  | "\\r" ->
-      Buffer.add_char acc '\r';
-      string st acc
-  | "\\0" ->
-      Buffer.add_char acc '\000';
-      string st acc
-  | '\\', any ->
-      report st ~rule:"LEX-050" ~code:"E0041"
-        (Printf.sprintf "invalid escape sequence `%s`" (Sedlexing.Utf8.lexeme buf));
-      string st acc
-  | '\n' ->
-      report st ~rule:"LEX-050" ~code:"E0040" "unterminated string literal";
-      STRING (Buffer.contents acc)
-  | eof ->
-      report st ~rule:"LEX-050" ~code:"E0040" "unterminated string literal";
-      STRING (Buffer.contents acc)
-  | any ->
-      Buffer.add_string acc (Sedlexing.Utf8.lexeme buf);
-      string st acc
-  | _ -> STRING (Buffer.contents acc)
 
 let tokenize ~file src =
   let pre = Source_check.check ~file src in
