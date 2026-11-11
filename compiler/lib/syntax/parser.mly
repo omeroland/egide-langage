@@ -10,7 +10,15 @@ open Ast
 let span (s, e) = Egide_source.Span.of_lexing s e
 %}
 
-%start <Ast.file> file
+(* Node ids (T-1006) come from an explicit generator, supplied by the caller as the functor argument [Ids]: the
+   parser has no global state. Each node's id is allocated when its production is reduced, so the numbering is a
+   function of the parse alone. *)
+%parameter <Ids : sig type file = Ast.file val fresh : unit -> Node_id.t end>
+
+(* [Ids.file] is [Ast.file]; the start symbol is typed through it only so that the generated parser.mli mentions the
+   functor parameter (otherwise warning 67, unused functor parameter, fails the build, and the fix would be to
+   silence it). *)
+%start <Ids.file> file
 
 %%
 
@@ -24,10 +32,10 @@ module_decl:
   | KW_MODULE p = path { p }
 
 ident:
-  | name = IDENT { ({ name; span = span $loc } : ident) }
+  | name = IDENT { ({ id = Ids.fresh (); name; span = span $loc } : ident) }
 
 path:
-  | segments = separated_nonempty_list(DOT, ident) { ({ segments; span = span $loc } : path) }
+  | segments = separated_nonempty_list(DOT, ident) { ({ id = Ids.fresh (); segments; span = span $loc } : path) }
 
 import_decl:
   | KW_IMPORT p = path alias = option(preceded(KW_AS, ident))
@@ -36,10 +44,11 @@ import_decl:
 
 top_decl:
   | KW_LET name = ident EQ value = expr
-    { { attrs = []; vis = Private; decl = Const { name; ty = None; value }; span = span $loc } }
+    { { id = Ids.fresh (); attrs = []; vis = Private; decl = Const { name; ty = None; value };
+        span = span $loc } }
 
 expr:
-  | e = expr_desc { { expr = e; span = span $loc } }
+  | e = expr_desc { { id = Ids.fresh (); expr = e; span = span $loc } }
 
 expr_desc:
   | i = INT { Lit (Int i) }

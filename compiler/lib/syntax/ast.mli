@@ -11,6 +11,15 @@
       expressions (SYN-015), indexing and instantiation share one node (SYN-042), patterns keep
       bindings and constants apart (SYN-053), and visibility, import forms and [type] declarations
       are closed variants so that the forms the grammar forbids cannot be built.
+    - Every node that a later pass annotates or scopes carries an [id : Node_id.t], unique within a
+      parsed file (docs/architecture.md §2.3, T-1006): identifiers, paths, expressions, patterns,
+      types, statements, blocks, declarations, call arguments ([arg]), [bound]s, [generic]s,
+      [param]s (so that [self] has a key), [field]s, [variant]s, trait and impl items and [fn_decl]s.
+      A wrapper whose identity is that of a child it always contains ([lambda_param], [typed_ident],
+      [with_item], [case_arm], [if_branch], [map_entry], [attribute], [fn_sig], [import], and the
+      pieces of a pattern or clause) has none: key a side table on the child's id. Ids are stored
+      in the tree, so structural equality ({!equal_file} and the like) compares them: two parses of
+      one source are equal, two hand-built trees with distinct ids are not.
     - The tree is purely syntactic and immutable: no resolution or type information, no desugaring.
       Pipes, comprehensions, trailing blocks and [?] are desugared in HIR (docs/architecture.md §1).
     - Layout-only distinctions that carry no meaning (single-line vs indented block, [fn:] vs
@@ -25,10 +34,10 @@
 
 type span = Egide_source.Span.t
 
-type ident = { name : string; span : span }
+type ident = { id : Node_id.t; name : string; span : span }
 (** [IDENT]. *)
 
-type path = { segments : ident list; span : span }
+type path = { id : Node_id.t; segments : ident list; span : span }
 (** [path = IDENT { "." IDENT }]. [segments] is never empty. *)
 
 type duration_unit = Ns | Us | Ms | S | Min | H  (** LEX-042 *)
@@ -89,7 +98,7 @@ and template_part =
   | Text of { text : string; span : span }  (** literal text, [{{]/[}}] already decoded *)
   | Interp of expr  (** [{expr}] *)
 
-and expr = { expr : expr_desc; span : span }
+and expr = { id : Node_id.t; expr : expr_desc; span : span }
 
 and expr_desc =
   | Lit of literal  (** [literal] *)
@@ -176,7 +185,7 @@ and if_branch = { cond : expr; body : block; span : span }
 and case_arm = { pat : pattern; guard : expr option; body : block; span : span }
 (** [case_arm = "case" pattern [ "if" expr ] ":" block] *)
 
-and arg = { arg : arg_desc; span : span }
+and arg = { id : Node_id.t; arg : arg_desc; span : span }
 
 and arg_desc =
   | Arg_plain of { label : ident option; value : expr }  (** [arg = [ IDENT ":" ] expr] (SYN-030) *)
@@ -193,7 +202,7 @@ and gen_arg =
   | Ga_type_only of ty
       (** [gen_arg = fn_type | "dyn" bound { "+" bound }]: only a [Ty_fn] or a [Ty_dyn] (SYN-042) *)
 
-and bound = { path : path; args : gen_arg list; span : span }
+and bound = { id : Node_id.t; path : path; args : gen_arg list; span : span }
 (** [bound = path [ "[" gen_args "]" ]]: a trait or capability type (ADR-0014). *)
 
 and lambda_param = { mode : mode; name : ident; ty : ty option; span : span }
@@ -201,11 +210,11 @@ and lambda_param = { mode : mode; name : ident; ty : ty option; span : span }
 
 (** {1 Blocks and statements} *)
 
-and block = { stmts : stmt list; span : span }
+and block = { id : Node_id.t; stmts : stmt list; span : span }
 (** [block = NEWLINE INDENT stmt { NEWLINE stmt } NEWLINE DEDENT | simple_stmt] (SYN-010). [stmts]
     is non-empty. *)
 
-and stmt = { stmt : stmt_desc; span : span }
+and stmt = { id : Node_id.t; stmt : stmt_desc; span : span }
 
 and stmt_desc =
   | Expr of expr
@@ -235,7 +244,7 @@ and with_item = { name : ident option; value : expr; span : span }
 
 (** {1 Patterns} *)
 
-and pattern = { pat : pat_desc; span : span }
+and pattern = { id : Node_id.t; pat : pat_desc; span : span }
 
 and pat_desc =
   | Pat_wild  (** ["_"] *)
@@ -270,7 +279,7 @@ and list_pattern =
 
 (** {1 Types} *)
 
-and ty = { ty : ty_desc; span : span }
+and ty = { id : Node_id.t; ty : ty_desc; span : span }
 
 and ty_desc =
   | Ty_path of { path : path; args : gen_arg list }
@@ -294,10 +303,10 @@ and ty_desc =
 and attribute = { name : ident; args : expr list option; span : span }
 (** [attribute = "@" IDENT [ "(" [ expr_list ] ")" ]] (SYN-023). [None]: no parentheses. *)
 
-and generic = { comptime : bool; name : ident; bounds : bound list; span : span }
+and generic = { id : Node_id.t; comptime : bool; name : ident; bounds : bound list; span : span }
 (** [generic = [ "comptime" ] IDENT [ ":" bound { "+" bound } ]] *)
 
-and param = { mode : mode; kind : param_kind; span : span }
+and param = { id : Node_id.t; mode : mode; kind : param_kind; span : span }
 (** [param = [ "inout" | "take" | "comptime" ] ( "self" | IDENT ":" type [ "=" expr ] )] (SYN-021,
     SYN-022) *)
 
@@ -317,7 +326,7 @@ and fn_sig = {
 (** [fn_sig = "fn" IDENT [ generics ] "(" [ params ] ")" [ "->" type ] [ using_clause ]] (SYN-020)
 *)
 
-and fn_decl = { sig_ : fn_sig; body : block; span : span }
+and fn_decl = { id : Node_id.t; sig_ : fn_sig; body : block; span : span }
 (** [fn_decl = fn_sig ":" block] *)
 
 and visibility =
@@ -326,6 +335,7 @@ and visibility =
   | Pub_package  (** [pub(package)] (SYN-003; counts as [pub] for TYP-003 and CAP-034) *)
 
 and field = {
+  id : Node_id.t;
   attrs : attribute list;
   vis : visibility;
   name : ident;
@@ -335,7 +345,7 @@ and field = {
 }
 (** [field = { attribute NEWLINE } [ visibility ] IDENT ":" type [ "=" expr ]] *)
 
-and variant = { name : ident; fields : variant_fields; span : span }
+and variant = { id : Node_id.t; name : ident; fields : variant_fields; span : span }
 (** [variant = IDENT [ "(" variant_fields ")" ]] *)
 
 and variant_fields =
@@ -343,7 +353,7 @@ and variant_fields =
   | Vf_positional of ty list  (** [variant_fields = type { "," type }] *)
   | Vf_named of typed_ident list  (** [variant_fields = IDENT ":" type { "," IDENT ":" type }] *)
 
-and trait_item = { item : trait_item_desc; span : span }
+and trait_item = { id : Node_id.t; item : trait_item_desc; span : span }
 
 and trait_item_desc =
   | Ti_sig of fn_sig  (** [trait_item = fn_sig] (required method) *)
@@ -351,14 +361,20 @@ and trait_item_desc =
   | Ti_type of { name : ident; bound : bound option }
       (** [trait_item = "type" IDENT [ ":" bound ]] *)
 
-and impl_item = { item : impl_item_desc; span : span }
+and impl_item = { id : Node_id.t; item : impl_item_desc; span : span }
 
 and impl_item_desc =
   | Ii_fn of { attrs : attribute list; vis : visibility; fn_ : fn_decl }
       (** [impl_item = { attribute NEWLINE } [ visibility ] fn_decl] *)
   | Ii_type of { name : ident; ty : ty }  (** [impl_item = "type" IDENT "=" type] *)
 
-and decl = { attrs : attribute list; vis : visibility; decl : decl_desc; span : span }
+and decl = {
+  id : Node_id.t;
+  attrs : attribute list;
+  vis : visibility;
+  decl : decl_desc;
+  span : span;
+}
 (** [top_decl = { attribute NEWLINE } ( [ visibility ] item_decl | impl_decl )]. [vis] is [Private]
     for an [Impl] (an impl has no visibility, SYN-003). Documentation comments are not part of the
     tree: they live in the comment side table (LEX-011, ADR-0016, T-1036). *)
@@ -416,9 +432,10 @@ type file = { module_path : path; imports : import list; decls : decl list; span
 
 (** {1 Equality}
 
-    Structural equality, spans included. These play the role of [[@@deriving eq]] (see T-0008 Log):
+    Structural equality, spans and node ids included. These play the role of [[@@deriving eq]] (see T-0008 Log):
     the names are the ones ppx_deriving would generate so that callers do not change when it is
-    adopted. For equality that ignores spans, compare the {!Print} renderings, which omit spans by
+    adopted ([Node_id.equal] is what the derived functions will call on the [id] fields). For
+    equality that ignores spans and ids, compare the {!Print} renderings, which omit both by
     default. *)
 
 val equal_file : file -> file -> bool

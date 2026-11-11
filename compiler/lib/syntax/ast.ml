@@ -1,8 +1,8 @@
 (* Types: see ast.mli for the documentation of every node and the EBNF production it represents. *)
 
 type span = Egide_source.Span.t
-type ident = { name : string; span : span }
-type path = { segments : ident list; span : span }
+type ident = { id : Node_id.t; name : string; span : span }
+type path = { id : Node_id.t; segments : ident list; span : span }
 type duration_unit = Ns | Us | Ms | S | Min | H
 type mode = By_read | Inout | Take | Comptime
 type unary_op = Neg | Bit_not | Not
@@ -50,7 +50,7 @@ type literal =
   | Bool of bool
 
 and template_part = Text of { text : string; span : span } | Interp of expr
-and expr = { expr : expr_desc; span : span }
+and expr = { id : Node_id.t; expr : expr_desc; span : span }
 
 and expr_desc =
   | Lit of literal
@@ -98,7 +98,7 @@ and comp_clause =
 
 and if_branch = { cond : expr; body : block; span : span }
 and case_arm = { pat : pattern; guard : expr option; body : block; span : span }
-and arg = { arg : arg_desc; span : span }
+and arg = { id : Node_id.t; arg : arg_desc; span : span }
 
 and arg_desc =
   | Arg_plain of { label : ident option; value : expr }
@@ -106,10 +106,10 @@ and arg_desc =
   | Arg_using of ident * expr
 
 and gen_arg = Ga_expr of expr | Ga_type_only of ty
-and bound = { path : path; args : gen_arg list; span : span }
+and bound = { id : Node_id.t; path : path; args : gen_arg list; span : span }
 and lambda_param = { mode : mode; name : ident; ty : ty option; span : span }
-and block = { stmts : stmt list; span : span }
-and stmt = { stmt : stmt_desc; span : span }
+and block = { id : Node_id.t; stmts : stmt list; span : span }
+and stmt = { id : Node_id.t; stmt : stmt_desc; span : span }
 
 and stmt_desc =
   | Expr of expr
@@ -126,7 +126,7 @@ and stmt_desc =
   | While of { cond : expr; body : block }
 
 and with_item = { name : ident option; value : expr; span : span }
-and pattern = { pat : pat_desc; span : span }
+and pattern = { id : Node_id.t; pat : pat_desc; span : span }
 
 and pat_desc =
   | Pat_wild
@@ -147,7 +147,7 @@ and field_pattern =
   | Fp_rest of span
 
 and list_pattern = Lp_elem of pattern | Lp_rest of { name : ident option; span : span }
-and ty = { ty : ty_desc; span : span }
+and ty = { id : Node_id.t; ty : ty_desc; span : span }
 
 and ty_desc =
   | Ty_path of { path : path; args : gen_arg list }
@@ -158,8 +158,8 @@ and ty_desc =
   | Ty_optional of ty
 
 and attribute = { name : ident; args : expr list option; span : span }
-and generic = { comptime : bool; name : ident; bounds : bound list; span : span }
-and param = { mode : mode; kind : param_kind; span : span }
+and generic = { id : Node_id.t; comptime : bool; name : ident; bounds : bound list; span : span }
+and param = { id : Node_id.t; mode : mode; kind : param_kind; span : span }
 and param_kind = Param_self | Param_named of { name : ident; ty : ty; default : expr option }
 and typed_ident = { name : ident; ty : ty; span : span }
 
@@ -172,10 +172,11 @@ and fn_sig = {
   span : span;
 }
 
-and fn_decl = { sig_ : fn_sig; body : block; span : span }
+and fn_decl = { id : Node_id.t; sig_ : fn_sig; body : block; span : span }
 and visibility = Private | Pub | Pub_package
 
 and field = {
+  id : Node_id.t;
   attrs : attribute list;
   vis : visibility;
   name : ident;
@@ -184,22 +185,28 @@ and field = {
   span : span;
 }
 
-and variant = { name : ident; fields : variant_fields; span : span }
+and variant = { id : Node_id.t; name : ident; fields : variant_fields; span : span }
 and variant_fields = Vf_none | Vf_positional of ty list | Vf_named of typed_ident list
-and trait_item = { item : trait_item_desc; span : span }
+and trait_item = { id : Node_id.t; item : trait_item_desc; span : span }
 
 and trait_item_desc =
   | Ti_sig of fn_sig
   | Ti_fn of fn_decl
   | Ti_type of { name : ident; bound : bound option }
 
-and impl_item = { item : impl_item_desc; span : span }
+and impl_item = { id : Node_id.t; item : impl_item_desc; span : span }
 
 and impl_item_desc =
   | Ii_fn of { attrs : attribute list; vis : visibility; fn_ : fn_decl }
   | Ii_type of { name : ident; ty : ty }
 
-and decl = { attrs : attribute list; vis : visibility; decl : decl_desc; span : span }
+and decl = {
+  id : Node_id.t;
+  attrs : attribute list;
+  vis : visibility;
+  decl : decl_desc;
+  span : span;
+}
 
 and decl_desc =
   | Fn of fn_decl
@@ -230,7 +237,7 @@ and import_form = Whole | Alias_as of ident | Items of import_item list
 type file = { module_path : path; imports : import list; decls : decl list; span : span }
 
 (* Equality (the role of [@@deriving eq], see T-0008 Log). Stdlib structural equality is exact here: the tree holds
-   only strings, booleans, integers ([Uchar.t], span positions), options, lists, records and constructors, with no
+   only strings, booleans, integers ([Uchar.t], span positions, node ids), options, lists, records and constructors, with no
    functional values, no floats (float literals are kept as source text) and no cycles. *)
 let equal_file (a : file) b = a = b
 let equal_decl (a : decl) b = a = b

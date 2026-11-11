@@ -7,7 +7,7 @@ let tokens ~file src =
   let toks, d2 = Layout.run raw in
   (toks, d1 @ d2)
 
-let file ~file src =
+let file ?(gen = Node_id.Gen.create ()) ~file src =
   let toks, diags = tokens ~file src in
   let remaining = ref toks in
   let last = ref None in
@@ -19,10 +19,15 @@ let file ~file src =
         last := Some t;
         (t.tok, t.startp, t.endp)
   in
-  let parser = MenhirLib.Convert.Simplified.traditional2revised Parser.file in
+  let module P = Parser.Make (struct
+    type file = Ast.file
+
+    let fresh () = Node_id.Gen.fresh gen
+  end) in
+  let parser = MenhirLib.Convert.Simplified.traditional2revised P.file in
   match parser next with
   | ast -> (Some ast, diags)
-  | exception Parser.Error ->
+  | exception P.Error ->
       let sp =
         match !last with
         | Some t -> Egide_source.Span.of_lexing t.startp t.endp
