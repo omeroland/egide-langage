@@ -239,3 +239,19 @@ let%expect_test "nested triple-quoted templates" =
   show "f\"\"\"\n  é {f\"\"\"\n    ü {x}\n    \"\"\"} ö\n  \"\"\"\n";
   [%expect
     {| 1:1-5:6 TEMPLATE("f", ["\195\169 "; {TEMPLATE("f", ["\195\188 "; {IDENT("x")}; "\n"])}; " \195\182\n"]) |}]
+
+(* spec: LEX-055, LEX-051 (security review B1: a triple-quoted template with one interpolation per line must be
+   linear. 20 000 lines took about 5 s when each literal range scanned every line; linear code needs well under
+   0.5 s of CPU time, so the bound of 2 s is far from both) *)
+let%test "triple-quoted template with one interpolation per line is linear" =
+  let n = 20_000 in
+  let b = Buffer.create (n * 6) in
+  Buffer.add_string b "x = f\"\"\"\n";
+  for _ = 1 to n do
+    Buffer.add_string b "{a}\n"
+  done;
+  Buffer.add_string b "\"\"\"\n";
+  let t0 = Sys.time () in
+  let toks, diags = Lexer.tokenize ~file:"t.egd" (Buffer.contents b) in
+  let dt = Sys.time () -. t0 in
+  List.length diags = 0 && List.length toks = 3 && dt < 2.0
