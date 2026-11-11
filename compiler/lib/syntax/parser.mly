@@ -15,9 +15,11 @@ let span (s, e) = Egide_source.Span.of_lexing s e
    function of the parse alone. *)
 %parameter <Ids : sig type file = Ast.file val fresh : unit -> Node_id.t end>
 
-(* [Ids.file] is [Ast.file]; the start symbol is typed through it only so that the generated parser.mli mentions the
-   functor parameter (otherwise warning 67, unused functor parameter, fails the build, and the fix would be to
-   silence it). *)
+(* What avoids warning 67 (unused functor parameter in the generated parser.mli, an error in the dev profile, and
+   the fix is not to silence it) is [type file = Ast.file] in the parameter signature above: Menhir then writes the
+   start type as [Ids.file] in parser.mli, so the signature mentions [Ids]. Typing the start symbol [<Ids.file>] is
+   the explicit form of what Menhir infers anyway; it is kept so that this does not depend on that inference. Every
+   instantiation (Parse, tests) must supply [type file = Ast.file]. *)
 %start <Ids.file> file
 
 %%

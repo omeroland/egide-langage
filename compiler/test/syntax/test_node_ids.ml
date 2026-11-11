@@ -109,7 +109,8 @@ let ids_of_file (f : file) =
     | Template { prefix; parts } ->
         ident prefix;
         List.iter (function Text _ -> () | Interp e -> expr e) parts
-    | _ -> ()
+    (* The other literals hold only text, numbers or characters: no node, no id. *)
+    | Int _ | Float _ | Duration _ | String _ | Raw_string _ | Bytes _ | Char _ | Bool _ -> ()
   and map_entry (m : map_entry) =
     expr m.key;
     expr m.value
@@ -324,6 +325,7 @@ let ids_of_file (f : file) =
 
 let ints ids = List.map Node_id.to_int ids
 let sorted ids = List.sort compare (ints ids)
+let below_count gen ids = List.for_all (fun id -> Node_id.to_int id < Node_id.Gen.count gen) ids
 let all_distinct ids = List.length (List.sort_uniq compare (ints ids)) = List.length ids
 
 (* ---------- Node_id and its generator ---------- *)
@@ -354,15 +356,15 @@ let%expect_test "generator: sequential ids from 0, independent generators" =
 let src =
   "module api.tenants\nimport std.fmt\nimport egide.pg as pg\nlet LIMIT = 10\nlet ok = true\n"
 
-(* spec: none (architecture §2.3); unique ids over a parsed file, and every allocated id is in the tree *)
-let%expect_test "a parsed file: ids are unique and exactly the allocated ones" =
+(* spec: none (architecture §2.3); unique ids over a parsed file, all below [Gen.count]. Contiguity is deliberately not
+   asserted: recovery (T-0013) and cover-grammar conversions (SYN-065) will leave holes (see node_id.mli). *)
+let%expect_test "a parsed file: ids are unique and below the generator count" =
   let gen = Node_id.Gen.create () in
   let f = parse ~gen src in
   let ids = ids_of_file f in
-  Printf.printf "nodes: %d, distinct: %b, allocated: %d, dense 0..n-1: %b\n" (List.length ids)
-    (all_distinct ids) (Node_id.Gen.count gen)
-    (sorted ids = List.init (List.length ids) Fun.id);
-  [%expect {| nodes: 16, distinct: true, allocated: 16, dense 0..n-1: true |}]
+  Printf.printf "nodes: %d, distinct: %b, all below count: %b\n" (List.length ids) (all_distinct ids)
+    (below_count gen ids);
+  [%expect {| nodes: 16, distinct: true, all below count: true |}]
 
 (* spec: none (architecture §2.4); same input, same ids, in the same order *)
 let%expect_test "the same source gives the same ids" =
@@ -374,10 +376,11 @@ let%expect_test "the same source gives the same ids" =
 
 (* spec: none (architecture §2.5); no global state: parsing does not depend on earlier parses *)
 let%expect_test "ids do not depend on earlier parses; a shared generator continues the numbering" =
-  let first = parse "module a\nlet x = 1\nlet y = 2\n" in
-  let again = parse src in
-  Printf.printf "fresh generator restarts at 0: %b\n" (List.mem 0 (ints (ids_of_file again)));
-  ignore first;
+  let baseline = ints (ids_of_file (parse src)) in
+  ignore (parse "module a\nlet x = 1\nlet y = 2\n");
+  let again = ints (ids_of_file (parse src)) in
+  Printf.printf "same ids after an unrelated parse: %b, starting at 0: %b\n" (again = baseline)
+    (List.mem 0 again);
   let gen = Node_id.Gen.create () in
   let f1 = parse ~gen "module a\nlet x = 1\n" in
   let n1 = Node_id.Gen.count gen in
@@ -388,7 +391,7 @@ let%expect_test "ids do not depend on earlier parses; a shared generator continu
     (all_distinct (i1 @ i2));
   [%expect
     {|
-    fresh generator restarts at 0: true
+    same ids after an unrelated parse: true, starting at 0: true
     first file: 5 ids; second file ids start at 5; disjoint: true
     |}]
 
@@ -483,8 +486,19 @@ let%expect_test "a hand-built tree with every id-bearing kind: one id each" =
 let gen_source =
   let open QCheck2.Gen in
   let name = map (fun n -> "x" ^ string_of_int n) (int_bound 9) in
-  let* imports = list_size (int_bound 4) (pair name (option name)) in
-  let value = oneof [ map string_of_int (int_bound 99); return "true" ] in
+  let dotted = map (String.concat ".") (list_size (int_range 1 4) name) in
+  let* imports = list_size (int_bound 4) (pair dotted (option name)) in
+  let value =
+    oneof
+      [
+        map string_of_int (int_bound 99);
+        return "true";
+        return "false";
+        return "1.5";
+        return {|"s"|};
+        dotted;
+      ]
+  in
   let+ consts = list_size (int_bound 6) (pair name value) in
   let imp (m, alias) = "import a." ^ m ^ match alias with None -> "" | Some al -> " as " ^ al in
   String.concat "\n"
@@ -492,18 +506,15 @@ let gen_source =
   ^ "\n"
 
 let prop_ids =
-  QCheck2.Test.make ~name:"ids unique, dense and deterministic on seed-subset programs" ~count:500
+  QCheck2.Test.make ~name:"ids unique, below count and deterministic on seed-subset programs"
+    ~count:500
     ~print:(fun s -> s)
     gen_source
     (fun src ->
       let gen = Node_id.Gen.create () in
       let f = parse ~gen src in
       let ids = ids_of_file f in
-      let n = List.length ids in
-      all_distinct ids
-      && sorted ids = List.init n Fun.id
-      && n = Node_id.Gen.count gen
-      && ints ids = ints (ids_of_file (parse src)))
+      all_distinct ids && below_count gen ids && ints ids = ints (ids_of_file (parse src)))
 
 (* spec: none (architecture §2.4) *)
 let%expect_test "id properties" =

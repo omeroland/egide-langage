@@ -37,6 +37,8 @@ Anything not listed in the acceptance criteria; create follow-up tasks.
 
 2026-11-10 syntax-engineer (T-1006): the parser is now the functor `Parser.Make (Ids)` (node ids): check that `menhir --compile-errors` and the exception `P.Error` of the instance work with it before relying on parser.messages.
 
+2026-11-10 syntax-engineer (T-1006, review of PR #23): instantiating `Parser.Make` requires `type file = Ast.file` in the argument (that type is what avoids warning 67, see parser.mly). Measure the per-call functor application before moving to `--table`/incremental (LSP latency target). The reviewer built `--list-errors`/`--compile-errors` and `--table --inspection` on the seed grammar with the functor form: no obstacle; repeat on the real grammar once T-0009..T-0012 land. Recovery discards nodes after allocating ids: ids are not contiguous.
+
 ## Outcome
 
 

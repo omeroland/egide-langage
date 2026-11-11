@@ -897,8 +897,12 @@ let%expect_test "structural equality includes spans and ids; printed equality ig
     (Print.file a = Print.file other);
   (* Builders allocate a fresh id per node: same shape, different ids, so structurally different. *)
   let one = int "1" and ty_int = tn "int" and brk = blk [] in
-  Printf.printf "expr: %b %b %b\n" (equal_expr one one)
+  (* Different literal text is never equal, with the same id or with fresh ones. *)
+  let same_id = { one with expr = Lit (Int "01") } in
+  Printf.printf "expr: %b %b %b %b %b\n" (equal_expr one one)
     (equal_expr (int "1") (int "1"))
+    (equal_expr (int "1") (int "01"))
+    (equal_expr one same_id)
     (Print.expr (int "1") = Print.expr (int "1"));
   Printf.printf "pattern: %b, ty: %b, stmt: %b, block: %b, decl: %b\n"
     (equal_pattern (p Pat_wild) (pbind "_"))
@@ -911,7 +915,7 @@ let%expect_test "structural equality includes spans and ids; printed equality ig
     same source: true
     shifted spans: false, printed: true
     different value: false, printed: false
-    expr: true false true
+    expr: true false false false true
     pattern: false, ty: true, stmt: false, block: true, decl: true
     |}]
 

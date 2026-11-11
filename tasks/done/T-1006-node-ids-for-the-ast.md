@@ -28,10 +28,10 @@ state (invariant 5). Must land before name resolution (T-0030) starts. Coordinat
 
 ## Acceptance criteria
 
-- [ ] `Node_id` module with an abstract `t`, `equal`, `compare`, `to_int`; ids unique within a parsed file
-- [ ] The parser allocates ids from a counter in an explicit context; same input gives the same ids
-- [ ] `Print` omits ids by default (snapshots unchanged) and shows them with an option
-- [ ] A test checks uniqueness of ids over a parsed file
+- [x] `Node_id` module with an abstract `t`, `equal`, `compare`, `to_int`; ids unique within a parsed file
+- [x] The parser allocates ids from a counter in an explicit context; same input gives the same ids
+- [x] `Print` omits ids by default (snapshots unchanged) and shows them with an option
+- [x] A test checks uniqueness of ids over a parsed file
 
 ## Out of scope
 
@@ -54,7 +54,11 @@ Decisions (labels per AGENTS 2b: all *established* by tests unless marked *extra
   child's id (the binder `ident`, the `pattern`, the `block`). Alternative considered: an id on every record that has a
   `span` (uniform, trivially checkable by T-0029-style deriving), rejected: 14 more fields that no pass keys on,
   and every hand-built test tree pays for them. If resolve or types needs one of the excluded kinds, adding a field is
-  mechanical (ast.mli, the parser site, `ids_of_file` in test_node_ids.ml). *Extrapolated:* that the list above is what
+  mechanical (ast.mli, the parser site, `ids_of_file` in test_node_ids.ml). Cost asymmetry (review of PR #23): adding an
+  id later costs one field plus every parser site and every hand-built tree written by then, so it is cheapest now,
+  while the parser builds only the seed subset, and grows with T-0009..T-0012. That argues for generosity now, not for
+  the uniform alternative. The kinds most likely to need one later: `import` / `import_item` (T-0030) and the two ends of
+  a `lit_pattern` range (type checker, T-0032); the procedure above applies to them. *Extrapolated:* that the list above is what
   T-0030 and the type checker need; the `block` id is for scopes, `generic`/`field`/`variant` for item tables.
 - **Allocation.** `Node_id.Gen.t` (counter) passed to the parser as the Menhir `%parameter` `Ids`; `Parse.file ?gen`
   (default: a fresh generator, ids from #0). Ids are numbered in reduction order (children before parents), a function
@@ -92,6 +96,18 @@ Decisions (labels per AGENTS 2b: all *established* by tests unless marked *extra
   were each caught by `test_node_ids.ml`; both reverted.
 - **ocamlformat** 0.28.1 does not build here, so the format check is skipped locally: the code was formatted by hand to the
   profile (margin 100; comments are not wrapped). GitHub CI is the authority.
+- **Review of PR #23 (code-reviewer, REQUEST_CHANGES), addressed in new commits.** (1) The assertion `equal_expr (int "1")
+  (int "01") = false` is restored, plus a same-id variant (`{ one with expr = Lit (Int "01") }`). (2) Density was
+  over-specified: the tests now assert uniqueness, `id < Gen.count` and determinism; `node_id.mli` says ids need not be
+  contiguous (failed parse, T-0013 recovery, SYN-065 cover conversions discard nodes after allocating their ids). The
+  hand-built tree keeps `nodes = allocated` as the oracle self-check only. (3a) The keying convention is in ast.mli:
+  binders by `ident.id`, references by `path.id`, typing results by `expr`/`pattern`/`ty`/`stmt`/`param` id; a pass that
+  wants another assignment writes it there first. (3b) `node_id.mli`: a shared `Gen.t` is not domain-safe, ids are not
+  stable across builds and must not be persisted. (3c) Logs of T-0009, T-0011, T-0013. Suggestions: boxes ticked; parser.mly
+  comment now says the parameter's `type file` is what avoids warning 67; dead `ignore first` and the unexplained `| _ ->
+  ()` removed; the earlier-parse test compares against a baseline instead of `List.mem 0`; the qcheck generator varies
+  path length and value kind (still the seed subset's four node kinds, so it does not cover nesting). Not done: printing
+  both ids of doubled cases in `Print ~ids` (review item 9, a later task if debugging needs it).
 - **Order with T-0029.** T-0029 comes after this task (it replaces the hand-written `equal_*` at the end of ast.ml and
   the `Print.pp_*` stand-ins, neither of which this task restructured). The only shared lines are the new `id` fields
   in the record types, which T-0029 annotates, not edits.
@@ -105,9 +121,9 @@ Decisions (labels per AGENTS 2b: all *established* by tests unless marked *extra
 Menhir parameter `Ids`; `Parse.file ?gen` supplies it (fresh per file by default), ids are numbered in reduction order,
 so the same input gives the same ids. `Print` takes `?ids` (default off; no existing snapshot changed).
 
-Tests: `compiler/test/syntax/test_node_ids.ml` (generator; uniqueness, density and determinism on a parsed file; shared
+Tests: `compiler/test/syntax/test_node_ids.ml` (generator; uniqueness, `id < Gen.count` and determinism on a parsed file; shared
 generator across files; `Print ~ids`; a hand-built tree with every id-bearing kind checked against the traversal oracle;
-a qcheck property over generated seed-subset programs); `test_ast_print.ml` builders allocate ids and the equality test
+a qcheck property over generated seed-subset programs, with dotted paths and literal and path values); `test_ast_print.ml` builders allocate ids and the equality test
 now states that equality compares ids. Rules covered: none (spec-neutral; architecture §2 invariants 3 to 5).
 
 Follow-ups: none created. T-0029 (deriving) comes next and needs nothing from this task beyond what the Log says.
