@@ -96,8 +96,30 @@ types** and **auditable**.
 - **[GO-043] Drift detection.** When a new version of a Go module changes the classification of a function called by
   the Égide program, `egide lock` fails and prints the per-function capability diff.
 - **[GO-044] Overrides.** A package may declare a false positive pure with
-  `[go.overrides] "module.Func" = { class = "pure", reason = "…" }`. Overrides are listed by `egide audit` and never
-  apply to dependent packages.
+  `[go.overrides] "<import path>.Func" = { class = "pure", reason = "…" }`. Like `@go_threadsafe` (GO-032) it asserts
+  a property the compiler cannot check, and is gated like it:
+  1. only `class = "pure"` exists; the key MUST name a function of a Go module declared in the `[go]` section of the
+     same package. A standard-library function or a function of another package's module is E0423 (the standard library
+     is classified by the reviewed list, GO-041);
+  2. `reason` is a string consumed by tools (SYN-018, E0118);
+  3. every package that transitively contains the override MUST list `"go_override:<import path>.<Func>"` in its
+     `allow` entries (PKG-030, PKG-031), otherwise the build fails (E0422). The entry names the function, not the module,
+     so the root reviews exactly what it permits;
+  4. the override changes the classification only for calls made by the declaring package, including the call-graph
+     analysis (GO-042) computed for them; it never applies to dependent packages. Calls through the declaring
+     package's `pub` API are visible to dependents only through item 3;
+  5. `egide audit` lists every override with its reason, and `egide.lock` records it (PKG-040);
+  6. an overridden function is still never run at compile time (CT-006).
+- **[GO-045] Package initialisation.** Go runs the `init` functions and package-level variable initialisers of every Go
+  package linked into the program (the transitive closure of the packages named by `import go`, without the packages the
+  Égide runtime itself links) before `main`, with ambient authority and before any capability value exists. They are
+  therefore classified like functions: the **init set** of a package is its `init` functions and its variable
+  initialisers. For the standard library the purity list (GO-041) holds one line `<import path>.init <class>` per
+  package; a package without that line is impure (`.*` does not cover `init`). For a third-party package the init set is
+  an additional root of the analysis of GO-042. If the init set of any package in the closure is not pure, importing it
+  counts as impure Go code of the module that contains that package (`std` for the standard library) and the module MUST
+  be listed as `go:<module>` in `allow` (PKG-030), otherwise E0424. Drift detection (GO-043) covers init sets, and
+  `egide audit` lists them. No capability can mediate an initialiser; the OS sandbox (GO-013) is the barrier.
 
 ## 11.5 Calling Égide from Go
 

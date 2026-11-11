@@ -5,7 +5,7 @@ macros. Compile-time code receives no capability, so no build can touch the netw
 
 ## 9.1 Evaluation
 
-- **[CT-001]** Any pure function (CAP-040) can be evaluated at compile time. Impure functions cannot.
+- **[CT-001]** Any pure function (CAP-040) can be evaluated at compile time, except a function that (transitively) calls a Go function (CT-006). Impure functions cannot.
 - **[CT-002]** `comptime let NAME = expr` evaluates `expr` at compile time. Top-level `let` is implicitly `comptime`
   (CAP-021). A top-level `let` initialiser and every `comptime` argument are evaluated under CAP-040: they MUST NOT
   contain `unsafe`, `given`, `with`, a call to an impure function or a value of a capability type (E0610).
@@ -15,6 +15,11 @@ macros. Compile-time code receives no capability, so no build can touch the netw
 - **[CT-004]** A panic during compile-time evaluation is a compile-time error pointing at the comptime call site and the
   panic location.
 - **[CT-005]** The compile-time interpreter is the same engine that runs the REPL and `egide run` (TOOL-010).
+- **[CT-006] Go code never runs at compile time.** Compile-time evaluation never executes Go code, whatever the
+  classification of the function (GO-040), because a classification is a static approximation and a mistake would run
+  foreign code with the compiler's authority (INT-005, PKG-042). A call to a Go function in a compile-time context (CT-002,
+  a `comptime` argument, SYN-022 defaults, a `where` predicate of TYP-031) is E0610 ("a call to a Go function"). Importing
+  or analysing a Go package for type information is not execution of its code.
 
 ## 9.2 Comptime parameters and types as values
 

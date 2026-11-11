@@ -50,7 +50,8 @@ Thanks to capabilities (chapter 6), a dependency can only do what the code passe
 I/O permissions. It controls only the ways around the model.
 
 - **[PKG-030]** A dependency whose code (transitively) contains `unsafe`, C FFI, impure Go calls or `@go_threadsafe` MUST be listed with
-  the matching `allow` entries: `"unsafe"`, `"ffi:<library>"`, `"go:<module>"`, `"go_threadsafe:<go module>"` (GO-032), `"test-capabilities"`.
+  the matching `allow` entries: `"unsafe"`, `"ffi:<library>"`, `"go:<module>"`, `"go_threadsafe:<go module>"` (GO-032), `"go_override:<import path>.<Func>"` (GO-044), `"test-capabilities"`.
+  A Go package whose initialisation is impure counts as impure Go code of its module (GO-045).
   A dependency update that introduces a new breach fails the build until the manifest is updated.
 - **[PKG-031]** `allow` entries are not transitive: every package that (transitively) depends on a breaching package
   declares it, so the breach is visible at every level.
@@ -58,8 +59,8 @@ I/O permissions. It controls only the ways around the model.
 ## 10.5 Lockfile and integrity
 
 - **[PKG-040]** `egide.lock` records, for every package: exact version, SHA-256 of the source archive, the publisher's
-  Sigstore signature bundle, the `allow` breaches found, and for Go modules the `go.sum` lines and the per-function
-  capability classification (GO-042).
+  Sigstore signature bundle, the `allow` breaches found, and for Go modules the `go.sum` lines, the per-function
+  capability classification (GO-042) and the classification of each package's initialisation (GO-045).
 - **[PKG-041]** Builds verify every hash and signature. A mismatch is a fatal error; there is no flag to skip it.
 - **[PKG-042]** Installing or building a package never executes code of that package with authority: there are no
   build scripts, install hooks or post-install steps (INT-005).

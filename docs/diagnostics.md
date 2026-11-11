@@ -73,9 +73,12 @@ pull request**. Codes are never reused.
 | E0412 | SEC-002 | `Untrusted[{T}]` passed where `{T}` is required — risk: injection. Validate it first | allocated |
 | E0420 | GO-032 | `@go_threadsafe` requires `import go` of the type's module in this package | allocated |
 | E0421 | GO-032, PKG-030 | `@go_threadsafe` for `{module}` is not listed as `go_threadsafe:{module}` in the manifest `allow` | allocated |
+| E0422 | GO-044, PKG-030 | `[go.overrides]` for `{fn}` is not listed as `go_override:{fn}` in the manifest `allow` | proposed (ADR-0022) |
+| E0423 | GO-044 | override key `{key}` is not a function of a Go module declared in this package's `[go]` section | proposed (ADR-0022) |
+| E0424 | GO-045, PKG-030 | impure Go code (call or package initialisation) of `{module}` is not listed as `go:{module}` in the manifest `allow` | proposed (ADR-0022) |
 | E0601 | LEX-055, CT-041 | template `{prefix}` (result type `{Sink}`) does not accept a format specifier (`:spec`) — sinks take none, risk: unreviewed channel into `{Sink}` | allocated |
 | E0602 | CT-040 | `@template` of the reserved standard prefix `{prefix}` outside `std` | allocated |
-| E0610 | CT-002 | top-level `let` or `comptime` argument must be pure: contains `{what}` | allocated |
+| E0610 | CT-002 | top-level `let` or `comptime` argument must be pure: contains `{what}` (including "a call to a Go function", CT-006; also a TYP-031 predicate) | allocated |
 | W0001 | LEX-005 | right-to-left text in a string or comment may display the rest of the line in a different order; bind the string with `let` on its own line | allocated |
 | W0002 | LEX-011 | doc comment is not attached to a declaration | allocated |
 
