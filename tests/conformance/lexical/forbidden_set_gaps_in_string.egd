@@ -1,0 +1,66 @@
+# spec: LEX-003
+# expect: lex-fail
+# diagnostic: E0004 at 36:13
+# diagnostic: E0004 at 37:13
+# diagnostic: E0004 at 38:13
+# diagnostic: E0004 at 39:13
+# diagnostic: E0004 at 40:13
+# diagnostic: E0004 at 41:13
+# diagnostic: E0004 at 42:13
+# diagnostic: E0004 at 43:13
+# diagnostic: E0004 at 44:13
+# diagnostic: E0004 at 45:13
+# diagnostic: E0004 at 46:13
+# diagnostic: E0004 at 47:13
+# diagnostic: E0004 at 48:13
+# diagnostic: E0004 at 49:13
+# diagnostic: E0004 at 50:13
+# diagnostic: E0004 at 51:13
+# diagnostic: E0004 at 52:13
+# diagnostic: E0004 at 53:13
+# diagnostic: E0004 at 54:13
+# diagnostic: E0004 at 55:13
+# diagnostic: E0004 at 56:13
+# diagnostic: E0004 at 57:13
+# diagnostic: E0004 at 58:13
+# diagnostic: E0004 at 59:13
+# diagnostic: E0004 at 60:13
+# diagnostic: E0004 at 61:13
+# diagnostic: E0004 at 62:13
+# diagnostic: E0004 at 63:13
+# diagnostic: E0004 at 64:13
+# diagnostic: E0004 at 65:13
+# diagnostic: E0004 at 66:13
+# Property-defined set (ADR-0017): the same code points in string literals; each is E0004.
+module tests.lexical.forbidden_set_gaps_in_string
+let s00 = "a឴b"
+let s01 = "a឵b"
+let s02 = "a⁥b"
+let s03 = "a￰b"
+let s04 = "a￸b"
+let s05 = "a󠂀b"
+let s06 = "a󠃿b"
+let s07 = "a󠇰b"
+let s08 = "a󠿿b"
+let s09 = "a󠀁b"
+let s10 = "a󠁁b"
+let s11 = "a󠁿b"
+let s12 = "aᅟb"
+let s13 = "aᅠb"
+let s14 = "aㅤb"
+let s15 = "aﾠb"
+let s16 = "a͏b"
+let s17 = "a︀b"
+let s18 = "a️b"
+let s19 = "a󠄀b"
+let s20 = "a󠇯b"
+let s21 = "a­b"
+let s22 = "a؀b"
+let s23 = "a𑂽b"
+let s24 = "a𓐰b"
+let s25 = "a𝅳b"
+let s26 = "a﷐b"
+let s27 = "a﷯b"
+let s28 = "a￾b"
+let s29 = "a🿿b"
+let s30 = "a􏿿b"

@@ -1,0 +1,66 @@
+# spec: LEX-003
+# expect: lex-fail
+# diagnostic: E0004 at 36:4
+# diagnostic: E0004 at 37:4
+# diagnostic: E0004 at 38:4
+# diagnostic: E0004 at 39:4
+# diagnostic: E0004 at 40:4
+# diagnostic: E0004 at 41:4
+# diagnostic: E0004 at 42:4
+# diagnostic: E0004 at 43:4
+# diagnostic: E0004 at 44:4
+# diagnostic: E0004 at 45:4
+# diagnostic: E0004 at 46:4
+# diagnostic: E0004 at 47:4
+# diagnostic: E0004 at 48:4
+# diagnostic: E0004 at 49:4
+# diagnostic: E0004 at 50:4
+# diagnostic: E0004 at 51:4
+# diagnostic: E0004 at 52:4
+# diagnostic: E0004 at 53:4
+# diagnostic: E0004 at 54:4
+# diagnostic: E0004 at 55:4
+# diagnostic: E0004 at 56:4
+# diagnostic: E0004 at 57:4
+# diagnostic: E0004 at 58:4
+# diagnostic: E0004 at 59:4
+# diagnostic: E0004 at 60:4
+# diagnostic: E0004 at 61:4
+# diagnostic: E0004 at 62:4
+# diagnostic: E0004 at 63:4
+# diagnostic: E0004 at 64:4
+# diagnostic: E0004 at 65:4
+# diagnostic: E0004 at 66:4
+# Property-defined set (ADR-0017): reviewer's gaps, TAG, fillers, CGJ, variation selectors, Cf, noncharacters in comments; each is E0004.
+module tests.lexical.forbidden_set_gaps_in_comment
+# a឴b
+# a឵b
+# a⁥b
+# a￰b
+# a￸b
+# a󠂀b
+# a󠃿b
+# a󠇰b
+# a󠿿b
+# a󠀁b
+# a󠁁b
+# a󠁿b
+# aᅟb
+# aᅠb
+# aㅤb
+# aﾠb
+# a͏b
+# a︀b
+# a️b
+# a󠄀b
+# a󠇯b
+# a­b
+# a؀b
+# a𑂽b
+# a𓐰b
+# a𝅳b
+# a﷐b
+# a﷯b
+# a￾b
+# a🿿b
+# a􏿿b

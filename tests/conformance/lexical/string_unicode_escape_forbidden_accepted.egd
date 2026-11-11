@@ -1,0 +1,7 @@
+# spec: LEX-050
+# expect: lex-pass
+# ADR-0017: \u{...} accepts every scalar value, including the code points of LEX-003 (ZWJ, a TAG character, ESC).
+module tests.lexical.string_unicode_escape_forbidden_accepted
+let zwj = "\u{200D}"
+let tag = "\u{E0041}"
+let esc = "\u{1B}"
