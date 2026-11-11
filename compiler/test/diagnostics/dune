@@ -1,9 +1,16 @@
-; Unit tests for egide.diagnostics (T-0002). The JSON tests read the schema from docs/.
+; Unit tests for egide.diagnostics (T-0002, T-1039). The JSON tests read the schema from docs/; the
+; lint tests read the CLI and renderer sources; the provisional-set test reads the task board.
 
 (library
  (name test_diagnostics)
  (inline_tests
-  (deps %{project_root}/docs/diagnostics.schema.json))
+  (deps
+   %{project_root}/docs/diagnostics.schema.json
+   %{project_root}/compiler/bin/main.ml
+   %{project_root}/compiler/lib/diagnostics/diagnostic.ml
+   %{project_root}/compiler/lib/diagnostics/text.mli
+   %{project_root}/tasks/PHASE
+   (glob_files %{project_root}/tasks/done/*)))
  (libraries egide.source egide.diagnostics egide.syntax qcheck-core str)
  (preprocess
   (pps ppx_expect)))
