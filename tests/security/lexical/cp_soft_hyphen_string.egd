@@ -1,0 +1,7 @@
+# spec: LEX-003
+# expect: lex-fail
+# diagnostic: E0004 at 7:12
+# phase: 1
+module tests.security.cp_soft_hyphen_string
+
+let k = "ad­min"

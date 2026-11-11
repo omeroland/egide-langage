@@ -1,0 +1,9 @@
+# spec: SYN-017
+# expect: parse-fail
+# diagnostic: E0110 at 8:20
+# phase: 1
+module tests.security.unsafe_reason_is_template
+
+fn f(x: str):
+    unsafe(reason: f"{x}"):
+        ()

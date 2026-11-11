@@ -1,0 +1,10 @@
+# spec: LEX-030, LEX-032
+# expect: lex-fail
+# diagnostic: E0021 at 10:9
+# phase: 1
+module tests.security.layout_body_after_continuation_wrong_width
+
+fn f(a: bool, b: bool):
+    if a
+            and b:
+        ()

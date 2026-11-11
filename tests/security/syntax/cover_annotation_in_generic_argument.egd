@@ -1,0 +1,7 @@
+# spec: SYN-065, SYN-042
+# expect: parse-fail
+# diagnostic: E0107 at 7:15
+# phase: 1
+module tests.security.cover_annotation_in_generic_argument
+
+let c = cache[(a: int)]()

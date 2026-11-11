@@ -1,0 +1,8 @@
+# spec: SYN-023
+# expect: parse-fail
+# diagnostic: E0117 at 7:1
+# phase: 1
+module tests.security.attribute_unknown
+
+@allow_unsafe
+fn f(): ()

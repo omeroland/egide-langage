@@ -1,0 +1,9 @@
+# spec: SYN-015
+# expect: parse-fail
+# diagnostic: E0104 at 8:18
+# phase: 1
+module tests.security.unsafe_as_lambda_body
+
+fn f():
+    let g = x => unsafe(reason: "x"):
+        x

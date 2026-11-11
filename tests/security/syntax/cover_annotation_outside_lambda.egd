@@ -1,0 +1,7 @@
+# spec: SYN-065
+# expect: parse-fail
+# diagnostic: E0107 at 7:9
+# phase: 1
+module tests.security.cover_annotation_outside_lambda
+
+let p = (a: int)

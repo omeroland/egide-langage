@@ -1,0 +1,8 @@
+# spec: SYN-065, SYN-023
+# expect: parse-fail
+# diagnostic: E0107 at 7:9
+# phase: 1
+module tests.security.cover_annotation_in_attribute_argument
+
+@derive((a: int))
+struct S

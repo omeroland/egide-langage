@@ -1,0 +1,9 @@
+# spec: SYN-053, ERR-012
+# expect: parse-fail
+# diagnostic: E0112 at 8:9
+# phase: 1
+module tests.security.pattern_constructor_lowercase_in_let_else
+
+fn f(o: Option[int]):
+    let some(x) = o else:
+        return

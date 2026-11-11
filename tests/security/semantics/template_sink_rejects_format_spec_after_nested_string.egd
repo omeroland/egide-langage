@@ -1,0 +1,8 @@
+# spec: LEX-055
+# expect: compile-fail
+# diagnostic: E0601 at 8:26
+# phase: 2
+module tests.security.template_sink_rejects_format_spec_after_nested_string
+
+fn f(m: Map[str, str]):
+    let q = sql"a {m["k"]:x} b"
