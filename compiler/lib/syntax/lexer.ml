@@ -189,7 +189,6 @@ type literal_kind = Cooked | Chr | Byt
 
 (* All text of one literal body is single-line (a triple-quoted body is split into lines first), so the scalar value
    at index [j] of a chunk that starts at [p] is at column [p.col + j]. *)
-type chunk = { cpos : Lexing.position; ctext : string }
 
 let pos_at (p : Lexing.position) j = { p with Lexing.pos_cnum = p.Lexing.pos_cnum + j }
 
@@ -403,69 +402,73 @@ let rec scan_sq st raw =
       scan_sq st raw
   | _ -> false
 
-(* The raw lines of a triple-quoted literal. CR LF is normalised to LF (LEX-002). *)
-type triple = { mutable lines : chunk list; cur : Buffer.t; mutable cur_pos : Lexing.position }
+(* The raw text of a triple-quoted literal: one buffer for all lines and two int arrays (16 bytes per line, no
+   allocation per line: a literal of millions of lines stays linear with a small constant). Line [k] starts at byte
+   [starts.(k)] of [text] and at character offset [cnums.(k)] of the file; the first line starts at the position after
+   the opening quotes, the others at column 1. CR LF is normalised to LF (LEX-002). *)
+type triple = {
+  text : Buffer.t;
+  mutable starts : int array;
+  mutable cnums : int array;
+  mutable n : int;
+}
 
-let push_line t =
-  t.lines <- { cpos = t.cur_pos; ctext = Buffer.contents t.cur } :: t.lines;
-  Buffer.clear t.cur
+let new_line t (p : Lexing.position) =
+  if t.n = Array.length t.starts then begin
+    let grow a = Array.append a (Array.make (Array.length a) 0) in
+    t.starts <- grow t.starts;
+    t.cnums <- grow t.cnums
+  end;
+  t.starts.(t.n) <- Buffer.length t.text;
+  t.cnums.(t.n) <- p.Lexing.pos_cnum;
+  t.n <- t.n + 1
 
 let rec scan_triple_cooked st t =
   let buf = st.buf in
   match%sedlex buf with
-  | "\"\"\"" ->
-      push_line t;
-      true
+  | "\"\"\"" -> true
   | "\\\\" | "\\\"" ->
-      Buffer.add_string t.cur (Sedlexing.Utf8.lexeme st.buf);
+      Buffer.add_string t.text (Sedlexing.Utf8.lexeme st.buf);
       scan_triple_cooked st t
   | '\\' ->
-      Buffer.add_char t.cur '\\';
+      Buffer.add_char t.text '\\';
       scan_triple_cooked st t
   | '\n' | "\r\n" ->
-      push_line t;
-      t.cur_pos <- snd (Sedlexing.lexing_positions st.buf);
+      new_line t (snd (Sedlexing.lexing_positions st.buf));
       scan_triple_cooked st t
   | '\r' ->
-      Buffer.add_char t.cur '\r';
+      Buffer.add_char t.text '\r';
       scan_triple_cooked st t
   | Plus (Compl ('"' | '\\' | '\n' | '\r')) ->
-      Buffer.add_string t.cur (Sedlexing.Utf8.lexeme st.buf);
+      Buffer.add_string t.text (Sedlexing.Utf8.lexeme st.buf);
       scan_triple_cooked st t
   | '"' ->
-      Buffer.add_char t.cur '"';
+      Buffer.add_char t.text '"';
       scan_triple_cooked st t
-  | _ ->
-      push_line t;
-      false
+  | _ -> false
 
 let rec scan_triple_raw st t =
   let buf = st.buf in
   match%sedlex buf with
-  | "\"\"\"" ->
-      push_line t;
-      true
+  | "\"\"\"" -> true
   | '\n' | "\r\n" ->
-      push_line t;
-      t.cur_pos <- snd (Sedlexing.lexing_positions st.buf);
+      new_line t (snd (Sedlexing.lexing_positions st.buf));
       scan_triple_raw st t
   | '\r' ->
-      Buffer.add_char t.cur '\r';
+      Buffer.add_char t.text '\r';
       scan_triple_raw st t
   | Plus (Compl ('"' | '\n' | '\r')) ->
-      Buffer.add_string t.cur (Sedlexing.Utf8.lexeme st.buf);
+      Buffer.add_string t.text (Sedlexing.Utf8.lexeme st.buf);
       scan_triple_raw st t
   | '"' ->
-      Buffer.add_char t.cur '"';
+      Buffer.add_char t.text '"';
       scan_triple_raw st t
-  | _ ->
-      push_line t;
-      false
+  | _ -> false
 
-let leading_ws s =
-  let n = String.length s in
-  let rec go i = if i < n && (s.[i] = ' ' || s.[i] = '\t') then go (i + 1) else i in
-  go 0
+(* Number of leading spaces and tabs of the byte range [i, j) of [s]. *)
+let leading_ws s i j =
+  let rec go k = if k < j && (s.[k] = ' ' || s.[k] = '\t') then go (k + 1) else k - i in
+  go i
 
 (* LEX-051. The dedent of Python's [textwrap.dedent], on the raw lines (before escapes are read):
    1. the line break right after the opening quotes is dropped (only when it directly follows them);
@@ -475,41 +478,57 @@ let leading_ws s =
       the margin is text;
    4. blank lines become empty, the others lose the margin. The line break before the closing quotes stays: the
       last line is the (blank) text before them. *)
-let dedent st (lines : chunk list) : chunk list =
-  let lines = match lines with { ctext = ""; _ } :: (_ :: _ as rest) -> rest | l -> l in
-  let blank c = leading_ws c.ctext = String.length c.ctext in
-  let margin =
-    List.fold_left (fun m c -> if blank c then m else min m (leading_ws c.ctext)) max_int lines
+let triple_value st (opened : Lexing.position) ~cooked t out =
+  let all = Buffer.contents t.text in
+  let n = t.n in
+  let start k = t.starts.(k) in
+  let stop k = if k + 1 < n then t.starts.(k + 1) else String.length all in
+  let pos k =
+    if k = 0 then opened
+    else
+      let c = t.cnums.(k) in
+      { opened with Lexing.pos_lnum = opened.Lexing.pos_lnum + k; pos_bol = c; pos_cnum = c }
   in
-  (* A tab is E0005 only inside the margin (index < margin); beyond it, it is text. On a blank line, which has no
-     margin of its own and whose whitespace is dropped, any tab in its whitespace is reported (Q-0051.3). *)
-  List.iter
-    (fun c ->
-      let lead = leading_ws c.ctext in
-      let limit = if blank c then lead else min lead margin in
-      let i = ref 0 in
-      while !i < limit do
-        if c.ctext.[!i] = '\t' then begin
-          let j = ref !i in
-          while !j < limit && c.ctext.[!j] = '\t' do
-            incr j
-          done;
-          report_range st ~rule:"LEX-004" ~code:"E0005" (pos_at c.cpos !i) (pos_at c.cpos !j)
-            "tab character in the margin of a triple-quoted string; indent with spaces";
-          i := !j
-        end
-        else incr i
-      done)
-    lines;
-  List.map
-    (fun c ->
-      if blank c then { c with ctext = "" }
-      else
-        {
-          cpos = pos_at c.cpos margin;
-          ctext = String.sub c.ctext margin (String.length c.ctext - margin);
-        })
-    lines
+  let lead k = leading_ws all (start k) (stop k) in
+  let blank k = lead k = stop k - start k in
+  let first = if n > 1 && stop 0 = start 0 then 1 else 0 in
+  let margin = ref max_int in
+  for k = first to n - 1 do
+    if not (blank k) then margin := min !margin (lead k)
+  done;
+  let margin = !margin in
+  for k = first to n - 1 do
+    let l = lead k in
+    let limit = if blank k then l else min l margin in
+    let i = ref 0 in
+    while !i < limit do
+      if all.[start k + !i] = '\t' then begin
+        let j = ref !i in
+        while !j < limit && all.[start k + !j] = '\t' do
+          incr j
+        done;
+        report_range st ~rule:"LEX-004" ~code:"E0005"
+          (pos_at (pos k) !i)
+          (pos_at (pos k) !j)
+          "tab character in the margin of a triple-quoted string; indent with spaces";
+        i := !j
+      end
+      else incr i
+    done
+  done;
+  for k = first to n - 1 do
+    if k > first then Buffer.add_char out '\n';
+    if not (blank k) then begin
+      let len = stop k - start k - margin in
+      if cooked then
+        ignore
+          (decode_escapes st Cooked
+             (pos_at (pos k) margin)
+             (String.sub all (start k + margin) len)
+             out)
+      else Buffer.add_substring out all (start k + margin) len
+    end
+  done
 
 (* Each reader is called right after its opening delimiter was matched. *)
 let single_line_string st ~kind ~scan =
@@ -526,16 +545,14 @@ let single_line_string st ~kind ~scan =
 
 let triple_string st ~cooked =
   let _, opened = Sedlexing.lexing_positions st.buf in
-  let t = { lines = []; cur = Buffer.create 64; cur_pos = opened } in
+  let t =
+    { text = Buffer.create 64; starts = Array.make 16 0; cnums = Array.make 16 0; n = 0 }
+  in
+  new_line t opened;
   let closed = if cooked then scan_triple_cooked st t else scan_triple_raw st t in
   if not closed then unterminated st ~rule:"LEX-050" ~what:"string literal" opened 3;
-  let out = Buffer.create 64 in
-  List.iteri
-    (fun i c ->
-      if i > 0 then Buffer.add_char out '\n';
-      if cooked then ignore (decode_escapes st Cooked c.cpos c.ctext out)
-      else Buffer.add_string out c.ctext)
-    (dedent st (List.rev t.lines));
+  let out = Buffer.create (Buffer.length t.text) in
+  triple_value st opened ~cooked t out;
   Buffer.contents out
 
 let replacement = Uchar.of_int 0xFFFD

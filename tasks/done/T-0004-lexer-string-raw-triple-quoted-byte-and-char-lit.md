@@ -6,7 +6,7 @@ phase: 0
 role: syntax-engineer
 depends_on: [T-0001]
 spec: [LEX-050, LEX-051, LEX-052, LEX-053, LEX-054]
-paths: [compiler/lib/syntax/, compiler/test/syntax/, tests/conformance/lexical/, tools/gen/tokens.py, CHANGELOG.md, docs/diagnostics.md, tasks/blocked/, tasks/backlog/T-1080*]
+paths: [compiler/lib/syntax/, compiler/test/syntax/, tests/conformance/lexical/, tools/gen/tokens.py, CHANGELOG.md, docs/diagnostics.md, tasks/blocked/, tasks/backlog/T-1080*, tasks/backlog/T-1110*, tasks/backlog/T-1112*]
 estimate: M
 labels: []
 status: done
@@ -75,6 +75,21 @@ margin is text (test and `string_triple_tab_after_margin.egd`). (2) `b"""` is E0
 as a triple-quoted string. (3) Q-0051 has a tenth case (raw triple-quoted strings are dedented) and flags items 2 and 4 as
 a non-monotone pair to settle before T-0024. (4) docs/diagnostics.md rows E0005, E0040, E0043 extended; T-1080 now also
 covers E0041/E0043/E0005 floods; raw bidi/NUL tests in `'...'`, `b"..."`, `"""..."""`; a span property.
+
+2026-11-11 syntax-engineer (T-0004, security review of PR #26, non-blocking, F1-F7).
+- F1 (memory amplification): partly the lexer, mostly the output layer. (a) Triple-quoted literals kept one record
+  (with a position) per line: `egide parse` of 8 M empty lines took 1.7 GB. Fixed here: one `Buffer` for the whole
+  literal plus two int arrays (16 bytes per line); the same file is now 1.28 GB through `egide parse` and the
+  tokenizer alone takes 1.0 s and 372 MB (measured with a throw-away executable, not committed). (b) The rest, and the
+  4 M-`é` string (11.4 s on main, 11.2 s here, 2.9 GB RSS), is in `Escape.display` / `Escape.neutralize`, which build a
+  list of boxed units: the tokenizer alone lexes that string in 0.3 s. Outside T-0004's paths: follow-up **T-1112**.
+- F2: T-1080 amended (scope E0040..E0043 and E0005, criterion with 1 M bad escapes; `b"` + 1 M `é` = 162 MB).
+- F3, F4: Q-0051 items 11 (NBSP-only line, decide before the first release) and 12 (`r#"..."#` is `r` + comment);
+  behaviour unchanged. `b"""` is E0043 (done).
+- F7: noted in T-1110 (`%S` rendering of values and doubled backslashes).
+- F5/F6 (info): after T-1033 extends the forbidden set, replay the matrix of 6 literal forms x characters (raw and
+  escaped); the SYN-018 printable-string proofs of concept belong to the parser (T-0005 and the parser tasks), not to this
+  lexer; none is committed in `tests/security/`.
 
 ## Outcome
 

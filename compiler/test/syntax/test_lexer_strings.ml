@@ -336,8 +336,7 @@ let%expect_test "byte strings reject non-ASCII, controls and the other escapes" 
     |}];
   (* there is no rb"..." (an identifier, then a string) *)
   show "rb\"x\"\n";
-  [%expect
-    {|
+  [%expect {|
     1:1-1:3 IDENT("rb")
     1:3-1:6 STRING("x")
     |}];
@@ -352,7 +351,17 @@ let%expect_test "byte strings reject non-ASCII, controls and the other escapes" 
 (* spec: LEX-003 (raw input check): a forbidden character written in a literal is E0004 in every literal form, and
    the literal still lexes. U+202E, then NUL. *)
 let%expect_test "raw bidi and NUL characters in every literal form" =
-  show "'\xE2\x80\xAE'\nb\"\xE2\x80\xAE\"\n\"\"\"\n a\xE2\x80\xAE\n \"\"\"\n'\000'\nb\"\000\"\n\"\"\"\n \000\n\"\"\"\n";
+  show
+    "'\xE2\x80\xAE'\n\
+     b\"\xE2\x80\xAE\"\n\
+     \"\"\"\n\
+    \ a\xE2\x80\xAE\n\
+    \ \"\"\"\n\
+     '\000'\n\
+     b\"\000\"\n\
+     \"\"\"\n\
+    \ \000\n\
+     \"\"\"\n";
   [%expect
     {|
     1:1-1:4 CHAR(U+202E)
@@ -598,8 +607,28 @@ let%test_unit "diagnostic spans are well formed" =
        QCheck2.Gen.(
          list_size (int_range 0 40)
            (oneof_list
-              [ "\""; "'"; "\\"; "r"; "b"; "\n"; "\r\n"; " "; "\t"; "u"; "{"; "}"; "x"; "0"; "a"; "\xC3\xA9";
-                "\"\"\""; "\\u{"; "\\x"; "\xE2\x80\xAE" ])
+              [
+                "\"";
+                "'";
+                "\\";
+                "r";
+                "b";
+                "\n";
+                "\r\n";
+                " ";
+                "\t";
+                "u";
+                "{";
+                "}";
+                "x";
+                "0";
+                "a";
+                "\xC3\xA9";
+                "\"\"\"";
+                "\\u{";
+                "\\x";
+                "\xE2\x80\xAE";
+              ])
          |> map (String.concat ""))
        (fun src ->
          let lines = 1 + List.length (String.split_on_char '\n' src) in
