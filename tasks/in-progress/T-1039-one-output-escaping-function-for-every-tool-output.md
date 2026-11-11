@@ -9,9 +9,9 @@ spec: [LEX-006, LEX-003, SYN-018]
 paths: [compiler/lib/diagnostics/, compiler/bin/, compiler/test/diagnostics/]
 estimate: S
 labels: [security]
-status: backlog
-claimed_by:
-claimed_at:
+status: in-progress
+claimed_by: tooling-engineer/session_01NLgEFTLJgCm5Sfk4YuTzRp
+claimed_at: 2026-11-10
 ---
 
 ## Goal
