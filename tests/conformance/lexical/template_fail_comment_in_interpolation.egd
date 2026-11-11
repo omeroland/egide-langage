@@ -1,6 +1,6 @@
 # spec: LEX-055
 # expect: lex-fail
-# diagnostic: E0044 at 6:13
+# diagnostic: E0044 at 6:14
 module tests.lexical.template_fail_comment_in_interpolation
 
 let a = f"{x # y}"

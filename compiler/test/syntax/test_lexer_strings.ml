@@ -155,8 +155,7 @@ rb"x"
     2:1-2:12 RAW_STRING("\\n\\u{zz}")
     3:1-3:4 RAW_STRING("")
     4:1-4:10 RAW_STRING("a\\")
-    5:1-5:3 IDENT("rb")
-    5:3-5:6 STRING("x")
+    5:1-5:6 TEMPLATE("rb", ["x"])
     |}];
   show "r\"abc\nx";
   [%expect
@@ -334,12 +333,10 @@ let%expect_test "byte strings reject non-ASCII, controls and the other escapes" 
     E0041 8:3-8:5 invalid escape sequence `\'`
     E0041 9:3-9:5 `\x` must be followed by exactly two hexadecimal digits
     |}];
-  (* there is no rb"..." (an identifier, then a string) *)
+  (* there is no raw byte string rb"...": LEX-053 gives no meaning to r or b before another prefix, and by LEX-055 `rb` is
+     an ordinary template prefix (a template with one literal part) *)
   show "rb\"x\"\n";
-  [%expect {|
-    1:1-1:3 IDENT("rb")
-    1:3-1:6 STRING("x")
-    |}];
+  [%expect {| 1:1-1:6 TEMPLATE("rb", ["x"]) |}];
   (* b"""...""" is E0043 on the three quotes (Q-0051.6); the body is read as a triple-quoted string *)
   show "b\"\"\"\n  a\n  \"\"\"\n";
   [%expect

@@ -29,7 +29,25 @@ let num_signed_exp =
 (* A decimal integer, a dot and an identifier: a duration (LEX-042) or `INT . IDENT`; decided by [token]. *)
 let num_dot_word = [%sedlex.regexp? dec_digits, '.', ident_start, Star ident_char]
 
-type state = { buf : Sedlexing.lexbuf; sink : D.Sink.t }
+(* [src] is the whole input and [bc]/[bb] a cache of the byte offset of character [bc]: a triple-quoted template
+   needs the source text of its interpolations (see [byte_of_cnum]). [tdepth] counts the templates being read
+   (LEX-055: at most 8). [idepth] counts the interpolations being read (a `#` there is E0044); [stop_nl] says that
+   a line break ends the interpolation being read (a single-line template); [hit_nl] records that it did. *)
+(* LEX-055: a `lower_snake_case` identifier directly followed by a quote. *)
+let tpl_prefix = [%sedlex.regexp? 'a' .. 'z', Star ('a' .. 'z' | '0' .. '9' | '_')]
+
+type state = {
+  buf : Sedlexing.lexbuf;
+  sink : D.Sink.t;
+  src : string;
+  mutable bc : int;
+  mutable bb : int;
+  mutable tdepth : int;
+  mutable too_deep : bool;
+  mutable idepth : int;
+  mutable stop_nl : bool;
+  mutable hit_nl : bool;
+}
 
 let span st =
   let s, e = Sedlexing.lexing_positions st.buf in
@@ -478,7 +496,9 @@ let leading_ws s i j =
       the margin is text;
    4. blank lines become empty, the others lose the margin. The line break before the closing quotes stays: the
       last line is the (blank) text before them. *)
-let triple_value st (opened : Lexing.position) ~cooked t out =
+(* The common part of [triple_value] and of a triple-quoted template: the first line to keep and the margin, with the
+   tab diagnostics of step 3. *)
+let triple_margin st (opened : Lexing.position) t =
   let all = Buffer.contents t.text in
   let n = t.n in
   let start k = t.starts.(k) in
@@ -516,6 +536,11 @@ let triple_value st (opened : Lexing.position) ~cooked t out =
       else incr i
     done
   done;
+  (all, start, stop, pos, blank, first, margin)
+
+let triple_value st (opened : Lexing.position) ~cooked t out =
+  let all, start, stop, pos, blank, first, margin = triple_margin st opened t in
+  let n = t.n in
   for k = first to n - 1 do
     if k > first then Buffer.add_char out '\n';
     if not (blank k) then begin
@@ -585,17 +610,114 @@ let char_literal st =
     else Uchar.utf_decode_uchar (String.get_utf_8_uchar value 0)
   end
 
+(* ---- Prefixed templates (LEX-055) ---- *)
+
+let max_template_depth = 8
+
+(* The byte offset of character [c] of the input. Characters are counted as sedlex counts them (one per scalar value);
+   the input is valid UTF-8 here (E0001 stops the lexer before). Walking from the last answer keeps a sequence of
+   queries linear. *)
+let byte_of_cnum st c =
+  while st.bc < c && st.bb < String.length st.src do
+    st.bb <- st.bb + Uchar.utf_decode_length (String.get_utf_8_uchar st.src st.bb);
+    st.bc <- st.bc + 1
+  done;
+  (* an outer interpolation asks for a position before the inner ones: walk back, at the cost of the distance *)
+  while st.bc > c do
+    st.bb <- st.bb - 1;
+    while st.bb > 0 && Char.code st.src.[st.bb] land 0xC0 = 0x80 do
+      st.bb <- st.bb - 1
+    done;
+    st.bc <- st.bc - 1
+  done;
+  st.bb
+
+(* LEX-055, reading left to right: a backslash keeps the next character as it is, then `{{` and `}}` stand for one
+   brace. A lone `}` was reported by the scanner and is kept. *)
+let collapse_braces s =
+  let n = String.length s in
+  let b = Buffer.create n in
+  let rec go i =
+    if i < n then
+      match s.[i] with
+      | '\\' when i + 1 < n ->
+          Buffer.add_char b '\\';
+          Buffer.add_char b s.[i + 1];
+          go (i + 2)
+      | '{' when i + 1 < n && s.[i + 1] = '{' ->
+          Buffer.add_char b '{';
+          go (i + 2)
+      | '}' when i + 1 < n && s.[i + 1] = '}' ->
+          Buffer.add_char b '}';
+          go (i + 2)
+      | c ->
+          Buffer.add_char b c;
+          go (i + 1)
+  in
+  go 0;
+  Buffer.contents b
+
+(* What the scanner collects: ranges of [t.text] that are literal text, and interpolations (with their range, which
+   holds their source text so that the margin of a triple-quoted template sees their lines too). *)
+type titem = TLit of int * int | TInterp of int * int * Tokens.part
+
+(* Appends the source text [s] of an interpolation to [t.text], line by line; [p] is the position of its first
+   character. *)
+let add_interp_text t (p : Lexing.position) s =
+  let cp = ref 0 in
+  String.iter
+    (fun c ->
+      if c = '\n' then begin
+        incr cp;
+        new_line t { p with Lexing.pos_cnum = p.Lexing.pos_cnum + !cp }
+      end
+      else begin
+        if Char.code c land 0xC0 <> 0x80 then incr cp;
+        if c <> '\r' then Buffer.add_char t.text c
+      end)
+    s
+
+(* LEX-051 applied to a template: the margin is computed on all the lines of the raw text (interpolations included),
+   then removed from the lines that start in literal text; the line breaks that lie in literal text come back as LF.
+   [lit a b] is the dedented text of the literal range [a, b). *)
+let triple_literals st opened t =
+  let _, start, stop, _, blank, first, margin = triple_margin st opened t in
+  let all = Buffer.contents t.text in
+  fun a b ->
+    let out = Buffer.create (b - a) in
+    for k = first to t.n - 1 do
+      let s = start k and e = stop k in
+      (* the line break before line [k] sits at offset [s]: it is literal text when [s] is in [a, b] *)
+      if k > first && s >= a && s <= b then Buffer.add_char out '\n';
+      let lo = max a s and hi = min b e in
+      if lo < hi then begin
+        let lo = if lo = s then if blank k then hi else min hi (lo + margin) else lo in
+        if lo < hi then Buffer.add_substring out all lo (hi - lo)
+      end
+    done;
+    Buffer.contents out
+
 let rec token st =
   let buf = st.buf in
   match%sedlex buf with
   | ' ' -> token st
-  | '\n' | "\r\n" -> token st (* sedlex tracks line numbers itself *)
+  | '\n' | "\r\n" ->
+      if st.stop_nl then begin
+        (* inside the interpolation of a single-line template (LEX-055): give the line break back *)
+        Sedlexing.rollback buf;
+        st.hit_nl <- true;
+        None
+      end
+      else token st (* sedlex tracks line numbers itself *)
   | '\r' -> token st (* lone CR: reported by Source_check (E0003) *)
   | Plus '\t' ->
       report_tab st;
       token st
   | '#' ->
-      comment st;
+      if st.idepth > 0 then
+        (* LEX-055: there are no comments inside `{...}`, so that a comment can never hide a `}` *)
+        report st ~rule:"LEX-055" ~code:"E0044" "a `#` is not allowed inside an interpolation"
+      else comment st;
       token st
   | ident_start, Star ident_char -> (
       let s = Sedlexing.Utf8.lexeme buf in
@@ -631,6 +753,8 @@ let rec token st =
   | "b\"" ->
       let startp, _ = Sedlexing.lexing_positions buf in
       Some (BYTES (single_line_string st ~kind:(Some Byt) ~scan:scan_dq), startp)
+  | tpl_prefix, "\"\"\"" -> template st ~triple:true
+  | tpl_prefix, '"' -> template st ~triple:false
   | "\"\"\"" ->
       let startp, _ = Sedlexing.lexing_positions buf in
       Some (STRING (triple_string st ~cooked:true), startp)
@@ -710,13 +834,214 @@ and comment st =
       comment st
   | _ -> () (* at LF or end of file: nothing matched, so nothing is consumed *)
 
+(* LEX-055. Called right after the prefix and its opening quote(s). A keyword is never a prefix: `return"x"` is the keyword and
+   a string, so the lexeme is given back and the identifier is read alone. *)
+and template st ~triple =
+  let buf = st.buf in
+  let startp, opened = Sedlexing.lexing_positions buf in
+  let lexeme = Sedlexing.Utf8.lexeme buf in
+  let prefix = String.sub lexeme 0 (String.length lexeme - if triple then 3 else 1) in
+  match Token_table.keyword prefix with
+  | Some kw ->
+      Sedlexing.rollback buf;
+      (match%sedlex buf with ident_start, Star ident_char -> () | _ -> ());
+      Some (kw, startp)
+  | None ->
+      let t = { text = Buffer.create 64; starts = Array.make 16 0; cnums = Array.make 16 0; n = 0 } in
+      new_line t opened;
+      let items = ref [] in
+      let outcome =
+        if st.tdepth >= max_template_depth then begin
+          (* one diagnostic per outermost template, however deep it goes *)
+          if not st.too_deep then
+            report_range st ~rule:"LEX-055" ~code:"E0044" startp opened
+              (Printf.sprintf "templates nest at most %d levels deep" max_template_depth);
+          st.too_deep <- true;
+          (* not read any further: the body is skipped as plain text, so that the depth stays bounded *)
+          if triple then ignore (scan_triple_cooked st t) else ignore (scan_dq st (Buffer.create 16));
+          `Reported
+        end
+        else begin
+          st.tdepth <- st.tdepth + 1;
+          let r = template_body st ~triple t items in
+          st.tdepth <- st.tdepth - 1;
+          if st.tdepth = 0 then st.too_deep <- false;
+          r
+        end
+      in
+      if outcome = `Unterminated then
+        report_range st ~rule:"LEX-055" ~code:"E0040" startp opened "unterminated template literal";
+      let lit = if triple then triple_literals st opened t else fun a b -> Buffer.sub t.text a (b - a) in
+      let parts =
+        List.filter_map
+          (function
+            | TInterp (_, _, part) -> Some part
+            | TLit (a, b) ->
+                let text = collapse_braces (lit a b) in
+                if text = "" then None else Some (Tpl_lit text))
+          (List.rev !items)
+      in
+      Some (TEMPLATE { prefix; parts }, startp)
+
+(* Reads the body of a template up to its closing quote(s). [t.text] receives the raw text (an interpolation
+   contributes its source text, a literal its text with `{{` and `}}` still doubled) and [items] the ranges. Returns
+   [`Closed], [`Unterminated] (end of line or of input) or [`Reported] (an interpolation failed and said why). A
+   backslash keeps the next character, so an escaped quote does not close the literal and an escaped brace does not
+   open an interpolation. *)
+and template_body st ~triple t items =
+  let buf = st.buf in
+  let lit_start = ref 0 in
+  let add s = Buffer.add_string t.text s in
+  let flush () =
+    let a = Buffer.length t.text in
+    (* in a triple-quoted template an empty range may still hold a line break between two interpolations *)
+    if a > !lit_start || (triple && t.n > 1) then items := TLit (!lit_start, a) :: !items
+  in
+  let finish r =
+    flush ();
+    r
+  in
+  let rec go () =
+    if triple then
+      match%sedlex buf with
+      | "\"\"\"" -> finish `Closed
+      | '\n' | "\r\n" ->
+          new_line t (snd (Sedlexing.lexing_positions buf));
+          go ()
+      | Plus (Compl ('"' | '\\' | '{' | '}' | '\n' | '\r')) | '"' | '\r' | "\\", Compl ('\n' | '\r') | '\\' | "{{" | "}}" ->
+          add (Sedlexing.Utf8.lexeme buf);
+          go ()
+      | '{' -> opening ()
+      | '}' -> lone_close ()
+      | _ -> finish `Unterminated
+    else
+      match%sedlex buf with
+      | '"' -> finish `Closed
+      | '\n' | "\r\n" ->
+          Sedlexing.rollback buf;
+          finish `Unterminated
+      | Plus (Compl ('"' | '\\' | '{' | '}' | '\n' | '\r')) | '\r' | "\\", Compl ('\n' | '\r') | '\\' | "{{" | "}}" ->
+          add (Sedlexing.Utf8.lexeme buf);
+          go ()
+      | '{' -> opening ()
+      | '}' -> lone_close ()
+      | _ -> finish `Unterminated
+  and opening () =
+    flush ();
+    let a = Buffer.length t.text in
+    match interpolation st ~triple t with
+    | Some part ->
+        items := TInterp (a, Buffer.length t.text, part) :: !items;
+        lit_start := Buffer.length t.text;
+        go ()
+    | None ->
+        lit_start := Buffer.length t.text;
+        finish `Reported
+  and lone_close () =
+    report st ~rule:"LEX-055" ~code:"E0044"
+      "a `}` in template text must be doubled (`}}`) or close an interpolation";
+    add "}";
+    go ()
+  in
+  go ()
+
+(* An interpolation `{expr[:spec]}`, called right after its `{`. The expression is read by [token], the lexer itself:
+   it ends at the first `:` or `}` outside brackets, and strings, characters and nested templates are tokens, so they
+   are tracked. [None] when the interpolation is unterminated (E0044, reported here). *)
+and interpolation st ~triple t =
+  let buf = st.buf in
+  let open_s, _ = Sedlexing.lexing_positions buf in
+  let idepth, stop_nl, hit_nl = (st.idepth, st.stop_nl, st.hit_nl) in
+  st.idepth <- idepth + 1;
+  st.stop_nl <- not triple;
+  st.hit_nl <- false;
+  let toks = ref [] and depth = ref 0 in
+  let rec expr () =
+    match token st with
+    | None -> `Fail
+    | Some (tok, s) -> (
+        let _, e = Sedlexing.lexing_positions buf in
+        match tok with
+        | RBRACE when !depth = 0 -> `Close
+        | COLON when !depth = 0 -> `Spec e
+        | _ ->
+            (match tok with
+            | LPAREN | LBRACKET | LBRACE -> incr depth
+            | RPAREN | RBRACKET | RBRACE -> if !depth > 0 then decr depth
+            | _ -> ());
+            toks := (tok, s, e) :: !toks;
+            expr ())
+  in
+  let ended = expr () in
+  let broke_on_newline = st.hit_nl in
+  st.idepth <- idepth;
+  st.stop_nl <- stop_nl;
+  st.hit_nl <- hit_nl;
+  let fail msg =
+    report_range st ~rule:"LEX-055" ~code:"E0044" open_s (snd (Sedlexing.lexing_positions buf)) msg;
+    None
+  in
+  (* the spec is raw text up to the closing brace: no brace, double quote or line break *)
+  let read_spec spec_pos =
+    let text = Buffer.create 8 in
+    let rec go () =
+      match%sedlex buf with
+      | '}' -> Some { text = Buffer.contents text; spec_pos }
+      | Plus (Compl ('}' | '{' | '"' | '\n' | '\r')) | '\r' ->
+          Buffer.add_string text (Sedlexing.Utf8.lexeme buf);
+          go ()
+      | '{' | '"' ->
+          report st ~rule:"LEX-055" ~code:"E0044"
+            "a format specifier may not contain `{`, `}` or `\"`";
+          go ()
+      | _ -> None
+    in
+    go ()
+  in
+  let unterminated () =
+    fail
+      (if broke_on_newline then
+         "a line break inside an interpolation is only allowed in a triple-quoted template"
+       else "unterminated interpolation")
+  in
+  let finish spec =
+    let _, close_e = Sedlexing.lexing_positions buf in
+    if !toks = [] then
+      report_range st ~rule:"LEX-055" ~code:"E0044" open_s close_e "empty interpolation";
+    if triple then begin
+      let b0 = byte_of_cnum st open_s.Lexing.pos_cnum and b1 = byte_of_cnum st close_e.Lexing.pos_cnum in
+      add_interp_text t open_s (String.sub st.src b0 (b1 - b0))
+    end;
+    Some (Tpl_interp { open_pos = open_s; close_pos = close_e; toks = List.rev !toks; spec })
+  in
+  match ended with
+  | `Fail -> unterminated ()
+  | `Close -> finish None
+  | `Spec spec_pos -> (
+      match read_spec spec_pos with
+      | Some sp -> finish (Some sp)
+      | None -> unterminated ())
+
 let tokenize ~file src =
   let pre = Source_check.check ~file src in
   if List.exists (fun (d : D.t) -> d.code = "E0001") pre then ([], pre)
   else begin
     let buf = Sedlexing.Utf8.from_string src in
     Sedlexing.set_filename buf file;
-    let st = { buf; sink = D.Sink.create () } in
+    let st =
+      {
+        buf;
+        sink = D.Sink.create ();
+        src;
+        bc = 0;
+        bb = 0;
+        tdepth = 0;
+        too_deep = false;
+        idepth = 0;
+        stop_nl = false;
+        hit_nl = false;
+      }
+    in
     let rec loop acc =
       match token st with
       | None -> List.rev acc

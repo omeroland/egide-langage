@@ -1,0 +1,5 @@
+# spec: LEX-055
+# expect: lex-pass
+module tests.lexical.template_nesting_limit_ok
+
+let a = f"{f"{f"{f"{f"{f"{f"{f"{x}"}"}"}"}"}"}"}"
