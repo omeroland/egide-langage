@@ -545,9 +545,7 @@ let single_line_string st ~kind ~scan =
 
 let triple_string st ~cooked =
   let _, opened = Sedlexing.lexing_positions st.buf in
-  let t =
-    { text = Buffer.create 64; starts = Array.make 16 0; cnums = Array.make 16 0; n = 0 }
-  in
+  let t = { text = Buffer.create 64; starts = Array.make 16 0; cnums = Array.make 16 0; n = 0 } in
   new_line t opened;
   let closed = if cooked then scan_triple_cooked st t else scan_triple_raw st t in
   if not closed then unterminated st ~rule:"LEX-050" ~what:"string literal" opened 3;
