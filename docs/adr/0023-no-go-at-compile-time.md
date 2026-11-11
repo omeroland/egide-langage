@@ -46,7 +46,7 @@ compiled code; *established*: INT-020 excludes programs that use Go interop, so 
 
 | Option | Assessment |
 |--------|------------|
-| **A (chosen)** the interpreter has no Go interface in any mode. A program whose package closure uses `import go` is built with the Go backend and executed by `egide run`/`egide test`. The REPL applies the same closure test at every import: `import go`, or an Égide package whose closure uses Go, is E0707 | One engine; no mode flag that is "one bug from INT-005"; TOOL-010 stays true for everything INT-020 covers. Cost: a Go-using program is compiled before it runs, and the REPL cannot import Go, directly or through a dependency. |
+| **A (chosen)** the interpreter has no Go interface in any mode. A program whose package closure uses `import go` is built with the Go backend and executed by `egide run`/`egide test`. The REPL applies the same closure test at every import: `import go`, or an Égide package whose closure uses Go, is E0709 | One engine; no mode flag that is "one bug from INT-005"; TOOL-010 stays true for everything INT-020 covers. Cost: a Go-using program is compiled before it runs, and the REPL cannot import Go, directly or through a dependency. |
 | B one interpreter with an FFI enabled outside compile-time mode | CT-006 would depend on a context flag. Rejected. |
 | C a second interpreter instance with an FFI for run/REPL | Two engines to keep identical; no user need shown. Fallback if the owner needs Go in the REPL. |
 
@@ -54,12 +54,25 @@ Second-pass findings fixed: the first draft rejected only the syntax `import go`
 closure uses Go as a way in (A6); CT-005 still said the interpreter runs the REPL and `egide run` without the carve-out;
 CT-006 said "in its compile-time mode" while TOOL-010 said "any mode". All three now say "no mode".
 
-Code placement (second-pass C7): E0611 is a comptime code (E06xx); the REPL code is E0707, in the E07xx range (packages
+Code placement (second-pass C7): E0611 is a comptime code (E06xx); the REPL code is E0709, in the E07xx range (packages
 and Go interop; empty today), not E0612, because it is not a comptime error.
+
+### Third-pass review (APPROVE, wording items applied)
+
+- REPL: the closure test is re-run on every reload of a changed package and on every command that adds a dependency
+  (extrapolated: the spec has no such command yet).
+- Go constants: conversion to Égide `int`/`f64` follows the rule of an Égide literal of the same value; constants depend on
+  the build tuple (`runtime.GOOS`, `math.MaxInt`, `unsafe.Sizeof`), so results and caches are keyed by it (a determinism issue
+  for CT-003, not a security one; extrapolated). Typed constants such as `time.Second` carry a Go type, so `.String()`,
+  `f"{d}"`, equality and hashing on them are E0611 by the operation clause; built-in arithmetic is not Go code.
+- Precedence: a construct matching both CT-002 (E0610) and CT-006 is E0611.
+- The per-bypass conformance tests (section 2), `comptime let n = math.MaxInt64` (must pass) and `comptime let s =
+  time.Second.String()` (E0611) become a `test-engineer` task at acceptance; the code of the REPL is E0709 so that codes
+  are allocated in merge order (ADR-0022 E0701-E0703, ADR-0025 E0704-E0705, ADR-0024 E0706-E0708).
 
 ## Decision
 
-Apply the spec diff: CT-001, CT-005, new CT-006, TOOL-010, TYP-031, diagnostics E0611 and E0707.
+Apply the spec diff: CT-001, CT-005, new CT-006, TOOL-010, TYP-031, diagnostics E0611 and E0709.
 
 ## Alternatives considered
 
@@ -71,7 +84,7 @@ determinism or termination, and the budgets of CT-003 cannot bound native code.
 - Complexity budget: +1 rule, +2 diagnostics, no language feature; the phase-1 interpreter (OCaml bytecode) cannot call Go,
   so today the rule costs nothing and prevents a later shortcut.
 - Security: keeps INT-005 independent of GO-042's accuracy.
-- Implementation (follow-ups proposed, none created): `comptime-engineer`: E0611 in the checker and the evaluator, E0707 in
+- Implementation (follow-ups proposed, none created): `comptime-engineer`: E0611 in the checker and the evaluator, E0709 in
   the REPL; `tooling-engineer`: `egide run`/`egide test` through the Go backend for Go-using programs (T-0036);
   `test-engineer`: one conformance test per bypass listed in section 2.
 - Migration: none (no Go interop exists yet).

@@ -22,7 +22,8 @@ fn tenant_namespaces(cs: kube.Clientset) -> Result[List[str], GoError] using go:
 ```
 
 - **[GO-001]** `import go "<import path>" as alias` imports a Go package. The alias is mandatory. The Go module MUST be
-  declared in the `[go]` section of the manifest (PKG-040). The path is a string consumed by tools (SYN-018, E0115).
+  declared in the `[go]` section of the manifest (10.2). A `[go]` key is a Go module path whose first element contains a
+  dot, so a key `os` or `std` cannot make a standard package look third-party. The path is a string consumed by tools (SYN-018, E0115).
 - **[GO-002]** Exported Go identifiers keep their Go spelling (`NewForConfig`); LEX-023 naming warnings do not apply
   to them.
 - **[GO-003]** Go interop is available with the Go backend. With the native backend, Go packages are linked through
@@ -96,8 +97,36 @@ types** and **auditable**.
 - **[GO-043] Drift detection.** When a new version of a Go module changes the classification of a function called by
   the Égide program, `egide lock` fails and prints the per-function capability diff.
 - **[GO-044] Overrides.** A package may declare a false positive pure with
-  `[go.overrides] "module.Func" = { class = "pure", reason = "…" }`. Overrides are listed by `egide audit` and never
-  apply to dependent packages.
+  `[go.overrides] "<import path>.Func" = { class = "pure", reason = "…" }` (a method is keyed
+  `"<import path>.<Type>.<Method>"`; the import path is the longest prefix that is a package of a module of `[go]`, and an
+  ambiguous key is E0702). Overrides exist for false positives of GO-042 items 1 and 3, never of item 2. Like
+  `@go_threadsafe` (GO-032) an override asserts a property the compiler cannot check, and is gated like it:
+  1. only `class = "pure"` exists. The key MUST resolve to an exported function or method **declared** in a package of a
+     module that is exactly a module of the `[go]` section of the same package, **with a Go body whose own call graph is
+     analysed by GO-042**. Ownership is decided by the package that declares the resolved object (the Go type checker's
+     `Func.Pkg()` after alias resolution, and `Func.Origin()` for a generic function, the override then applying to every
+     instantiation), not by the package named in the key and not by string prefix. Each of the following is E0702: a method
+     promoted through an embedded field (`type W struct{ *os.File }`); a method or function of a type alias of a foreign
+     type; a package-level variable of function type; a method of an interface type, including one promoted from an
+     embedded local interface and one reached through a type parameter (it has no body and dispatches to any
+     implementation); a function without a Go body (an assembly stub, a `//go:linkname`-bodied declaration); a function
+     whose own body triggers GO-042 item 2 (`unsafe`, `reflect`, assembly, cgo); the standard library (reviewed list,
+     GO-041); a nested or other module; `init` and variable initialisers;
+  2. **the override applies only to the edge from Égide source of the declaring package to that exact function.** Inside
+     the Go call graph the function keeps the class computed by GO-042, so Go callers of it, and Go functions that reach it,
+     are classified as if there were no override. An override is never a pure leaf of the analysis;
+  3. `reason` is a string consumed by tools. It is a TOML string, which the Égide lexer never sees, so the manifest
+     reader applies the constraints of SYN-018 itself (single line, 1 to 200 scalar values, no LEX-003 character, no
+     `Zs` other than U+0020; E0118), and every tool that prints it (audit, lock, SBOM) passes it through the output
+     escaping of LEX-006;
+  4. every package that transitively contains the override MUST list `"go_override:<import path>.<Func>"` in the `allow`
+     entries of the dependency edge (PKG-030, PKG-031, PKG-032), otherwise the build fails (E0701). The entry names the
+     function whose class the root accepts to be wrong; by item 2 no other Go function changes class because of it;
+  5. an accepted override does not outlive its reason. `egide.lock` records, per build tuple and under the declaring
+     package, the **underlying** class of the function (the class GO-042 computes without the override) next to the
+     override (PKG-040). Drift detection (GO-043) compares the underlying class, not the effective one: any growth of its
+     capability set while an override applies fails the build (E0701) until the `allow` entry is confirmed again by running
+     `egide lock`. `egide audit` lists every override with its reason and its underlying class.
 
 ## 11.5 Calling Égide from Go
 

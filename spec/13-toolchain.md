@@ -25,9 +25,12 @@
   transitively) uses `import go` is not run by it: `egide run` and `egide test` build such a program with the Go backend
   (chapter 11) and execute the result; INT-020 does not apply to them, since it excludes Go interop. The REPL applies the
   same closure test at every import: `import go`, and the import of any Égide package whose closure uses `import go`, is
-  E0707.
+  E0709. The test is re-run whenever a package is reloaded and whenever a command adds a dependency, so a package
+  that was Go-free when imported cannot gain `import go` later in the session.
 - **[TOOL-011] Scripts.** A single `.egd` file without manifest can be run with `egide run`. It may declare dependencies
-  in a leading comment block, resolved and locked into a cache keyed by the file's content hash:
+  in a leading comment block, resolved and locked into a cache keyed by the file's content hash; the same block may carry the
+  `allow` list of PKG-032 (it is the script author's consent, not the runner's: running an untrusted script includes its
+  self-declared `allow`):
 
 ```egide
 #!/usr/bin/env egide run

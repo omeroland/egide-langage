@@ -28,7 +28,10 @@ macros. Compile-time code receives no capability, so no build can touch the netw
   what it can see statically; the engine reports the rest at evaluation, so a missed case is an error and never an
   execution. Allowed: Go *types* as compile-time type values (CT-011, `std.meta`), because naming a type runs nothing; and
   Go *constants* (`math.MaxInt64`), which the type checker folds without running anything. Constants are the only Go
-  values that may appear at compile time.
+  values that may appear at compile time. An exact Go constant converts to an Égide `int` or `f64` as an Égide literal
+  of the same value would: an integer that does not fit is a compile-time error, a float is rounded once to nearest. Go
+  constants may depend on the build tuple (`runtime.GOOS`, `math.MaxInt`, `unsafe.Sizeof`), so compile-time results and
+  any cache of them are keyed by it. A construct that matches both CT-002 (E0610) and this rule is reported as E0611.
 
 ## 9.2 Comptime parameters and types as values
 
