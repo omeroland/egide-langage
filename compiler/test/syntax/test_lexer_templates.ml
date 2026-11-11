@@ -255,3 +255,11 @@ let%test "triple-quoted template with one interpolation per line is linear" =
   let toks, diags = Lexer.tokenize ~file:"t.egd" (Buffer.contents b) in
   let dt = Sys.time () -. t0 in
   List.length diags = 0 && List.length toks = 3 && dt < 2.0
+
+(* spec: LEX-055 (review N2: a triple-quoted string inside the interpolation of a single-line template spans lines, which
+   LEX-055 allows only in a triple-quoted template: E0044 at the opening brace) *)
+let%expect_test "multi-line token in a single-line template's interpolation" =
+  show "f\"{\"\"\"\nx\"\"\"}\"\n";
+  [%expect {||}];
+  show "f\"\"\"{\"\"\"\nx\"\"\"}\"\"\"\n";
+  [%expect {||}]
