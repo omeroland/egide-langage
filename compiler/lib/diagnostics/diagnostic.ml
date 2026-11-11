@@ -64,16 +64,16 @@ let severity_to_string = function Error -> "error" | Warning -> "warning"
 
 (* ---- Human rendering ---- *)
 
-let loc (s : Span.t) = Printf.sprintf "%s:%d:%d" (Text.sanitize s.file) s.start.line s.start.col
+let loc (s : Span.t) = Printf.sprintf "%s:%d:%d" (Escape.display s.file) s.start.line s.start.col
 
 let header d =
   let rule = match d.rule with Some r -> Printf.sprintf " (%s)" r | None -> "" in
   Printf.sprintf "%s: %s[%s]: %s%s" (loc d.span) (severity_to_string d.severity) d.code
-    (Text.sanitize d.message) rule
+    (Escape.display d.message) rule
 
 let location_line (l : label) =
   if l.message = "" then "  --> " ^ loc l.span
-  else Printf.sprintf "  --> %s: %s" (loc l.span) (Text.sanitize l.message)
+  else Printf.sprintf "  --> %s: %s" (loc l.span) (Escape.display l.message)
 
 let edit_line (e : edit) =
   let s = e.span in
@@ -81,9 +81,9 @@ let edit_line (e : edit) =
     if s.start = s.stop then loc s else Printf.sprintf "%s-%d:%d" (loc s) s.stop.line s.stop.col
   in
   let action =
-    if s.start = s.stop then "insert " ^ Text.json_string e.replacement
+    if s.start = s.stop then "insert " ^ Escape.display_quoted e.replacement
     else if e.replacement = "" then "delete"
-    else "replace with " ^ Text.json_string e.replacement
+    else "replace with " ^ Escape.display_quoted e.replacement
   in
   Printf.sprintf "    %s: %s" where action
 
@@ -98,7 +98,7 @@ let prepare_line raw =
   let b = Buffer.create (String.length raw) in
   List.iteri
     (fun i u ->
-      let s, w = Text.display u in
+      let s, w = Escape.display_unit u in
       Buffer.add_string b s;
       cells.(i + 1) <- cells.(i) + w)
     units;
@@ -211,7 +211,7 @@ let render_block buf lines marks =
            List.iter paint (List.filter (fun m -> m.primary) ms);
            let labelled =
              List.filter (fun m -> m.msg <> "") ms
-             |> List.map (fun m -> (fst (span_cells m), snd (span_cells m), Text.sanitize m.msg))
+             |> List.map (fun m -> (fst (span_cells m), snd (span_cells m), Escape.display m.msg))
              |> List.stable_sort (fun (s1, _, _) (s2, _, _) -> compare s1 s2)
            in
            let inline, stacked =
@@ -275,14 +275,14 @@ let render ~sources d =
   List.iteri
     (fun i (file, ms) ->
       if not (i = 0 && primary_shown) then
-        Buffer.add_string buf ("  --> " ^ Text.sanitize file ^ "\n");
+        Buffer.add_string buf ("  --> " ^ Escape.display file ^ "\n");
       match lines file with Some ls -> render_block buf ls !ms | None -> ())
     !blocks;
   List.iter (fun l -> Buffer.add_string buf (location_line l ^ "\n")) !fallbacks;
-  List.iter (fun n -> Buffer.add_string buf ("  note: " ^ Text.sanitize n ^ "\n")) d.notes;
+  List.iter (fun n -> Buffer.add_string buf ("  note: " ^ Escape.display n ^ "\n")) d.notes;
   List.iter
     (fun (f : fix) ->
-      Buffer.add_string buf ("  help: " ^ Text.sanitize f.message ^ "\n");
+      Buffer.add_string buf ("  help: " ^ Escape.display f.message ^ "\n");
       List.iter (fun e -> Buffer.add_string buf (edit_line e ^ "\n")) f.edits)
     d.fixes;
   let s = Buffer.contents buf in
@@ -295,30 +295,30 @@ let to_human d = render ~sources:(fun _ -> None) d
 
 let json_span (s : Span.t) =
   let pos (p : Span.pos) = Printf.sprintf {|{"line":%d,"col":%d}|} p.line p.col in
-  Printf.sprintf {|{"file":%s,"start":%s,"end":%s}|} (Text.json_string s.file) (pos s.start)
+  Printf.sprintf {|{"file":%s,"start":%s,"end":%s}|} (Escape.json_safe s.file) (pos s.start)
     (pos s.stop)
 
 let json_list f l = "[" ^ String.concat "," (List.map f l) ^ "]"
 
 let to_json d =
   let label (l : label) =
-    Printf.sprintf {|{"span":%s,"message":%s}|} (json_span l.span) (Text.json_string l.message)
+    Printf.sprintf {|{"span":%s,"message":%s}|} (json_span l.span) (Escape.json_safe l.message)
   in
   let edit (e : edit) =
     Printf.sprintf {|{"span":%s,"replacement":%s}|} (json_span e.span)
-      (Text.json_string e.replacement)
+      (Escape.json_safe e.replacement)
   in
   let fix (f : fix) =
-    Printf.sprintf {|{"message":%s,"edits":%s}|} (Text.json_string f.message)
+    Printf.sprintf {|{"message":%s,"edits":%s}|} (Escape.json_safe f.message)
       (json_list edit f.edits)
   in
   Printf.sprintf
     {|{"code":%s,"severity":%s,"rule":%s,"message":%s,"span":%s,"labels":%s,"notes":%s,"fixes":%s}|}
-    (Text.json_string d.code)
-    (Text.json_string (severity_to_string d.severity))
-    (match d.rule with Some r -> Text.json_string r | None -> "null")
-    (Text.json_string d.message) (json_span d.span) (json_list label d.labels)
-    (json_list Text.json_string d.notes)
+    (Escape.json_safe d.code)
+    (Escape.json_safe (severity_to_string d.severity))
+    (match d.rule with Some r -> Escape.json_safe r | None -> "null")
+    (Escape.json_safe d.message) (json_span d.span) (json_list label d.labels)
+    (json_list Escape.json_safe d.notes)
     (json_list fix d.fixes)
 
 module Sink = struct

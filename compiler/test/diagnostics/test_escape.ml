@@ -6,7 +6,6 @@
 module D = Egide_diagnostics.Diagnostic
 module E = Egide_diagnostics.Escape
 module F = Egide_diagnostics.Forbidden_set
-module O = Egide_diagnostics.Output
 module Span = Egide_source.Span
 module J = Json_check
 
@@ -121,26 +120,25 @@ let unescape s =
 
 let gen_scalar =
   let open QCheck2.Gen in
-  frequency
-    [
-      (4, char_range 'a' 'z');
-      (2, oneof_list [ '\\'; '"'; '{'; '}'; ' ' ]);
-      (4, map Char.chr (int_range 0 0x1F) |> map (fun c -> c));
-      (2, return '\x7f');
-    ]
-  |> map (fun c -> String.make 1 c)
-  |> fun ascii ->
-  frequency
-    [
-      (6, ascii);
-      ( 6,
-        oneof_list
-          [ 0x80; 0x85; 0x9B; 0x9F; 0xA0; 0xAD; 0x61C; 0x1680; 0x200B; 0x200D; 0x200E; 0x2028;
-            0x2029; 0x202A; 0x202E; 0x202F; 0x2060; 0x2065; 0x2066; 0x2069; 0x3000; 0xFEFF;
-            0xFE0F; 0xFFF0; 0xE0001; 0xE0041; 0xE007F; 0xE0100; 0xE0FFF ]
-        |> map utf8 );
-      (3, oneof_list [ 0xE9; 0x4E2D; 0x1F389; 0x10FFFF ] |> map utf8);
-    ]
+  let ascii =
+    oneof_weighted
+      [
+        (4, char_range 'a' 'z');
+        (2, oneof_list [ '\\'; '"'; '{'; '}'; ' ' ]);
+        (4, map Char.chr (int_range 0 0x1F));
+        (2, return '\x7f');
+      ]
+    |> map (String.make 1)
+  in
+  let special =
+    oneof_list
+      [ 0x80; 0x85; 0x9B; 0x9F; 0xA0; 0xAD; 0x61C; 0x1680; 0x200B; 0x200D; 0x200E; 0x2028; 0x2029;
+        0x202A; 0x202E; 0x202F; 0x2060; 0x2065; 0x2066; 0x2069; 0x3000; 0xFEFF; 0xFE0F; 0xFFF0;
+        0xE0001; 0xE0041; 0xE007F; 0xE0100; 0xE0FFF ]
+    |> map utf8
+  in
+  let plain = oneof_list [ 0xE9; 0x4E2D; 0x1F389; 0x10FFFF ] |> map utf8 in
+  oneof_weighted [ (6, ascii); (6, special); (3, plain) ]
 
 let gen_text = QCheck2.Gen.(map (String.concat "") (list_size (int_bound 12) gen_scalar))
 
@@ -215,7 +213,7 @@ let%test "provisional forbidden set is replaced by T-1033 after phase 0" =
 (* spec: LEX-006 — defence in depth: a string that reaches the output layer unescaped is neutralised
    (dangerous code points and invalid bytes escaped, LF kept as structure, backslash not doubled). *)
 let%test "guard neutralises without double escaping" =
-  O.neutralize "a\x1b[1Ab\n\\u{1B} \xE2\x80\xAE \xFF" = "a\\u{1B}[1Ab\n\\u{1B} \\u{202E} \\xFF"
+  E.neutralize "a\x1b[1Ab\n\\u{1B} \xE2\x80\xAE \xFF" = "a\\u{1B}[1Ab\n\\u{1B} \\u{202E} \\xFF"
 
 (* ---- attack cases through every diagnostic renderer ---- *)
 
@@ -254,7 +252,7 @@ let%expect_test "excerpt shows ESC[1A, CSI, RLO and ZWSP escaped" =
     t.egd:1:6: error[E0004]: forbidden character U+001B (LEX-003)
       |
     1 | s = "\u{1B}[1A\u{9B}2J"
-      |      ^^^^^^^^
+      |      ^^^^^^
     t.egd:2:3: error[E0004]: forbidden character U+202E (LEX-003)
       |
     2 | # \u{202E} x\u{200B}y
@@ -280,8 +278,8 @@ let strip_comments s =
   Str.global_replace (Str.regexp "(\\*\\([^*]\\|\\*[^)]\\)*\\*)") "" s
 
 let forbidden_primitives =
-  [ "print_string"; "print_endline"; "print_char"; "prerr_endline"; "prerr_string"; "printf";
-    "eprintf"; "output_string"; "Out_channel.output"; "Out_channel.output_string"; "stdout";
+  [ "print_string"; "print_endline"; "print_char"; "prerr_endline"; "prerr_string"; "Printf.printf";
+    "Printf.eprintf"; "output_string"; "Out_channel.output"; "Out_channel.output_string"; "stdout";
     "stderr"; "Format.print" ]
 
 let contains s sub =

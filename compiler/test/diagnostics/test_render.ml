@@ -214,8 +214,8 @@ let%expect_test "excerpt escapes bidi controls and invalid bytes" =
     {|
     t.egd:1:11: error[E0004]: forbidden character U+202E — risk: hidden or reordered source text (Trojan Source) (LEX-003)
       |
-    1 | let s = "a<U+202E>b" <0xFF> x
-      |           ^^^^^^^^          - x
+    1 | let s = "a\u{202E}b" \xFF x
+      |           ^^^^^^^^        - x
     |}]
 
 (* spec: TOOL-040 — messages are one line; control and bidi characters in free text are escaped. *)
@@ -226,13 +226,13 @@ let%expect_test "messages are sanitised" =
           "evil \xE2\x80\xAE text\x1b[31m"));
   [%expect
     {|
-    t.egd:1:1: error[E0412]: evil <U+202E> text<U+001B>[31m (SEC-002)
-      note: a<U+000A>b
+    t.egd:1:1: error[E0412]: evil \u{202E} text\u{1B}[31m (SEC-002)
+      note: a\nb
     |}]
 
-(* Tabs (allowed in string literals only, LEX-004) are shown as 4 spaces; CR LF line ends are not
-   shown. *)
-let%expect_test "tabs expand and CR LF is stripped" =
+(* LEX-006: a tab (allowed in string literals only, LEX-004) is shown as \t, never expanded; CR LF
+   line ends are not shown. *)
+let%expect_test "tabs are escaped and CR LF is stripped" =
   render
     [ ("t.egd", "let s = \"\tx\" ;\r\n") ]
     (D.error ~rule:"LEX-061" ~code:"E0050" (sp 1 14 1 15) "semicolon");
@@ -240,8 +240,8 @@ let%expect_test "tabs expand and CR LF is stripped" =
     {|
     t.egd:1:14: error[E0050]: semicolon (LEX-061)
       |
-    1 | let s = "    x" ;
-      |                 ^
+    1 | let s = "\tx" ;
+      |               ^
     |}]
 
 (* A span outside the available source (stale or malformed) does not crash the renderer nor
