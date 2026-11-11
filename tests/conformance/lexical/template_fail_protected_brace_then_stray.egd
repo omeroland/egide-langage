@@ -1,0 +1,6 @@
+# spec: LEX-055
+# expect: lex-fail
+# diagnostic: E0044 at 6:16
+module tests.lexical.template_fail_protected_brace_then_stray
+
+let a = f"\{{x}}"

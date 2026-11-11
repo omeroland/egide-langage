@@ -7,6 +7,7 @@
 %token <string> RAW_STRING
 %token <string> BYTES
 %token <Uchar.t> CHAR
+%token <Tokens.template> TEMPLATE
 %token KW_AND  (* and *)
 %token KW_AS  (* as *)
 %token KW_BREAK  (* break *)

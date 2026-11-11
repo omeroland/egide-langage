@@ -1,7 +1,8 @@
 (** Raw lexer (LEX-001..062). Produces tokens without layout information; {!Layout} adds
     NEWLINE/INDENT/DEDENT. Seed coverage: identifiers, keywords, integer and simple float literals,
-    plain string literals with basic escapes, operators, comments. Remaining literal forms: T-0003
-    (numeric/duration), T-0004 (strings), T-0005 (templates). *)
+    plain string literals with basic escapes, operators, comments. Numeric, string and template
+    literals (LEX-040..055): a prefixed template is one [TEMPLATE] token that holds the token
+    streams of its interpolations. *)
 
 type located = { tok : Tokens.token; startp : Lexing.position; endp : Lexing.position }
 

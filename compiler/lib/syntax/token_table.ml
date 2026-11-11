@@ -47,7 +47,7 @@ let keyword = function
   | "yield" -> Some KW_YIELD
   | _ -> None
 
-let to_string = function
+let rec to_string = function
   | IDENT s -> Printf.sprintf "IDENT(%S)" s
   | INT s -> Printf.sprintf "INT(%S)" s
   | FLOAT s -> Printf.sprintf "FLOAT(%S)" s
@@ -56,6 +56,8 @@ let to_string = function
   | RAW_STRING s -> Printf.sprintf "RAW_STRING(%S)" s
   | BYTES s -> Printf.sprintf "BYTES(%S)" s
   | CHAR c -> Printf.sprintf "CHAR(U+%04X)" (Uchar.to_int c)
+  | TEMPLATE t ->
+      Printf.sprintf "TEMPLATE(%S, [%s])" t.prefix (String.concat "; " (List.map part t.parts))
   | KW_AND -> "and"
   | KW_AS -> "as"
   | KW_BREAK -> "break"
@@ -148,3 +150,11 @@ let to_string = function
   | INDENT -> "INDENT"
   | DEDENT -> "DEDENT"
   | EOF -> "EOF"
+
+(* A literal part is shown as an OCaml string, an interpolation as its tokens in braces, with the spec after a colon. *)
+and part = function
+  | Tpl_lit s -> Printf.sprintf "%S" s
+  | Tpl_interp i ->
+      Printf.sprintf "{%s%s}"
+        (String.concat " " (List.map (fun (t, _, _) -> to_string t) i.toks))
+        (match i.spec with None -> "" | Some s -> Printf.sprintf " : %S" s.text)

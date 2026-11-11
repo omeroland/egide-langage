@@ -1,0 +1,7 @@
+# spec: LEX-055, LEX-052, LEX-053
+# expect: lex-pass
+module tests.lexical.template_not_template
+
+let a = r"x{y}"
+let b = b"x{y}"
+let c = Foo"x"

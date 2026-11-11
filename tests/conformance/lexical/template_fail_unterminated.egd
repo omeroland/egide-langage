@@ -1,0 +1,6 @@
+# spec: LEX-055
+# expect: lex-fail
+# diagnostic: E0040 at 6:9
+module tests.lexical.template_fail_unterminated
+
+let a = f"abc
