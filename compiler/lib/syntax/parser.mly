@@ -18,7 +18,7 @@ let span (s, e) = Egide_source.Span.of_lexing s e
 file:
   | m = module_decl NEWLINE imports = list(terminated(import_decl, NEWLINE))
     decls = list(terminated(top_decl, NEWLINE)) EOF
-    { { doc = None; module_path = m; imports; decls; span = span $loc } }
+    { { module_path = m; imports; decls; span = span $loc } }
 
 module_decl:
   | KW_MODULE p = path { p }
@@ -31,12 +31,12 @@ path:
 
 import_decl:
   | KW_IMPORT p = path alias = option(preceded(KW_AS, ident))
-    { { import = Import { path = p; items = None; alias }; span = span $loc } }
+    { { import = Import { path = p; form = (match alias with None -> Whole | Some a -> Alias_as a) };
+        span = span $loc } }
 
 top_decl:
   | KW_LET name = ident EQ value = expr
-    { { doc = None; attrs = []; pub = false;
-        decl = Const { comptime = false; name; ty = None; value }; span = span $loc } }
+    { { attrs = []; vis = Private; decl = Const { name; ty = None; value }; span = span $loc } }
 
 expr:
   | e = expr_desc { { expr = e; span = span $loc } }

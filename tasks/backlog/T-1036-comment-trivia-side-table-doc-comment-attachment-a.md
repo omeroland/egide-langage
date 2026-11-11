@@ -36,4 +36,6 @@ Anything not listed in the acceptance criteria; create follow-up tasks.
 
 2026-11-10 language-architect (owner-delegated, ADR-0017, security review resolution): ERR-002: the lookup returns the kind-`#` comment on the line of the statement's last token (not the first), never from inside strings; `##` does not count; reason needs a non-whitespace, non-Zs character. A never-read `Result` binding (`_x` too) is a discard (E0304).
 
+2026-11-10 syntax-engineer (T-1030): T-1030 removed every `doc` field (`file.doc`, `decl`, `field`, `variant`, `trait_item`, `impl_item`) because nothing filled them. This task must reintroduce `doc : string option` on the module, declarations, fields, variants, trait items and impl items, plus the comment table (Q-0012 option A, ADR-0016: the parser attaches `##` runs to nodes), or record in its own Log a decision to keep docs out of the tree. Printer: add the `(doc "…")` atom back with its snapshots.
+
 ## Outcome

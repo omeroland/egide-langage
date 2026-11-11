@@ -37,6 +37,8 @@ Anything not listed in the acceptance criteria; create follow-up tasks.
 
 2026-11-10 language-architect (owner-delegated): spec/grammar/egide.ebnf is v0.3 (ADR-0013, ADR-0014, ADR-0015 accepted). Read `docs/adr/attachments/0013-menhir-check.mly` (0 conflicts) as the starting point for parser.mly, and do T-1030 (AST) first. Here: `suite`/layout contract LEX-036; `struct Name`/`impl T for U` without body; `visibility` incl. `pub(package)`; `params` with `self_param` first; `type_decl` where only after `new`; no top-level `comptime let`; no `pub impl`; `import` alias xor items; types per ADR-0014/TYP-006. Q-0002, Q-0011, Q-0020 are decided.
 
+2026-11-10 syntax-engineer (T-1030): Q-0022 (tasks/blocked) blocks only `@go_threadsafe(reason: "…")`, whose argument the EBNF `attribute` cannot derive. Every other attribute parses, so this task can proceed with that one test carved out. The AST now has `Ti_type { bound : bound option }`, `bound` records, `visibility`, `Type.def`, `Import.form` (see T-1030 Log). E0105 (TYP-006, unparenthesised function type as a return type) has no owner: it is assigned to this task (types in declarations).
+
 ## Outcome
 
 

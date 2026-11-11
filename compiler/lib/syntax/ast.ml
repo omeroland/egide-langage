@@ -65,19 +65,29 @@ and expr_desc =
   | Comprehension of { kind : comp_kind; clauses : comp_clause list }
   | If of { branches : if_branch list; else_ : block option }
   | Match of { scrutinee : expr; arms : case_arm list }
+  | Loop of block
+  | With of { items : with_item list; body : block }
+  | Given of { caps : expr list; body : block }
   | Unsafe of { reason : string; reason_span : span; body : block }
   | Call of { callee : expr; args : arg list }
-  | Index of { target : expr; index : expr }
+  | Index of { target : expr; args : gen_arg list }
   | Field of { target : expr; name : ident }
   | Try of expr
   | Unary of { op : unary_op; operand : expr }
   | Binary of { op : binary_op; lhs : expr; rhs : expr }
   | Compare of { first : expr; rest : (cmp_op * expr) list }
-  | Range of { lo : expr option; hi : expr option; inclusive : bool }
+  | Range of { lo : expr option; hi : expr option }
+  | Range_incl of { lo : expr option; hi : expr }
   | Cond of { cond : expr; then_ : expr; else_ : expr }
   | Lambda of { params : lambda_param list; body : expr }
   | Fn_lit of { params : lambda_param list; ret : ty option; body : block }
-  | Trailing of { callee : expr; params : lambda_param list; body : block }
+  | Trailing_call of {
+      callee : expr;
+      args : arg list;
+      params : lambda_param list;
+      ret : ty option;
+      body : block;
+    }
 
 and map_entry = { key : expr; value : expr; span : span }
 and comp_kind = Comp_list of expr | Comp_set of expr | Comp_map of map_entry | Comp_iter of expr
@@ -88,7 +98,15 @@ and comp_clause =
 
 and if_branch = { cond : expr; body : block; span : span }
 and case_arm = { pat : pattern; guard : expr option; body : block; span : span }
-and arg = { label : ident option; inout : bool; value : expr; span : span }
+and arg = { arg : arg_desc; span : span }
+
+and arg_desc =
+  | Arg_plain of { label : ident option; value : expr }
+  | Arg_inout of { label : ident option; value : expr }
+  | Arg_using of ident * expr
+
+and gen_arg = Ga_expr of expr | Ga_type_only of ty
+and bound = { path : path; args : gen_arg list; span : span }
 and lambda_param = { mode : mode; name : ident; ty : ty option; span : span }
 and block = { stmts : stmt list; span : span }
 and stmt = { stmt : stmt_desc; span : span }
@@ -98,7 +116,7 @@ and stmt_desc =
   | Let of { pat : pattern; ty : ty option; value : expr; else_ : block option }
   | Var of { name : ident; ty : ty option; value : expr }
   | Comptime_let of { name : ident; ty : ty option; value : expr }
-  | Assign of { place : place; op : assign_op; value : expr }
+  | Assign of { target : expr; op : assign_op; value : expr }
   | Return of expr option
   | Break of expr option
   | Continue
@@ -106,18 +124,14 @@ and stmt_desc =
   | Yield of expr
   | For of { pat : pattern; iter : expr; body : block }
   | While of { cond : expr; body : block }
-  | Loop of block
-  | With of { items : with_item list; body : block }
-  | Given of { caps : expr list; body : block }
 
-and place = { root : ident; steps : place_step list; span : span }
-and place_step = Place_field of ident | Place_index of expr
 and with_item = { name : ident option; value : expr; span : span }
 and pattern = { pat : pat_desc; span : span }
 
 and pat_desc =
   | Pat_wild
   | Pat_bind of ident
+  | Pat_const of path
   | Pat_lit of lit_pattern
   | Pat_range of { lo : lit_pattern; hi : lit_pattern; inclusive : bool }
   | Pat_ctor of { path : path; fields : field_pattern list }
@@ -136,16 +150,15 @@ and list_pattern = Lp_elem of pattern | Lp_rest of { name : ident option; span :
 and ty = { ty : ty_desc; span : span }
 
 and ty_desc =
-  | Ty_path of { path : path; args : type_arg list }
+  | Ty_path of { path : path; args : gen_arg list }
   | Ty_tuple of ty list
-  | Ty_fn of { params : ty list; ret : ty option; using : ty list }
-  | Ty_dyn of ty
+  | Ty_fn of { params : ty list; ret : ty option; using : bound list }
+  | Ty_dyn of bound list
   | Ty_self
   | Ty_optional of ty
 
-and type_arg = Ta_type of ty | Ta_expr of expr
 and attribute = { name : ident; args : expr list option; span : span }
-and generic = { comptime : bool; name : ident; bounds : ty list; span : span }
+and generic = { comptime : bool; name : ident; bounds : bound list; span : span }
 and param = { mode : mode; kind : param_kind; span : span }
 and param_kind = Param_self | Param_named of { name : ident; ty : ty; default : expr option }
 and typed_ident = { name : ident; ty : ty; span : span }
@@ -160,39 +173,33 @@ and fn_sig = {
 }
 
 and fn_decl = { sig_ : fn_sig; body : block; span : span }
+and visibility = Private | Pub | Pub_package
 
 and field = {
-  doc : string option;
   attrs : attribute list;
-  pub : bool;
+  vis : visibility;
   name : ident;
   ty : ty;
   default : expr option;
   span : span;
 }
 
-and variant = { doc : string option; name : ident; fields : variant_fields; span : span }
+and variant = { name : ident; fields : variant_fields; span : span }
 and variant_fields = Vf_none | Vf_positional of ty list | Vf_named of typed_ident list
-and trait_item = { doc : string option; item : trait_item_desc; span : span }
+and trait_item = { item : trait_item_desc; span : span }
 
 and trait_item_desc =
   | Ti_sig of fn_sig
   | Ti_fn of fn_decl
-  | Ti_type of { name : ident; bound : ty option }
+  | Ti_type of { name : ident; bound : bound option }
 
-and impl_item = { doc : string option; item : impl_item_desc; span : span }
+and impl_item = { item : impl_item_desc; span : span }
 
 and impl_item_desc =
-  | Ii_fn of { attrs : attribute list; pub : bool; fn_ : fn_decl }
+  | Ii_fn of { attrs : attribute list; vis : visibility; fn_ : fn_decl }
   | Ii_type of { name : ident; ty : ty }
 
-and decl = {
-  doc : string option;
-  attrs : attribute list;
-  pub : bool;
-  decl : decl_desc;
-  span : span;
-}
+and decl = { attrs : attribute list; vis : visibility; decl : decl_desc; span : span }
 
 and decl_desc =
   | Fn of fn_decl
@@ -201,28 +208,26 @@ and decl_desc =
   | Trait of {
       name : ident;
       generics : generic list;
-      supertraits : ty list;
+      supertraits : bound list;
       items : trait_item list;
     }
   | Impl of { generics : generic list; trait_ : ty option; self_ty : ty; items : impl_item list }
-  | Type of { name : ident; generics : generic list; newtype : bool; ty : ty; where_ : expr option }
-  | Const of { comptime : bool; name : ident; ty : ty option; value : expr }
+  | Type of { name : ident; generics : generic list; def : type_def }
+  | Const of { name : ident; ty : ty option; value : expr }
+
+and type_def = Alias of ty | Newtype of { ty : ty; where_ : expr option }
 
 type import_item = { name : ident; alias : ident option; span : span }
 
 type import = { import : import_desc; span : span }
 
 and import_desc =
-  | Import of { path : path; items : import_item list option; alias : ident option }
+  | Import of { path : path; form : import_form }
   | Import_go of { package : string; package_span : span; alias : ident }
 
-type file = {
-  doc : string option;
-  module_path : path;
-  imports : import list;
-  decls : decl list;
-  span : span;
-}
+and import_form = Whole | Alias_as of ident | Items of import_item list
+
+type file = { module_path : path; imports : import list; decls : decl list; span : span }
 
 (* Equality (the role of [@@deriving eq], see T-0008 Log). Stdlib structural equality is exact here: the tree holds
    only strings, booleans, integers ([Uchar.t], span positions), options, lists, records and constructors, with no
