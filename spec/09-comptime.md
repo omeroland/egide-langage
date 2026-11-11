@@ -5,7 +5,7 @@ macros. Compile-time code receives no capability, so no build can touch the netw
 
 ## 9.1 Evaluation
 
-- **[CT-001]** Any pure function (CAP-040) can be evaluated at compile time. Impure functions cannot.
+- **[CT-001]** Any pure function (CAP-040) can be evaluated at compile time. Impure functions cannot, and no function can reach Go code (CT-006).
 - **[CT-002]** `comptime let NAME = expr` evaluates `expr` at compile time. Top-level `let` is implicitly `comptime`
   (CAP-021). A top-level `let` initialiser and every `comptime` argument are evaluated under CAP-040: they MUST NOT
   contain `unsafe`, `given`, `with`, a call to an impure function or a value of a capability type (E0610).
@@ -14,7 +14,24 @@ macros. Compile-time code receives no capability, so no build can touch the netw
   compile-time error that shows the evaluation stack.
 - **[CT-004]** A panic during compile-time evaluation is a compile-time error pointing at the comptime call site and the
   panic location.
-- **[CT-005]** The compile-time interpreter is the same engine that runs the REPL and `egide run` (TOOL-010).
+- **[CT-005]** The compile-time interpreter is the same engine that runs the REPL, `egide run` and `egide test` for
+  programs that do not use Go (TOOL-010). It never runs a program whose package closure uses `import go`.
+- **[CT-006] No Go at compile time.** The interpreter of CT-005 has no foreign-function interface **in any mode** and never
+  executes Go code, whatever the classification of the function (GO-040): a classification is a static approximation, and a
+  mistake would run foreign code with the compiler's authority (INT-005, PKG-042). The rule is on the engine, not on
+  syntax. It is enforced structurally: the evaluator has no code path, library or process call that can run Go. Evaluating
+  compile-time code (CT-002, `comptime` arguments and functions, `@template` and derivation bodies, SYN-022 defaults, array
+  lengths and const-generic arguments, TYP-031 predicates and the literal checks they perform) is **E0611**, reported at
+  the outermost compile-time site, when it reaches any of: a call of a Go function; a Go function used as a value
+  (`map(xs, strings.ToUpper)`); an operation on a Go-typed value that resolves to Go code (a method, `String` or Display,
+  equality, hashing, drop); or any of these through an Égide function, trait object or function value. The checker reports
+  what it can see statically; the engine reports the rest at evaluation, so a missed case is an error and never an
+  execution. Allowed: Go *types* as compile-time type values (CT-011, `std.meta`), because naming a type runs nothing; and
+  Go *constants* (`math.MaxInt64`), which the type checker folds without running anything. Constants are the only Go
+  values that may appear at compile time. An exact Go constant converts to an Égide `int` or `f64` as an Égide literal
+  of the same value would: an integer that does not fit is a compile-time error, a float is rounded once to nearest. Go
+  constants may depend on the build tuple (`runtime.GOOS`, `math.MaxInt`, `unsafe.Sizeof`), so compile-time results and
+  any cache of them are keyed by it. A construct that matches both CT-002 (E0610) and this rule is reported as E0611.
 
 ## 9.2 Comptime parameters and types as values
 
