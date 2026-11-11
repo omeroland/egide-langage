@@ -9,7 +9,7 @@ spec: [LEX-003, LEX-050]
 paths: [compiler/lib/syntax/source_check.ml, compiler/lib/syntax/source_check.mli, compiler/lib/syntax/lexer.ml, compiler/lib/source/, compiler/lib/diagnostics/forbidden_set.ml, compiler/lib/diagnostics/forbidden_set.mli, compiler/test/syntax/, compiler/test/diagnostics/, tools/gen/, tests/conformance/lexical/]
 estimate: S
 labels: []
-status: in-progress
+status: done
 claimed_by: syntax-engineer/session_01NLgEFTLJgCm5Sfk4YuTzRp
 claimed_at: 2026-11-11
 ---
@@ -44,4 +44,19 @@ Anything not listed in the acceptance criteria; create follow-up tasks.
 
 2026-11-10 language-architect (owner-delegated, ADR-0017, security review resolution): Rewritten: property-defined set, pinned table, generator script. The proxy of the authoring session could not download the Unicode files, so the generator is unwritten and the digests are to be recorded by the implementer.
 
+
+2026-11-11 syntax-engineer: PROVENANCE. www.unicode.org is blocked by the sandbox proxy (CONNECT 403). The three Unicode 16.0.0 files were fetched from the `unicode-org/unicodetools` repository (`unicodetools/data/ucd/16.0.0/`, branch `main`, via raw.githubusercontent.com); headers read `PropList-16.0.0.txt` (2024-05-31) and `DerivedCoreProperties-16.0.0.txt` (2024-05-31). **Not verified:** that these bytes are identical to the files on www.unicode.org (the pinned digests are of the mirror's bytes). The generator tries unicode.org first and falls back to the mirror, accepting a file only if its SHA-256 equals the pin; if unicode.org serves different bytes, `make ci` (check-generated) fails loudly in an environment that reaches it, and the owner decides. Independent cross-checks, done once and not committed: the Python `regex` 2024.11.6 module (Unicode 16.0.0 data) and Node 22 / ICU 78 (Unicode 17) both give exactly the same 4,339 code points as the generated table, over all 0x110000 values.
+
+2026-11-11 syntax-engineer: the oracle (`compiler/test/diagnostics/oracle/forbidden_oracle.ml`) is a literal per-property list computed with Node/ICU, not by the Python generator; it is a separate library so that the lexer-hardening tests share it. Counter-hypothesis considered: parsing the upstream files again in OCaml as the oracle. Rejected: it would need the 2 MB of upstream files vendored in the repository or fetched in tests (network at test time); the literal list plus the pinned digests gives the same protection (a regenerated table cannot change the expected set) at a smaller cost.
+
+2026-11-11 syntax-engineer: existing test expectations changed because ADR-0017 changed the spec, not to get green: (1) `test_lexer_hardening.ml` oracle `is_forbidden_spec` now uses the property oracle; (2) U+FFFF and U+10FFFF are noncharacters, so the UTF-8 boundary test expects one E0004 per occurrence (`diags=2`) and the allowed-neighbours list drops U+2065 (DICP) and U+10FFFF for U+2054 and U+10FFFD; (3) `tests/conformance/lexical/bytes_utf8_boundaries_accepted.egd` uses U+FFFD and U+10FFFD instead of U+FFFF and U+10FFFF (the well-formedness of those two boundaries is still tested in (2)). Bug fixed on the way: the provisional `Forbidden_set.mem` returned true for negative integers (`-1 land 0xFFFE`).
+
+2026-11-11 syntax-engineer: the E0004 message names the well-known characters and otherwise the class ("format or default-ignorable character", "tag character", "variation selector", "noncharacter"); full Unicode names would need UnicodeData names in the table. Not done: follow-up only if wanted.
+
 ## Outcome
+
+Done. `tools/gen/unicode_forbidden.py` generates `compiler/lib/source/forbidden_table.ml` (4,339 code points in 44 ranges, Unicode 16.0.0, digests of the three upstream files in the header and pinned in `tools/gen/unicode-16.0.0.sha256`); `Forbidden_set.mem` is a binary search in it (the hand-written ranges are gone); `Source_check.is_forbidden` is `Forbidden_set.mem` minus LF/HT/CR; `tools/check-generated.sh` runs the generator in `--check` mode.
+
+Tests: `compiler/test/diagnostics/test_forbidden_set.ml` (differential over 0..0x10FFFF, lexer E0004 set over every scalar with the Escape cross test, code/string contexts, Zs, neighbours, `\u{...}` of every scalar and E0041, linear time, pinned digests and table digest, no I/O in the table), `compiler/test/diagnostics/oracle/forbidden_oracle.ml`; conformance `tests/conformance/lexical/forbidden_set_*.egd` (6 files) and `string_unicode_escape_forbidden_accepted.egd`. All `tests/security/lexical` PoCs pass with `--phase 1`.
+
+Rules: LEX-003, LEX-050, LEX-006, LEX-060. Follow-ups: none created. Limitations: see the Log (mirror provenance; names in E0004).

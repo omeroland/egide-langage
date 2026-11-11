@@ -100,7 +100,9 @@ let%expect_test "separate ill-formed runs are reported separately, with correct 
     E0001 2:28-2:29 invalid UTF-8 sequence
     |}]
 
-(* spec: LEX-001 — boundary values of every well-formed byte pattern are accepted. *)
+(* spec: LEX-001 — boundary values of every well-formed byte pattern are accepted. U+FFFF and U+10FFFF are
+   well-formed UTF-8 (no E0001) but noncharacters, so each is one E0004 per occurrence (LEX-003, ADR-0017):
+   diags=2 is the comment and the string. *)
 let%expect_test "well-formed UTF-8 boundary values are accepted" =
   List.iter
     (fun bytes ->
@@ -123,9 +125,9 @@ let%expect_test "well-formed UTF-8 boundary values are accepted" =
     E0 A0 80     tokens=4 diags=0
     ED 9F BF     tokens=4 diags=0
     EE 80 80     tokens=4 diags=0
-    EF BF BF     tokens=4 diags=0
+    EF BF BF     tokens=4 diags=2
     F0 90 80 80  tokens=4 diags=0
-    F4 8F BF BF  tokens=4 diags=0
+    F4 8F BF BF  tokens=4 diags=2
     |}]
 
 (* ---------------------------------------------------------------------------------------------------------- *)
@@ -332,11 +334,11 @@ let%expect_test "code points next to the forbidden ranges are accepted in commen
       0x2027;
       0x202F;
       0x2030;
-      0x2065;
+      0x2054;
       0xFEFE;
       0xFF01;
       0x1F600;
-      0x10FFFF;
+      0x10FFFD;
     ]
   in
   let bad =
@@ -436,7 +438,10 @@ let%expect_test "very long runs of spaces, comments, strings and tabs do not rai
 
 (* Oracles written from the spec, independent of the implementation. *)
 
-let is_forbidden_spec cp = List.exists (fun (lo, hi) -> cp >= lo && cp <= hi) forbidden_ranges
+(* ADR-0017: the set is property-defined; the oracle (compiler/test/diagnostics/oracle) lists the properties. LF, HT
+   and CR have their own rules. *)
+let is_forbidden_spec cp =
+  Forbidden_oracle.forbidden cp && cp <> 0x0A && cp <> 0x09 && cp <> 0x0D
 
 (* Number of forbidden code points (LEX-003) in a well-formed UTF-8 string, excluding a leading BOM (LEX-001). *)
 let count_forbidden src =

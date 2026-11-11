@@ -185,3 +185,60 @@ let%test "a long line of forbidden code points is linear" =
   let ds = lex src in
   List.length ds = n && List.for_all (fun (d : D.t) -> d.code = "E0004") ds
   && S.check ~file:"t.egd" (String.make 4_000_000 'a') = []
+
+(* ---- the pinned table (LEX-003: Unicode 16.0.0, embedded, never read from the host) ---- *)
+
+module T = Egide_source.Forbidden_table
+
+let read file =
+  let ic = open_in_bin file in
+  Fun.protect
+    ~finally:(fun () -> close_in ic)
+    (fun () -> really_input_string ic (in_channel_length ic))
+
+let%test "the table is Unicode 16.0.0" = T.unicode_version = "16.0.0"
+
+(* The upstream digests recorded in the generated header are the ones pinned in tools/gen/unicode-16.0.0.sha256, so a
+   table regenerated from other files differs here (and the generator refuses such files anyway). *)
+let%test "the table records the pinned upstream digests" =
+  let pins =
+    String.split_on_char '\n' (read "../../../tools/gen/unicode-16.0.0.sha256")
+    |> List.filter_map (fun l ->
+           let l = String.trim l in
+           if l = "" || l.[0] = '#' then None
+           else
+             match String.split_on_char ' ' l with
+             | digest :: rest -> Some (String.trim (String.concat " " rest), digest)
+             | [] -> None)
+  in
+  List.sort compare pins = List.sort compare T.source_digests && List.length pins = 3
+
+(* MD5 of the canonical text of the ranges: any change to the embedded table, even one that keeps this test file
+   green elsewhere, changes it. Update it together with the oracle, in a reviewed change. *)
+let pinned_table_digest = "0af5d280e38a86a8cd7768abc0aabe83"
+
+let%test "the table digest is pinned" =
+  let canonical =
+    String.concat ","
+      (Array.to_list (Array.map (Printf.sprintf "%X") T.ranges))
+  in
+  let d = Digest.to_hex (Digest.string canonical) in
+  d = pinned_table_digest || (Printf.printf "table digest is %s\n" d; false)
+
+let%test "the table is flat, sorted, disjoint and non-adjacent" =
+  let r = T.ranges in
+  Array.length r mod 2 = 0
+  && (let ok = ref true in
+      for i = 0 to (Array.length r / 2) - 1 do
+        if r.(2 * i) > r.((2 * i) + 1) then ok := false;
+        if i > 0 && r.(2 * i) <= r.((2 * i) - 1) + 1 then ok := false
+      done;
+      !ok)
+
+(* The table module is data only: it reads nothing from the host at run time. *)
+let%test "the table module performs no I/O" =
+  let src = read "../../lib/source/forbidden_table.ml" in
+  let contains sub =
+    try ignore (Str.search_forward (Str.regexp_string sub) src 0); true with Not_found -> false
+  in
+  not (List.exists contains [ "open_in"; "Sys."; "Unix"; "In_channel"; "Stdlib.input" ])

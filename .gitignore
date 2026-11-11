@@ -10,3 +10,4 @@ runtime/go/coverage.out
 .DS_Store
 .claude/settings.local.json
 .claude/worktrees/
+/tools/gen/.ucd-cache/
