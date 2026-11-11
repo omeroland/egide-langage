@@ -39,6 +39,8 @@ Split into two PRs if it exceeds 400 lines (expressions first, then lambdas/comp
 
 2026-11-10 language-architect (owner-delegated): spec/grammar/egide.ebnf is v0.3 (ADR-0013, ADR-0014, ADR-0015 accepted). Read `docs/adr/attachments/0013-menhir-check.mly` (0 conflicts) as the starting point for parser.mly, and do T-1030 (AST) first. Here: Q-0009 (no slice production, SYN-043), Q-0010 (cover grammar `paren_form`/`cover_item`/`arg`, SYN-065), Q-0011.1 (`using` argument), Q-0017 (`|>` shape check, E0108), SYN-042 generic arguments `[ ... ]`, block-ended expressions outside `expr`. `..=` needs an upper bound.
 
+2026-11-10 syntax-engineer (T-1006): every production that builds an id-bearing node (ident, path, expr, arg, bound, block, stmt, pattern, ty, decl, generic, param, field, variant, trait_item, impl_item, fn_decl; see ast.mli) writes `id = Ids.fresh ()`; the parser is the functor `Parser.Make (Ids)` and `Parse.file ?gen` instantiates it. Wrappers without an id (lambda_param, with_item, case_arm, ...) take none.
+
 ## Outcome
 
 

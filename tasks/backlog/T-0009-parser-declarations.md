@@ -40,6 +40,8 @@ Anything not listed in the acceptance criteria; create follow-up tasks.
 
 2026-11-10 syntax-engineer (T-1030): Q-0022 (tasks/blocked) blocks only `@go_threadsafe(reason: "…")`, whose argument the EBNF `attribute` cannot derive. Every other attribute parses, so this task can proceed with that one test carved out. The AST now has `Ti_type { bound : bound option }`, `bound` records, `visibility`, `Type.def`, `Import.form` (see T-1030 Log). E0105 (TYP-006, unparenthesised function type as a return type) has no owner: it is assigned to this task (types in declarations).
 
+2026-11-10 syntax-engineer (T-1006): every production that builds an id-bearing node (ident, path, expr, arg, bound, block, stmt, pattern, ty, decl, generic, param, field, variant, trait_item, impl_item, fn_decl; see ast.mli) writes `id = Ids.fresh ()`; the parser is the functor `Parser.Make (Ids)` and `Parse.file ?gen` instantiates it. Wrappers without an id (lambda_param, with_item, case_arm, ...) take none.
+
 ## Outcome
 
 

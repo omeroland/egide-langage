@@ -40,4 +40,6 @@ Changing the S-expression format of `Print`.
 
 ## Log
 
+2026-11-10 syntax-engineer (T-1006): T-1006 (node ids) lands first. `Ast` records now have `id : Node_id.t`; `Node_id.equal` and `Node_id.pp` exist, so derived eq/show need no attribute on them. Derived `equal_*` will compare ids, like the hand-written ones. Keep `Print.pp_*` as the S-expression formatter (the derived show would print `#n`).
+
 ## Outcome
