@@ -185,9 +185,10 @@ let%expect_test "malformed float literals (00.5 is extrapolated, Q-0025.1)" =
     E0031 9:1-9:5 leading zero in `00`
     |}]
 
-
 (* spec: LEX-040, LEX-041 *)
-let%expect_test "uppercase prefix and exponent forms, a dot after a prefixed integer, non-ASCII after a number" =
+let%expect_test
+    "uppercase prefix and exponent forms, a dot after a prefixed integer, non-ASCII after a number"
+    =
   show "1E+9\n0O7\n0B1\n0x1.5\n5\xc3\xa9\n";
   [%expect
     {|
@@ -271,8 +272,7 @@ let%test "token spans stay inside the input; at most one diagnostic per literal"
          let rec ordered prev = function
            | [] -> true
            | ({ startp; endp; _ } : Lexer.located) :: rest ->
-               prev <= startp.pos_cnum
-               && startp.pos_cnum < endp.pos_cnum
+               prev <= startp.pos_cnum && startp.pos_cnum < endp.pos_cnum
                && endp.pos_cnum <= String.length s
                && ordered endp.pos_cnum rest
          in

@@ -31,8 +31,16 @@ let%expect_test "import after a declaration is rejected" =
 
 (* spec: LEX-042, EBNF `literal = ... | DURATION` — the six units reach the AST. *)
 let%expect_test "duration literals" =
-  show "module m\nlet a = 500.ms\nlet b = 1.ns\nlet c = 2.us\nlet d = 5.s\nlet e = 30.min\nlet f = 3.h\n";
-  [%expect {|
+  show
+    "module m\n\
+     let a = 500.ms\n\
+     let b = 1.ns\n\
+     let c = 2.us\n\
+     let d = 5.s\n\
+     let e = 30.min\n\
+     let f = 3.h\n";
+  [%expect
+    {|
     (module m)
       (let a (duration 500 ms))
       (let b (duration 1 ns))
