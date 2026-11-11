@@ -56,7 +56,8 @@ let rec to_string = function
   | RAW_STRING s -> Printf.sprintf "RAW_STRING(%S)" s
   | BYTES s -> Printf.sprintf "BYTES(%S)" s
   | CHAR c -> Printf.sprintf "CHAR(U+%04X)" (Uchar.to_int c)
-  | TEMPLATE t -> Printf.sprintf "TEMPLATE(%S, [%s])" t.prefix (String.concat "; " (List.map part t.parts))
+  | TEMPLATE t ->
+      Printf.sprintf "TEMPLATE(%S, [%s])" t.prefix (String.concat "; " (List.map part t.parts))
   | KW_AND -> "and"
   | KW_AS -> "as"
   | KW_BREAK -> "break"

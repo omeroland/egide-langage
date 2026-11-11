@@ -68,13 +68,15 @@ let%expect_test "unterminated interpolation" =
 let%expect_test "specs and brackets" =
   show {x|f"{x:>8} {y:} {a(b, c)} {m["k"]:x} { {1, 2} } {c == '"'}"
 |x};
-  [%expect {| 1:1-1:58 TEMPLATE("f", [{IDENT("x") : ">8"}; " "; {IDENT("y") : ""}; " "; {IDENT("a") ( IDENT("b") , IDENT("c") )}; " "; {IDENT("m") [ STRING("k") ] : "x"}; " "; {{ INT("1") , INT("2") }}; " "; {IDENT("c") == CHAR(U+0022)}]) |}]
+  [%expect
+    {| 1:1-1:58 TEMPLATE("f", [{IDENT("x") : ">8"}; " "; {IDENT("y") : ""}; " "; {IDENT("a") ( IDENT("b") , IDENT("c") )}; " "; {IDENT("m") [ STRING("k") ] : "x"}; " "; {{ INT("1") , INT("2") }}; " "; {IDENT("c") == CHAR(U+0022)}]) |}]
 
 (* spec: LEX-055 (a backslash only protects the next character; both are kept) *)
 let%expect_test "backslash in literal parts" =
   show {x|f"\"{x}\n\{{y}}" f"a\\"
 |x};
-  [%expect {|
+  [%expect
+    {|
     1:1-1:17 TEMPLATE("f", ["\\\""; {IDENT("x")}; "\\n\\{"; {IDENT("y")}; "}"])
     1:18-1:24 TEMPLATE("f", ["a\\\\"])
     E0044 1:15-1:16 a `}` in template text must be doubled (`}}`) or close an interpolation
@@ -82,8 +84,19 @@ let%expect_test "backslash in literal parts" =
 
 (* spec: LEX-055 (a line break in `{}` only in a triple-quoted template; the margin is computed on all lines) *)
 let%expect_test "triple-quoted templates" =
-  show "f\"\"\"\n    a {x}\n      b {\n        y\n      } c\n    \"\"\"\nsql\"\"\"\n  {a}\n  {b}\n  \"\"\"\n";
-  [%expect {|
+  show
+    "f\"\"\"\n\
+    \    a {x}\n\
+    \      b {\n\
+    \        y\n\
+    \      } c\n\
+    \    \"\"\"\n\
+     sql\"\"\"\n\
+    \  {a}\n\
+    \  {b}\n\
+    \  \"\"\"\n";
+  [%expect
+    {|
     1:1-6:8 TEMPLATE("f", ["a "; {IDENT("x")}; "\n  b "; {IDENT("y")}; " c\n"])
     7:1-10:6 TEMPLATE("sql", [{IDENT("a")}; "\n"; {IDENT("b")}; "\n"])
     |}];
@@ -93,22 +106,26 @@ let%expect_test "triple-quoted templates" =
 (* spec: LEX-055 (E0044) *)
 let%expect_test "malformed interpolations" =
   show "f\"{x\n";
-  [%expect {|
+  [%expect
+    {|
     1:1-1:5 TEMPLATE("f", [])
     E0044 1:3-1:5 a line break inside an interpolation is only allowed in a triple-quoted template
     |}];
   show "f\"a}b\"\n";
-  [%expect {|
+  [%expect
+    {|
     1:1-1:7 TEMPLATE("f", ["a}b"])
     E0044 1:4-1:5 a `}` in template text must be doubled (`}}`) or close an interpolation
     |}];
   show "f\"{x # y}\"\n";
-  [%expect {|
+  [%expect
+    {|
     1:1-1:11 TEMPLATE("f", [{IDENT("x") IDENT("y")}])
     E0044 1:6-1:7 a `#` is not allowed inside an interpolation
     |}];
   show "f\"{}\" f\"{x:a{b}\" f\"{x:a\"b}\"\n";
-  [%expect {|
+  [%expect
+    {|
     1:1-1:6 TEMPLATE("f", [{}])
     1:7-1:17 TEMPLATE("f", [{IDENT("x") : "ab"}])
     1:18-1:28 TEMPLATE("f", [{IDENT("x") : "ab"}])
@@ -122,7 +139,8 @@ let%expect_test "malformed interpolations" =
     E0044 1:3-1:6 unterminated interpolation
     |}];
   show "f\"\"\"\n{x:a\nb}\"\"\"\n";
-  [%expect {|
+  [%expect
+    {|
     1:1-2:5 TEMPLATE("f", [])
     3:1-3:2 IDENT("b")
     3:2-3:3 }
@@ -138,8 +156,7 @@ let%expect_test "nesting limit" =
   Printf.printf "%d tokens, %d diagnostics\n" (List.length toks) (List.length diags);
   [%expect {| 1 tokens, 0 diagnostics |}];
   let toks, diags = Lexer.tokenize ~file:"t.egd" (nest 9) in
-  Printf.printf "%d tokens, %s\n" (List.length toks)
-    (String.concat "; " (List.map show_diag diags));
+  Printf.printf "%d tokens, %s\n" (List.length toks) (String.concat "; " (List.map show_diag diags));
   [%expect {| 1 tokens, E0044 1:25-1:27 templates nest at most 8 levels deep |}];
   (* a hostile depth: bounded work, no stack overflow *)
   let toks, diags = Lexer.tokenize ~file:"t.egd" (nest 100_000) in
@@ -149,7 +166,9 @@ let%expect_test "nesting limit" =
 (* spec: LEX-055 (interpolation tokens carry their exact source positions, also after a line break and with
    multi-byte characters before them) *)
 let%expect_test "interpolation positions" =
-  let toks, diags = Lexer.tokenize ~file:"t.egd" "f\"é{ab + 1}\" sql\"\"\"\n  {\n    cd:s}\n  \"\"\"\n" in
+  let toks, diags =
+    Lexer.tokenize ~file:"t.egd" "f\"é{ab + 1}\" sql\"\"\"\n  {\n    cd:s}\n  \"\"\"\n"
+  in
   assert (diags = []);
   let pos (p : Lexing.position) = Printf.sprintf "%d:%d" p.pos_lnum (p.pos_cnum - p.pos_bol + 1) in
   let rec dump (toks : (Tokens.token * Lexing.position * Lexing.position) list) =
@@ -169,7 +188,8 @@ let%expect_test "interpolation positions" =
       toks
   in
   dump (List.map (fun (t : Lexer.located) -> (t.tok, t.startp, t.endp)) toks);
-  [%expect {|
+  [%expect
+    {|
     interp 1:4-1:12 spec=-
     1:5-1:7 IDENT("ab")
     1:8-1:9 +
@@ -180,10 +200,14 @@ let%expect_test "interpolation positions" =
 
 (* spec: LEX-055 (the lexer never raises, whatever the template-like input; every interpolation token lies inside the
    interpolation it belongs to) *)
-let alphabet = [| 'f'; 'x'; '"'; '"'; '{'; '}'; ':'; '\\'; '\''; '#'; '\n'; ' '; '('; ')'; '['; ']'; 'r'; 'b'; 'a' |]
+let alphabet =
+  [|
+    'f'; 'x'; '"'; '"'; '{'; '}'; ':'; '\\'; '\''; '#'; '\n'; ' '; '('; ')'; '['; ']'; 'r'; 'b'; 'a';
+  |]
 
 let gen_template_soup =
-  QCheck.Gen.(string_size (0 -- 80) ~gen:(map (fun i -> alphabet.(i)) (0 -- (Array.length alphabet - 1))))
+  QCheck.Gen.(
+    string_size (0 -- 80) ~gen:(map (fun i -> alphabet.(i)) (0 -- (Array.length alphabet - 1))))
 
 let rec inside (toks : (Tokens.token * Lexing.position * Lexing.position) list)
     (lo : Lexing.position) (hi : Lexing.position) =
@@ -196,8 +220,7 @@ let rec inside (toks : (Tokens.token * Lexing.position * Lexing.position) list)
 and template_ok (t : Tokens.template) =
   List.for_all
     (function
-      | Tokens.Tpl_lit _ -> true
-      | Tokens.Tpl_interp i -> inside i.toks i.open_pos i.close_pos)
+      | Tokens.Tpl_lit _ -> true | Tokens.Tpl_interp i -> inside i.toks i.open_pos i.close_pos)
     t.parts
 
 let%test "template soup: no exception, interpolation tokens inside their braces" =
@@ -206,11 +229,13 @@ let%test "template soup: no exception, interpolation tokens inside their braces"
          let toks, _ = Lexer.tokenize ~file:"t.egd" src in
          inside
            (List.map (fun (t : Lexer.located) -> (t.tok, t.startp, t.endp)) toks)
-           Lexing.dummy_pos { Lexing.dummy_pos with pos_cnum = max_int }));
+           Lexing.dummy_pos
+           { Lexing.dummy_pos with pos_cnum = max_int }));
   true
 
 (* spec: LEX-055, LEX-051 (nested triple-quoted templates with multi-byte characters: the source text of an
    interpolation is found by character position) *)
 let%expect_test "nested triple-quoted templates" =
   show "f\"\"\"\n  é {f\"\"\"\n    ü {x}\n    \"\"\"} ö\n  \"\"\"\n";
-  [%expect {| 1:1-5:6 TEMPLATE("f", ["\195\169 "; {TEMPLATE("f", ["\195\188 "; {IDENT("x")}; "\n"])}; " \195\182\n"]) |}]
+  [%expect
+    {| 1:1-5:6 TEMPLATE("f", ["\195\169 "; {TEMPLATE("f", ["\195\188 "; {IDENT("x")}; "\n"])}; " \195\182\n"]) |}]

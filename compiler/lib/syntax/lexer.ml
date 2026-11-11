@@ -847,7 +847,9 @@ and template st ~triple =
       (match%sedlex buf with ident_start, Star ident_char -> () | _ -> ());
       Some (kw, startp)
   | None ->
-      let t = { text = Buffer.create 64; starts = Array.make 16 0; cnums = Array.make 16 0; n = 0 } in
+      let t =
+        { text = Buffer.create 64; starts = Array.make 16 0; cnums = Array.make 16 0; n = 0 }
+      in
       new_line t opened;
       let items = ref [] in
       let outcome =
@@ -858,7 +860,8 @@ and template st ~triple =
               (Printf.sprintf "templates nest at most %d levels deep" max_template_depth);
           st.too_deep <- true;
           (* not read any further: the body is skipped as plain text, so that the depth stays bounded *)
-          if triple then ignore (scan_triple_cooked st t) else ignore (scan_dq st (Buffer.create 16));
+          if triple then ignore (scan_triple_cooked st t)
+          else ignore (scan_dq st (Buffer.create 16));
           `Reported
         end
         else begin
@@ -871,7 +874,9 @@ and template st ~triple =
       in
       if outcome = `Unterminated then
         report_range st ~rule:"LEX-055" ~code:"E0040" startp opened "unterminated template literal";
-      let lit = if triple then triple_literals st opened t else fun a b -> Buffer.sub t.text a (b - a) in
+      let lit =
+        if triple then triple_literals st opened t else fun a b -> Buffer.sub t.text a (b - a)
+      in
       let parts =
         List.filter_map
           (function
@@ -908,7 +913,10 @@ and template_body st ~triple t items =
       | '\n' | "\r\n" ->
           new_line t (snd (Sedlexing.lexing_positions buf));
           go ()
-      | Plus (Compl ('"' | '\\' | '{' | '}' | '\n' | '\r')) | '"' | '\r' | "\\", Compl ('\n' | '\r') | '\\' | "{{" | "}}" ->
+      | Plus (Compl ('"' | '\\' | '{' | '}' | '\n' | '\r'))
+      | '"' | '\r'
+      | "\\", Compl ('\n' | '\r')
+      | '\\' | "{{" | "}}" ->
           add (Sedlexing.Utf8.lexeme buf);
           go ()
       | '{' -> opening ()
@@ -920,7 +928,10 @@ and template_body st ~triple t items =
       | '\n' | "\r\n" ->
           Sedlexing.rollback buf;
           finish `Unterminated
-      | Plus (Compl ('"' | '\\' | '{' | '}' | '\n' | '\r')) | '\r' | "\\", Compl ('\n' | '\r') | '\\' | "{{" | "}}" ->
+      | Plus (Compl ('"' | '\\' | '{' | '}' | '\n' | '\r'))
+      | '\r'
+      | "\\", Compl ('\n' | '\r')
+      | '\\' | "{{" | "}}" ->
           add (Sedlexing.Utf8.lexeme buf);
           go ()
       | '{' -> opening ()
@@ -1009,7 +1020,8 @@ and interpolation st ~triple t =
     if !toks = [] then
       report_range st ~rule:"LEX-055" ~code:"E0044" open_s close_e "empty interpolation";
     if triple then begin
-      let b0 = byte_of_cnum st open_s.Lexing.pos_cnum and b1 = byte_of_cnum st close_e.Lexing.pos_cnum in
+      let b0 = byte_of_cnum st open_s.Lexing.pos_cnum
+      and b1 = byte_of_cnum st close_e.Lexing.pos_cnum in
       add_interp_text t open_s (String.sub st.src b0 (b1 - b0))
     end;
     Some (Tpl_interp { open_pos = open_s; close_pos = close_e; toks = List.rev !toks; spec })
@@ -1018,9 +1030,7 @@ and interpolation st ~triple t =
   | `Fail -> unterminated ()
   | `Close -> finish None
   | `Spec spec_pos -> (
-      match read_spec spec_pos with
-      | Some sp -> finish (Some sp)
-      | None -> unterminated ())
+      match read_spec spec_pos with Some sp -> finish (Some sp) | None -> unterminated ())
 
 let tokenize ~file src =
   let pre = Source_check.check ~file src in
