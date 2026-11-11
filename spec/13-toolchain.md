@@ -23,7 +23,8 @@
   code (CT-005). Semantics MUST be identical to compiled code (INT-020); only performance differs.
 - **[TOOL-011] Scripts.** A single `.egd` file without manifest can be run with `egide run`. It may declare dependencies
   in a leading comment block, resolved and locked into a cache keyed by the file's content hash; the same block may carry the
-  `allow` list of PKG-032:
+  `allow` list of PKG-032 (it is the script author's consent, not the runner's: running an untrusted script includes its
+  self-declared `allow`):
 
 ```egide
 #!/usr/bin/env egide run

@@ -72,10 +72,31 @@ PKG-032 said `[package].allow` and gave a manifest-less script (TOOL-011) an emp
 Owner's choice; default A. Either way `allow` is read only from the manifest of the package that declares the edge, never
 as a union over the graph (the variant that would let a dependency satisfy its dependent's gate).
 
+### Third-pass findings (security review of head 0c514a86; Go 1.24.7 reproductions by the reviewer, the list targets 1.25)
+
+| Finding | Evidence | Resolution |
+|---------|----------|------------|
+| B-1: `Func.Pkg()` ownership accepts a local interface method (`type Sink interface{ Write([]byte)(int, error) }`, also embedded in a struct) and a body-less function (assembly stub, `//go:linkname`). Attack: `func Stdout() Sink { return os.Stdout }`, override `m.Sink.Write`, and a write to fd 1 is pure | established (reproduced); the last step extrapolated | GO-044.1 adds to E0702: interface methods (also promoted or via a type parameter), functions without a Go body, and functions whose body triggers GO-042 item 2. The target must have a Go body whose own call graph GO-042 analyses. Overrides exist for items 1 and 3 of GO-042 (calls through values; exported-variable writes), never item 2 |
+| B-2: an accepted override masks a later true positive: GO-043 compares the effective class, which stays `pure`; the same for a tuple on which the function is not pure | extrapolated | the lock records the **underlying** class per tuple next to the override; drift compares it; growth of the capability set under an override is E0701 until the entry is re-confirmed by `egide lock` (GO-044.5) |
+| B-3: duplicated clause in MEM-071; no code for an unlisted `unsafe`/`ffi:`/`go:`/`test-capabilities` in the root; `[package].allow` missing from PKG-010 and the manifest example | established | MEM-071 fixed; new code E0703; PKG-010 and the 10.2 example updated |
+| Non-blocking 1: the key grammar is ambiguous for dotted path elements | extrapolated | longest prefix that is a package of a `[go]` module; ambiguity is E0702 |
+| Non-blocking 3: generic functions | extrapolated | `Func.Origin()`; the override applies to every instantiation |
+| Non-blocking 5: a script's comment block declares its own `allow` | established | TOOL-011 says it is the author's consent, not the runner's |
+| Non-blocking 2: overlap with the other ADR PRs | established | the lock key is **(build tuple, declaring package, function)**, stated here in PKG-040; see "Merge order" |
+
+### Merge order
+
+Recommended: **#32, #33, #34, #35**, as a stack (each PR's base is the previous branch; GitHub retargets to `main` as they
+merge). #29 and #30 touch only ch. 2/3 and can merge at any time; they conflict with the others only in
+`docs/adr/README.md` and `docs/diagnostics.md` rows. Use merge commits, not squashes, for the stacked PRs. Codes were
+allocated in merge order so the catalogue stays sorted: #32 E0701-E0703, #35 E0704-E0705, #34 E0706-E0708, #33 E0709. The
+PKG-030 sentence is extended by #32 (`go_override:`) and by #35 (`go_init:`); the lock rules are PKG-040 (here: key, overrides,
+underlying class) and PKG 043 (#34: toolchain, cache, tuple).
+
 ## Decision
 
 Apply the spec diff: MEM-070 (`std.ptr.Ptr[T]`), MEM-071 (root clause), GO-001 (`[go]` key rule), GO-044 rewritten,
-PKG-030/031/040, new PKG-032, TOOL-011 (script `allow`), diagnostics E0701 and E0702. New rule id: PKG-032.
+PKG-030/031/040, new PKG-032, TOOL-011 (script `allow`), diagnostics E0701, E0702 and E0703. New rule id: PKG-032.
 
 ## Alternatives considered
 
