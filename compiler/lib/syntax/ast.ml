@@ -8,6 +8,7 @@ type span = Egide_source.Span.t
    here escapes it with [Escape.display], so no dangerous code point reaches a derived [show_*]. *)
 let pp_span fmt (s : span) =
   Format.fprintf fmt "%s:%d:%d" (Egide_diagnostics.Escape.display s.file) s.start.line s.start.col
+
 let equal_span (a : span) b = a = b
 
 (* [Uchar.pp] does not exist in OCaml 5.2 (the floor in dune-project). Scalar values print as [U+XXXX], the Unicode

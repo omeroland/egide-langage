@@ -462,11 +462,11 @@ type file = { module_path : path; imports : import list; decls : decl list; span
     - [equal_x] is structural and compares spans and node ids ({!Node_id.equal} on the [id] fields),
       as the hand-written functions it replaced did. For equality that ignores spans and ids,
       compare the {!Print} renderings, which omit both by default.
-    - [pp_x] / [show_x] print OCaml record syntax with spans ([file:line:col], file name escaped) and
-      ids ([#n]). They are {b reserved for tests and debugging}: they are not covered by LEX-006
+    - [pp_x] / [show_x] print OCaml record syntax with spans ([file:line:col], file name escaped)
+      and ids ([#n]). They are {b reserved for tests and debugging}: they are not covered by LEX-006
       (string literal values and identifiers are printed as OCaml-escaped strings, not through
       [Escape.display]; only the span's file name is escaped), their format is {b unstable} (it
-      follows the type definitions, and the numbering of ids follows the grammar), and {b no tool
-      output may use them}: [egide parse], diagnostics, the formatter and the LSP print through
-      {!Print} and [Output]. They are {b not} the S-expression: use [Print.pp_sexp_x] for that. A
-      [Uchar.t] prints as [U+XXXX]. *)
+      follows the type definitions, and the numbering of ids follows the grammar), and
+      {b no tool output may use them}: [egide parse], diagnostics, the formatter and the LSP print
+      through {!Print} and [Output]. They are {b not} the S-expression: use [Print.pp_sexp_x] for
+      that. A [Uchar.t] prints as [U+XXXX]. *)

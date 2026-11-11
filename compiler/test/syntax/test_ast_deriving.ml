@@ -103,7 +103,9 @@ let%expect_test "derived equal agrees with structural equality" =
    (ESC, U+202E right-to-left override, LF). Every show_* reaches a span through [pp_span]; five representative ones. *)
 let%expect_test "derived show_* escape a hostile file name in spans" =
   let hostile = "a\x1b[31m\xE2\x80\xAEb\nc.egd" in
-  let hsp = Egide_source.Span.make ~file:hostile ~start:{ line = 1; col = 1 } ~stop:{ line = 1; col = 2 } in
+  let hsp =
+    Egide_source.Span.make ~file:hostile ~start:{ line = 1; col = 1 } ~stop:{ line = 1; col = 2 }
+  in
   let g = Node_id.Gen.create () in
   let i : ident = { id = Node_id.Gen.fresh g; name = "x"; span = hsp } in
   let pa : path = { id = Node_id.Gen.fresh g; segments = [ i ]; span = hsp } in
@@ -111,7 +113,14 @@ let%expect_test "derived show_* escape a hostile file name in spans" =
   let ty : ty = { id = Node_id.Gen.fresh g; ty = Ty_path { path = pa; args = [] }; span = hsp } in
   let st : stmt = { id = Node_id.Gen.fresh g; stmt = Expr ex; span = hsp } in
   let outs =
-    [ show_ident i; show_path pa; show_expr ex; show_ty ty; show_stmt st; Format.asprintf "%a" pp_span hsp ]
+    [
+      show_ident i;
+      show_path pa;
+      show_expr ex;
+      show_ty ty;
+      show_stmt st;
+      Format.asprintf "%a" pp_span hsp;
+    ]
   in
   (* [Format] breaks a long record over several lines, so a plain LF is layout, not data: only the single-line outputs
      are checked for LF. Every other scalar is checked with the repository's own predicate. *)
@@ -131,7 +140,8 @@ let%expect_test "derived show_* escape a hostile file name in spans" =
   Printf.printf "LF in the single-line outputs: %b\n"
     (List.exists (dangerous ~allow_lf:false) [ show_ident i; Format.asprintf "%a" pp_span hsp ]);
   print_endline (show_ident i);
-  [%expect {|
+  [%expect
+    {|
     dangerous in any output: false
     LF in the single-line outputs: false
     { Ast.id = #0; name = "x"; span = a\u{1B}[31m\u{202E}b\nc.egd:1:1 }

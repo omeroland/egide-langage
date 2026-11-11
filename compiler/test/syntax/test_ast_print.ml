@@ -868,7 +868,8 @@ let%expect_test "pp_* formatters print the same text as the string functions" =
   Format.printf "%a@." Print.pp_sexp_ty (tn "int");
   Format.printf "%a@." Print.pp_sexp_stmt (s Continue);
   Format.printf "%a@." Print.pp_sexp_block (blk [ s Continue ]);
-  Format.printf "%a@." Print.pp_sexp_decl (decl (Const { name = id "A"; ty = None; value = int "1" }));
+  Format.printf "%a@." Print.pp_sexp_decl
+    (decl (Const { name = id "A"; ty = None; value = int "1" }));
   Format.printf "%a@." Print.pp_sexp_file (file "m" []);
   [%expect
     {|
