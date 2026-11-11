@@ -158,8 +158,9 @@ let%expect_test "malformed integer literals" =
     E0030 12:1-12:6 `abc` directly follows the numeric literal `12`
     |}]
 
-(* spec: LEX-041 (E0031) *)
-let%expect_test "malformed float literals" =
+(* spec: LEX-041 (E0031). The last case, `00.5`, is extrapolated: the spec does not say whether the leading-zero rule
+   of LEX-040 covers the integer part of a float (Q-0025.1). *)
+let%expect_test "malformed float literals (00.5 is extrapolated, Q-0025.1)" =
   show "1E9\n1e\n1.5_\n1.5ms\n1e_5\n1_.5\n1.5__0\n1e+\n00.5\n";
   [%expect
     {|
@@ -182,6 +183,25 @@ let%expect_test "malformed float literals" =
     E0031 7:1-7:7 `_` may not be doubled in a numeric literal
     E0031 8:1-8:3 the exponent has no digits
     E0031 9:1-9:5 leading zero in `00`
+    |}]
+
+
+(* spec: LEX-040, LEX-041 *)
+let%expect_test "uppercase prefix and exponent forms, a dot after a prefixed integer, non-ASCII after a number" =
+  show "1E+9\n0O7\n0B1\n0x1.5\n5\xc3\xa9\n";
+  [%expect
+    {|
+    1:1-5 FLOAT("1E+9")
+    2:1-4 INT("0O7")
+    3:1-4 INT("0B1")
+    4:1-4 INT("0x1")
+    4:4-5 .
+    4:5-6 INT("5")
+    5:1-2 INT("5")
+    E0031 1:1-1:5 the exponent letter must be lowercase `e`
+    E0030 2:1-2:4 `O7` directly follows the numeric literal `0` [integer prefixes are lowercase: 0x, 0o, 0b]
+    E0030 3:1-3:4 `B1` directly follows the numeric literal `0` [integer prefixes are lowercase: 0x, 0o, 0b]
+    E0051 5:2-5:3 unexpected character `é`
     |}]
 
 (* spec: LEX-042, LEX-040 *)
@@ -235,4 +255,33 @@ let%test "amount.unit lexes to one DURATION" =
          | [ { tok; _ } ], [] ->
              Parse.token_to_string tok = Printf.sprintf "DURATION(%S, %S)" (string_of_int n) u
          | _ -> false));
+  true
+
+(* spec: LEX-040, LEX-041, LEX-042: tokens are in order and inside the input, and a numeric token carries at most
+   one diagnostic (the soup is ASCII, so a column offset is a byte offset). *)
+let%test "token spans stay inside the input; at most one diagnostic per literal" =
+  seeded
+    (QCheck2.Test.make ~name:"spans and diagnostic count" ~count:5000
+       QCheck2.Gen.(
+         string_size
+           ~gen:(oneof_list (List.of_seq (String.to_seq "0123456789_xobeE.+-sminuhfa ")))
+           (int_range 0 24))
+       (fun s ->
+         let toks, diags = Lexer.tokenize ~file:"t.egd" s in
+         let rec ordered prev = function
+           | [] -> true
+           | ({ startp; endp; _ } : Lexer.located) :: rest ->
+               prev <= startp.pos_cnum
+               && startp.pos_cnum < endp.pos_cnum
+               && endp.pos_cnum <= String.length s
+               && ordered endp.pos_cnum rest
+         in
+         let numeric =
+           List.length
+             (List.filter
+                (fun (t : Lexer.located) ->
+                  match t.tok with Tokens.INT _ | FLOAT _ | DURATION _ -> true | _ -> false)
+                toks)
+         in
+         ordered 0 toks && List.length diags <= numeric));
   true

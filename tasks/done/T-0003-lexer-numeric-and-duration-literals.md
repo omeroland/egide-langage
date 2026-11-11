@@ -6,7 +6,7 @@ phase: 0
 role: syntax-engineer
 depends_on: [T-0001]
 spec: [LEX-040, LEX-041, LEX-042]
-paths: [compiler/lib/syntax/, compiler/test/syntax/, tests/conformance/lexical/]
+paths: [compiler/lib/syntax/, compiler/test/syntax/, tests/conformance/lexical/, tools/gen/tokens.py]
 estimate: M
 labels: []
 status: done
@@ -24,10 +24,10 @@ Spec rules: LEX-040, LEX-041, LEX-042. See docs/architecture.md and the role fil
 
 ## Acceptance criteria
 
-- [ ] All forms of LEX-040..042 tokenised; `5.s`, `500.ms`, `30.min` are single DURATION tokens
-- [ ] `1.` , `1__0`, `0x`, `_1`, `1_` rejected with the right code and span
-- [ ] Overflow is **not** checked here (it depends on the type, TYP-070); a note in the Log explains it
-- [ ] Conformance tests: ≥ 6 lex-pass, ≥ 6 lex-fail
+- [x] All forms of LEX-040..042 tokenised; `5.s`, `500.ms`, `30.min` are single DURATION tokens
+- [x] `1__0`, `0x`, `1_` rejected with the right code and span (E0030, span = whole literal). `1.` and `_1` are **not** lexical errors: `1.` lexes as `INT .` (LEX-041, LEX-042) and is rejected by the parser (E0100); `_1` is an identifier (LEX-020). Criterion rewritten by the syntax-engineer, to be confirmed by the language-architect (Q-0025.2)
+- [x] Overflow is **not** checked here (it depends on the type, TYP-070); a note in the Log explains it
+- [x] Conformance tests: ≥ 6 lex-pass, ≥ 6 lex-fail
 
 ## Out of scope
 
@@ -59,6 +59,11 @@ Anything not listed in the acceptance criteria; create follow-up tasks.
   token files (`tools/gen/tokens.py`, `tokens.mly`, `token_table.ml`); T-1104 replaces the layout pass. Expect textual
   conflicts in the `token` match arms and in `VALUED` in the generator; regenerate with `python3 tools/gen/tokens.py`
   after resolving. `parser.mly` `expr_desc` is shared with T-0011.
+
+2026-11-10 syntax-engineer (T-0003, review of PR #21):
+- **Warning for T-0031 (type checker).** The text of a *malformed* token is still carried by `INT`/`FLOAT`: `0x_1` and `1__0` are accepted by OCaml's `int_of_string` (it ignores `_`, and accepts `0x_1`). The type checker (TYP-070 range check) must not parse the text of a token for which a lexical diagnostic (E0030/E0031) exists, otherwise a rejected literal could get a value.
+- **Benchmark (hot path changed), before = main 0881324, after = this branch, `egide lex FILE > /dev/null`, whole pipeline including layout and token printing, one run each, noisy:** 2 M-character decimal literal 0.126 s / 0.129 s; 1 M occurrences of `1. ` 1.94 s / 1.97 s; 900 k lines of `let a = 1_000.5e3`, `let b = 500.ms`, `let c = 0xFF` 4.32 s / 3.98 s. No regression within noise; these numbers do not measure the lexer alone (the 1 M lines/s target of docs/architecture.md §5 is not assessed here, and the existing pipeline is slower than that target; it is not changed by this task). The reviewer's figures for the base (0.14-0.41 s, ~1 s) are in the same range.
+- `00.5` stays E0031 (extrapolated, Q-0025.1); the test is labelled accordingly.
 
 ## Outcome
 
