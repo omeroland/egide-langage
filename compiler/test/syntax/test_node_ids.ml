@@ -474,8 +474,8 @@ let%expect_test "a hand-built tree with every id-bearing kind: one id each" =
   in
   let f : file = { module_path = path "m"; imports = []; decls; span = sp } in
   let ids = ids_of_file f in
-  Printf.printf "nodes: %d, allocated: %d, distinct: %b\n" (List.length ids)
-    (Node_id.Gen.count gen) (all_distinct ids);
+  Printf.printf "nodes: %d, allocated: %d, distinct: %b\n" (List.length ids) (Node_id.Gen.count gen)
+    (all_distinct ids);
   [%expect {| nodes: 58, allocated: 58, distinct: true |}]
 
 (* ---------- property: seed-subset programs ---------- *)
@@ -486,9 +486,7 @@ let gen_source =
   let* imports = list_size (int_bound 4) (pair name (option name)) in
   let value = oneof [ map string_of_int (int_bound 99); return "true" ] in
   let+ consts = list_size (int_bound 6) (pair name value) in
-  let imp (m, alias) =
-    "import a." ^ m ^ match alias with None -> "" | Some al -> " as " ^ al
-  in
+  let imp (m, alias) = "import a." ^ m ^ match alias with None -> "" | Some al -> " as " ^ al in
   String.concat "\n"
     (("module m" :: List.map imp imports) @ List.map (fun (n, v) -> "let " ^ n ^ " = " ^ v) consts)
   ^ "\n"
@@ -502,7 +500,9 @@ let prop_ids =
       let f = parse ~gen src in
       let ids = ids_of_file f in
       let n = List.length ids in
-      all_distinct ids && sorted ids = List.init n Fun.id && n = Node_id.Gen.count gen
+      all_distinct ids
+      && sorted ids = List.init n Fun.id
+      && n = Node_id.Gen.count gen
       && ints ids = ints (ids_of_file (parse src)))
 
 (* spec: none (architecture §2.4) *)

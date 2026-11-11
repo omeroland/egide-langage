@@ -15,13 +15,13 @@
     ids) each node also prints its {!Node_id.t} as an [#n] atom after its span atom, and each bare
     atom is suffixed [#n] after its span suffix. A node that prints as a bare atom shows its own id
     (a path, [Pat_bind], a type or bound without arguments, [_], [Self]) and the id of the
-    identifier or path inside is not shown; a wrapper that adds no syntax ([Stmt.Expr], a plain unlabelled
-    argument, the [fn_decl] inside a declaration or item) shows its child's id, not its own. So the
-    output lists every id of a tree except those of such wrappers; use the tree itself to
-    enumerate all ids. A list longer than 100 bytes at its indentation is broken
-    after its leading atoms (and its subject, such as the callee of a call, if it fits), each
-    remaining child on its own line indented by two spaces. A file renders as its [(module …)] line
-    followed by one line per import and declaration, indented by two spaces.
+    identifier or path inside is not shown; a wrapper that adds no syntax ([Stmt.Expr], a plain
+    unlabelled argument, the [fn_decl] inside a declaration or item) shows its child's id, not its
+    own. So the output lists every id of a tree except those of such wrappers; use the tree itself
+    to enumerate all ids. A list longer than 100 bytes at its indentation is broken after its
+    leading atoms (and its subject, such as the callee of a call, if it fits), each remaining child
+    on its own line indented by two spaces. A file renders as its [(module …)] line followed by one
+    line per import and declaration, indented by two spaces.
 
     The head of each node kind:
     - literals: [(int 1)] [(float 1.5)] [(duration 5 s)] [(string "…")] [(raw "…")] [(bytes "…")]

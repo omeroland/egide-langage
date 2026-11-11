@@ -14,12 +14,12 @@
     - Every node that a later pass annotates or scopes carries an [id : Node_id.t], unique within a
       parsed file (docs/architecture.md §2.3, T-1006): identifiers, paths, expressions, patterns,
       types, statements, blocks, declarations, call arguments ([arg]), [bound]s, [generic]s,
-      [param]s (so that [self] has a key), [field]s, [variant]s, trait and impl items and [fn_decl]s.
-      A wrapper whose identity is that of a child it always contains ([lambda_param], [typed_ident],
-      [with_item], [case_arm], [if_branch], [map_entry], [attribute], [fn_sig], [import], and the
-      pieces of a pattern or clause) has none: key a side table on the child's id. Ids are stored
-      in the tree, so structural equality ({!equal_file} and the like) compares them: two parses of
-      one source are equal, two hand-built trees with distinct ids are not.
+      [param]s (so that [self] has a key), [field]s, [variant]s, trait and impl items and
+      [fn_decl]s. A wrapper whose identity is that of a child it always contains ([lambda_param],
+      [typed_ident], [with_item], [case_arm], [if_branch], [map_entry], [attribute], [fn_sig],
+      [import], and the pieces of a pattern or clause) has none: key a side table on the child's id.
+      Ids are stored in the tree, so structural equality ({!equal_file} and the like) compares them:
+      two parses of one source are equal, two hand-built trees with distinct ids are not.
     - The tree is purely syntactic and immutable: no resolution or type information, no desugaring.
       Pipes, comprehensions, trailing blocks and [?] are desugared in HIR (docs/architecture.md §1).
     - Layout-only distinctions that carry no meaning (single-line vs indented block, [fn:] vs
@@ -432,10 +432,10 @@ type file = { module_path : path; imports : import list; decls : decl list; span
 
 (** {1 Equality}
 
-    Structural equality, spans and node ids included. These play the role of [[@@deriving eq]] (see T-0008 Log):
-    the names are the ones ppx_deriving would generate so that callers do not change when it is
-    adopted ([Node_id.equal] is what the derived functions will call on the [id] fields). For
-    equality that ignores spans and ids, compare the {!Print} renderings, which omit both by
+    Structural equality, spans and node ids included. These play the role of [[@@deriving eq]] (see
+    T-0008 Log): the names are the ones ppx_deriving would generate so that callers do not change
+    when it is adopted ([Node_id.equal] is what the derived functions will call on the [id] fields).
+    For equality that ignores spans and ids, compare the {!Print} renderings, which omit both by
     default. *)
 
 val equal_file : file -> file -> bool

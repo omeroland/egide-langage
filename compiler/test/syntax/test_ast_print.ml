@@ -160,7 +160,11 @@ let%expect_test "struct, enum, trait, impl and type declarations of spec 3.3" =
             supertraits = [];
             items =
               [
-                { id = nid (); item = Ti_sig (fsig "display" [ self_param By_read ] ~ret:(tn "str")); span = sp };
+                {
+                  id = nid ();
+                  item = Ti_sig (fsig "display" [ self_param By_read ] ~ret:(tn "str"));
+                  span = sp;
+                };
               ];
           }));
   let display_body =
@@ -292,7 +296,11 @@ let%expect_test
             supertraits = [ bound "Len"; bound "Show" ];
             items =
               [
-                { id = nid (); item = Ti_type { name = id "Item"; bound = Some (bound "Eq") }; span = sp };
+                {
+                  id = nid ();
+                  item = Ti_type { name = id "Item"; bound = Some (bound "Eq") };
+                  span = sp;
+                };
                 { id = nid (); item = Ti_type { name = id "Key"; bound = None }; span = sp };
                 {
                   id = nid ();
@@ -821,7 +829,11 @@ let%expect_test "spans mode on hand-built nodes" =
   let callee = ex (Call { callee = target; args = [] }) (at 1 1 4) in
   let tgt = ex (Field { target = pth "t" (at 2 1 2); name = ident "n" (at 2 3 4) }) (at 2 1 4) in
   let st : stmt =
-    { id = nid (); stmt = Assign { target = tgt; op = Add_assign; value = callee }; span = at 2 1 9 }
+    {
+      id = nid ();
+      stmt = Assign { target = tgt; op = Add_assign; value = callee };
+      span = at 2 1 9;
+    }
   in
   print_endline (Print.stmt ~spans:true st);
   [%expect

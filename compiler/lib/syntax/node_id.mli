@@ -6,11 +6,11 @@
     identifier).
 
     An id is only meaningful together with the tree it was allocated for. Ids are allocated from an
-    explicit {!Gen.t} (no global state, invariant 5) in the order the parser builds the nodes, so the
-    same source and the same generator state always give the same ids (invariant 4). Allocating from
-    one generator for several files makes ids unique across them; the default of {!Parse.file} is a
-    fresh generator per file, so ids are then unique within one file only and a table over several
-    files is keyed by (file, id). *)
+    explicit {!Gen.t} (no global state, invariant 5) in the order the parser builds the nodes, so
+    the same source and the same generator state always give the same ids (invariant 4). Allocating
+    from one generator for several files makes ids unique across them; the default of {!Parse.file}
+    is a fresh generator per file, so ids are then unique within one file only and a table over
+    several files is keyed by (file, id). *)
 
 type t
 (** An opaque identifier. Not an index into anything: only equality, ordering and hashing are
