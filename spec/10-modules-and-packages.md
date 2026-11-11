@@ -50,20 +50,26 @@ Thanks to capabilities (chapter 6), a dependency can only do what the code passe
 I/O permissions. It controls only the ways around the model.
 
 - **[PKG-030]** A dependency whose code (transitively) contains `unsafe`, C FFI, impure Go calls or `@go_threadsafe` MUST be listed with
-  the matching `allow` entries: `"unsafe"`, `"ffi:<library>"`, `"go:<module>"`, `"go_threadsafe:<go module>"` (GO-032), `"go_override:<import path>.<Func>"` (GO-044), `"test-capabilities"`.
-  A Go package whose initialisation is impure counts as impure Go code of its module (GO-045).
+  the matching `allow` entries: `"unsafe"`, `"ffi:<library>"`, `"go:<module>"`, `"go_init:<module>"` (GO-045), `"go_threadsafe:<go module>"` (GO-032), `"go_override:<import path>.<Func>"` (GO-044), `"test-capabilities"`.
   A dependency update that introduces a new breach fails the build until the manifest is updated.
 - **[PKG-031]** `allow` entries are not transitive: every package that (transitively) depends on a breaching package
-  declares it, so the breach is visible at every level.
+  declares it, so the breach is visible at every level. An `allow` list is read only from the manifest of the package that
+  declares the dependency edge, never as a union over the graph, so a dependency cannot satisfy a gate of its dependent.
+- **[PKG-032]** A package declares its own breaches (an override of GO-044, a `@go_threadsafe`, `unsafe`) in
+  `allow = [...]` of its `[package]` table, with the same entries as PKG-030; for the root package this is the only
+  place, and a manifest-less script (TOOL-011) has an empty list.
 
 ## 10.5 Lockfile and integrity
 
 - **[PKG-040]** `egide.lock` records, for every package: exact version, SHA-256 of the source archive, the publisher's
   Sigstore signature bundle, the `allow` breaches found, and for Go modules the `go.sum` lines, the per-function
-  capability classification (GO-042) and the classification of each package's initialisation (GO-045).
+  capability classification (GO-042), the classification of each package's initialisation (GO-045), the overrides, the Go
+  toolchain version and the build tuple of GO-046. Classifications and overrides are keyed by the declaring package as
+  well as by the function, so that package B never reads the override of package A.
 - **[PKG-041]** Builds verify every hash and signature. A mismatch is a fatal error; there is no flag to skip it.
 - **[PKG-042]** Installing or building a package never executes code of that package with authority: there are no
-  build scripts, install hooks or post-install steps (INT-005).
+  build scripts, install hooks or post-install steps (INT-005). The same holds for the Go modules of `[go]`: the Go
+  build of the closure runs under GO-046 (no cgo, no toolchain download, no `go generate`).
 
 ## 10.6 Reproducibility and provenance
 

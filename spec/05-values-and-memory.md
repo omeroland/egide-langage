@@ -99,7 +99,7 @@ add_line(&cart, cart.lines[0])    # error MEM-021: `cart` is borrowed as inout b
 
 ## 5.8 Unsafe
 
-- **[MEM-070]** `unsafe(reason: "…"): block` permits raw pointers (`std.ptr.Ptr[T]`; the module is not named `unsafe`, which is a reserved word, LEX-021, so that `unsafe` stays a marker that only the block form can carry), unchecked construction of
+- **[MEM-070]** `unsafe(reason: "…"): block` permits raw pointers (`std.ptr.Ptr[T]`), unchecked construction of
   validated types, capability construction for testing, and C FFI. The reason string is mandatory and satisfies SYN-018.
 - **[MEM-071]** A function containing `unsafe` is not marked in its signature, but its package MUST declare
   `allow = ["unsafe"]` in the manifest of every dependent (PKG-030), and `egide audit` lists every `unsafe` block.

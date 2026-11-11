@@ -11,7 +11,7 @@ pull request**. Codes are never reused.
 | E0100–E0199 | syntax (ch. 3) |
 | E0200–E0299 | names, modules, types (ch. 4, 10) |
 | E0300–E0399 | values, memory, resources (ch. 5, 8) |
-| E0400–E0499 | capabilities and security (ch. 6, 12) |
+| E0400–E0499 | capabilities, security and authority gates (ch. 6, 12; the `allow` and Go-boundary gates of ch. 10, 11, as E0420 and E0421 already were) |
 | E0500–E0599 | concurrency (ch. 7) |
 | E0600–E0699 | comptime (ch. 9) |
 | E0700–E0799 | packages and Go interop (ch. 10, 11) |
@@ -73,12 +73,17 @@ pull request**. Codes are never reused.
 | E0412 | SEC-002 | `Untrusted[{T}]` passed where `{T}` is required — risk: injection. Validate it first | allocated |
 | E0420 | GO-032 | `@go_threadsafe` requires `import go` of the type's module in this package | allocated |
 | E0421 | GO-032, PKG-030 | `@go_threadsafe` for `{module}` is not listed as `go_threadsafe:{module}` in the manifest `allow` | allocated |
-| E0422 | GO-044, PKG-030 | `[go.overrides]` for `{fn}` is not listed as `go_override:{fn}` in the manifest `allow` | proposed (ADR-0022) |
-| E0423 | GO-044 | override key `{key}` is not a function of a Go module declared in this package's `[go]` section | proposed (ADR-0022) |
-| E0424 | GO-045, PKG-030 | impure Go code (call or package initialisation) of `{module}` is not listed as `go:{module}` in the manifest `allow` | proposed (ADR-0022) |
+| E0422 | GO-044, PKG-030 | `[go.overrides]` for `{fn}` is not listed as `go_override:{fn}` in the `allow` of the dependency edge | proposed (ADR-0022) |
+| E0423 | GO-044 | override key `{key}` is not an exported function or method of a package of a Go module declared in this package's `[go]` section (the standard library, `init` and nested modules are excluded) | proposed (ADR-0022) |
+| E0424 | GO-044, GO-045, PKG-030 | impure Go code of `{module}` ({calls or initialisation}) is not listed as `{go or go_init}:{module}` in the `allow` of the dependency edge | proposed (ADR-0022) |
+| E0425 | GO-045 | the initialisation of `{package}` is forbidden or, for a standard package, not `pure`; no `allow` entry lifts it (blank imports included) | proposed (ADR-0022) |
+| E0426 | GO-046 | `{package}` contains cgo, C, C++, Objective-C, SWIG sources or `.syso` objects; cgo is disabled for the Go closure | proposed (ADR-0022) |
+| E0427 | GO-046, GO-043 | no classification of the Go closure in `egide.lock` for build tuple `{GOOS}/{GOARCH}/{tags}`; run `egide lock --target` | proposed (ADR-0022) |
 | E0601 | LEX-055, CT-041 | template `{prefix}` (result type `{Sink}`) does not accept a format specifier (`:spec`) — sinks take none, risk: unreviewed channel into `{Sink}` | allocated |
 | E0602 | CT-040 | `@template` of the reserved standard prefix `{prefix}` outside `std` | allocated |
-| E0610 | CT-002 | top-level `let` or `comptime` argument must be pure: contains `{what}` (including "a call to a Go function", CT-006; also a TYP-031 predicate) | allocated |
+| E0610 | CT-002 | top-level `let` or `comptime` argument must be pure: contains `{what}` | allocated |
+| E0611 | CT-006 | compile-time code reaches Go code ({a call, a function value, a method or an operation on a Go-typed value}); the compile-time evaluator never runs Go | proposed (ADR-0022) |
+| E0612 | TOOL-010, CT-006 | `import go` is not available in the REPL | proposed (ADR-0022) |
 | W0001 | LEX-005 | right-to-left text in a string or comment may display the rest of the line in a different order; bind the string with `let` on its own line | allocated |
 | W0002 | LEX-011 | doc comment is not attached to a declaration | allocated |
 

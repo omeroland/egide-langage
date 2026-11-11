@@ -58,7 +58,7 @@
   runtime cost. It has no operations except those derived or implemented explicitly; conversion uses
   `UserId(42)` and `id.value`.
 - **[TYP-031] Validated types.** `type Port = new u16 where <predicate on self>` declares a newtype with an invariant.
-  The predicate MUST be a pure expression (CAP-040) of type `bool` and MUST NOT call a Go function (CT-006, E0610).
+  The predicate MUST be a pure expression (CAP-040) of type `bool` and is evaluated at compile time for literals, so it cannot reach Go code (CT-006, E0611), directly or through helpers.
   - `Port.parse(x)` returns `Result[Port, ValidationError]`; it is the only runtime constructor.
   - A literal assigned to a validated type is checked at compile time: `let p: Port = 0` is a compile-time error.
   - Construction via `Port(x)` without validation requires `unsafe`.
