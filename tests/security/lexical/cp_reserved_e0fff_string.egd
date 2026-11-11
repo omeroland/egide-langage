@@ -1,0 +1,8 @@
+# spec: LEX-003
+# expect: lex-fail
+# diagnostic: E0004 at 8:11
+# phase: 1
+# Attack. Reserved (unassigned) Default_Ignorable code point: forbidden by property, never by an assigned-only list.
+module tests.security.cp_reserved_e0fff_string
+
+let k = "a󠿿b"

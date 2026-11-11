@@ -1,0 +1,15 @@
+# spec: SYN-053, SYN-051
+# expect: compile-fail
+# diagnostic: E0121 at 15:14
+# phase: 1
+# Attack. A lowercase typo of a variant must not become the exhaustive catch-all.
+module tests.security.pattern_lowercase_typo_catch_all
+
+enum State:
+    Available
+    Discontinued
+
+fn f(s: State) -> int:
+    match s:
+        case Available: 1
+        case discontinued: 0

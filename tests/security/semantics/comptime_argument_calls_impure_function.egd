@@ -1,0 +1,15 @@
+# spec: CT-002, CT-010, CAP-040
+# expect: compile-fail
+# diagnostic: E0610 at 15:11
+# phase: 2
+module tests.security.comptime_argument_calls_impure_function
+
+fn helper() -> int:
+    unsafe(reason: "foreign call"):
+        0
+
+fn scale(comptime n: int) -> int:
+    n * 2
+
+fn g() -> int:
+    scale(helper())

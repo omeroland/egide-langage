@@ -1,0 +1,8 @@
+# spec: GO-001, SYN-018
+# expect: parse-fail
+# diagnostic: E0115 at 8:11
+# phase: 1
+# Attack. U+0020 is not in the printable ASCII range U+0021 to U+007E of an import go path.
+module tests.security.import_go_path_space
+
+import go "k8s.io/client go" as k

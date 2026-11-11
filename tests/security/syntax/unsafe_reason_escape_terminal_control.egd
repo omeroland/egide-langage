@@ -1,0 +1,10 @@
+# spec: SYN-017, SYN-018
+# expect: parse-fail
+# diagnostic: E0110 at 9:20
+# phase: 1
+# Attack. A reason is printed by egide audit; an escape that yields ESC must not reach it (LEX-006, SYN-018).
+module tests.security.unsafe_reason_escape_terminal_control
+
+fn f():
+    unsafe(reason: "\u{1B}[1A\u{1B}[2Kall clear"):
+        ()

@@ -1,0 +1,9 @@
+# spec: CT-002, CAP-040
+# expect: compile-fail
+# diagnostic: E0610 at 8:5
+# phase: 2
+module tests.security.toplevel_let_lambda_body_contains_unsafe
+
+let F = fn():
+    unsafe(reason: "foreign call"):
+        ()

@@ -1,0 +1,9 @@
+# spec: LEX-003
+# expect: lex-fail
+# diagnostic: E0004 at 8:4
+# phase: 1
+# Attack. Default_Ignorable_Code_Point, invisible, not in the first LEX-003 list (found by the T-1038 review).
+module tests.security.cp_khmer_inherent_vowel_aq_17b4_comment
+
+# a឴b
+let x = 1

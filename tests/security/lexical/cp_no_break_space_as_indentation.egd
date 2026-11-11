@@ -1,0 +1,8 @@
+# spec: LEX-003, LEX-004
+# expect: lex-fail
+# diagnostic: E0051 at 8:1
+# Attack. Four NBSP look like one indentation level but must not indent.
+module tests.security.cp_no_break_space_as_indentation
+
+fn f():
+    let y = 1

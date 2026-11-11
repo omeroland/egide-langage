@@ -1,0 +1,12 @@
+# spec: SYN-023, SYN-018
+# expect: parse-fail
+# diagnostic: E0118 at 10:11
+# phase: 1
+# Attack. Every attribute argument string is a string consumed by a tool.
+module tests.security.attribute_template_argument_zero_width_escape
+
+import std.meta
+
+@template("\u{200B}x")
+fn t(parts: comptime List[str]) -> int:
+    0

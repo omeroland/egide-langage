@@ -1,0 +1,10 @@
+# spec: SYN-017, SYN-018
+# expect: parse-fail
+# diagnostic: E0110 at 9:20
+# phase: 1
+# Attack. Zs other than U+0020 is rejected after escape processing.
+module tests.security.unsafe_reason_no_break_space_escape
+
+fn f():
+    unsafe(reason: "a\u{A0}b"):
+        ()

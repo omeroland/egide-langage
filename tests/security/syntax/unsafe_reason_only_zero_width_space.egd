@@ -1,0 +1,10 @@
+# spec: SYN-017, SYN-018
+# expect: parse-fail
+# diagnostic: E0110 at 9:20
+# phase: 1
+# Attack. Non-empty and invisible: a reviewer sees a blank reason.
+module tests.security.unsafe_reason_only_zero_width_space
+
+fn f():
+    unsafe(reason: "\u{200B}"):
+        ()

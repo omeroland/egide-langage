@@ -1,0 +1,9 @@
+# spec: SYN-017, SYN-018
+# expect: parse-pass
+# phase: 1
+# Control. The limit itself is accepted.
+module tests.security.unsafe_reason_200_scalars_accepted
+
+fn f():
+    unsafe(reason: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"):
+        ()

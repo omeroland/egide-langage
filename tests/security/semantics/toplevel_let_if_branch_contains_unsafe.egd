@@ -1,0 +1,13 @@
+# spec: CT-002, CAP-040
+# expect: compile-fail
+# diagnostic: E0610 at 9:5
+# phase: 2
+# Attack. The head of the initialiser is allowed (if); unsafe nested in a branch must still be rejected statically.
+module tests.security.toplevel_let_if_branch_contains_unsafe
+
+let P = if true:
+    unsafe(reason: "foreign call at build time"):
+        ()
+    1
+else:
+    2

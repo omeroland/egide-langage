@@ -1,0 +1,11 @@
+# spec: SYN-023, SYN-018, GO-032
+# expect: parse-fail
+# diagnostic: E0118 at 10:24
+# phase: 1
+# Attack. A blank reason defeats the audit listing.
+module tests.security.attribute_go_threadsafe_reason_blank
+
+import go "sync" as sync
+
+@go_threadsafe(reason: " ")
+type Pool = sync.Pool

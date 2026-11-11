@@ -1,0 +1,8 @@
+# spec: LEX-003
+# expect: lex-fail
+# diagnostic: E0004 at 8:11
+# phase: 1
+# Attack. Noncharacter_Code_Point: forbidden for every plane, not only the BMP.
+module tests.security.cp_noncharacter_1ffff_string
+
+let k = "a🿿b"

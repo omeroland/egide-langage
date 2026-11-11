@@ -1,0 +1,10 @@
+# spec: SYN-017, SYN-018
+# expect: parse-fail
+# diagnostic: E0110 at 9:20
+# phase: 1
+# Attack. One scalar over the limit (1 to 200, SYN-018).
+module tests.security.unsafe_reason_201_scalars
+
+fn f():
+    unsafe(reason: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"):
+        ()

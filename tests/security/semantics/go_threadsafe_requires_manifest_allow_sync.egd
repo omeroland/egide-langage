@@ -1,0 +1,10 @@
+# spec: GO-032, PKG-030, PKG-031
+# expect: compile-fail
+# diagnostic: E0421 at 9:1
+# phase: 6
+module tests.security.go_threadsafe_requires_manifest_allow_sync
+
+import go "sync" as sync
+
+@go_threadsafe(reason: "sync.Pool is documented as safe for concurrent use")
+type Pool = sync.Pool
