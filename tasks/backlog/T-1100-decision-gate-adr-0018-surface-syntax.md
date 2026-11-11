@@ -1,6 +1,6 @@
 ---
 id: T-1100
-title: Decision gate: ADR-0018 surface syntax
+title: Close the ADR-0018 decision: status, amendments, index
 kind: task
 phase: 0
 role: language-architect
@@ -8,7 +8,7 @@ depends_on: []
 spec: [SYN-010, LEX-036]
 paths: [docs/adr/]
 estimate: S
-labels: [blocked-on-owner]
+labels: []
 status: backlog
 claimed_by:
 claimed_at:
@@ -16,20 +16,21 @@ claimed_at:
 
 ## Goal
 
-Record the owner's decision on ADR-0018. DO NOT CLAIM until ADR-0018 is `Accepted` on `main`; if it is `Rejected`, move every T-1101..T-1109 to done as not applicable and keep T-1035 and T-0009 as they are. If accepted, mark ADR-0005 superseded, ADR-0013/0015/0016 amended, update the index.
+After the owner merges PR #20 (ADR-0018, option B, relayed owner decision of 2026-11-10 with defaults for Q2-Q5 and Q7), on an `adr/*` branch for the owner to merge: set ADR-0018 to `Accepted` ("Decided by: owner (confirmed in chat 2026-11-10); defaults for Q2-Q5 and Q7"), mark ADR-0005 `Superseded by ADR-0018`, add "Amended by ADR-0018" notes to ADR-0013, 0015, 0016, update `docs/adr/README.md`. Keep Q6 (tests/security port) marked open.
 
 ## Context
 
-ADR-0018 (Proposed): docs/adr/0018-surface-syntax-familiarity.md. Proposed in PR `adr/syntax-familiarity`. Owner confirmation is required (the delegated MVP-review regime does not cover reversing ADR-0005). Labels: blocked-on-owner.
+The author of an ADR does not accept it; the owner's merge of #20 is the acceptance. This task is ready as soon as #20 is on `main`. It unblocks T-1101 and T-1102.
 
 ## Acceptance criteria
 
-- [ ] The change matches ADR-0018 section 5 as accepted by the owner
+- [ ] ADR-0018 status line matches the owner's decision text; Q6 still marked open
+- [ ] ADR-0005 superseded, ADR-0013/0015/0016 carry an amendment note, index updated
 - [ ] `make ci` green
 
 ## Out of scope
 
-Anything not listed above; create follow-up tasks.
+Spec edits (T-1101, T-1102).
 
 ## Log
 

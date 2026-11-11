@@ -4,7 +4,7 @@ title: Parser: declarations
 kind: task
 phase: 0
 role: syntax-engineer
-depends_on: [T-0008, T-0007]
+depends_on: [T-0008, T-0007, T-1102, T-1104]
 spec: [SYN-001, SYN-002, SYN-003, SYN-020, SYN-021, SYN-022, SYN-023]
 paths: [compiler/lib/syntax/parser.mly, compiler/test/syntax/, tests/conformance/syntax/]
 estimate: M
@@ -32,6 +32,7 @@ Spec rules: SYN-001, SYN-002, SYN-003, SYN-020, SYN-021, SYN-022, SYN-023. See d
 Anything not listed in the acceptance criteria; create follow-up tasks.
 
 ## Log
+- 2026-11-10 language-architect: dependency on the ADR-0018 migration tasks added in PR #20 so that this task cannot start against the indentation grammar; T-1108 retargets its text.
 
 2026-11-10 language-architect (owner-delegated, ADR-0017, security review resolution): Top-level `let` uses `const_block` (no unsafe/given/with); `pub(package)` counts as `pub` (TYP-003, CAP-034); one namespace for types and values; E0115 `import go` path is printable ASCII.
 

@@ -16,7 +16,7 @@ claimed_at:
 
 ## Goal
 
-Replace layout.ml by the termination pass of ADR-0018 item 2; remove INDENT, DEDENT and ELIF from the token table and tokens.mly generator; replace test_layout*.ml. Supersedes T-1035 (cancel it).
+Replace layout.ml by the termination pass of ADR-0018 item 2; remove INDENT, DEDENT and ELIF from the token table and tokens.mly generator; replace test_layout*.ml. T-1035 is already closed as superseded.
 
 ## Context
 

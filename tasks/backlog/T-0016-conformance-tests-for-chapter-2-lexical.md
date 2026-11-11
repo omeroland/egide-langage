@@ -4,7 +4,7 @@ title: Conformance tests for chapter 2 (lexical)
 kind: task
 phase: 0
 role: test-engineer
-depends_on: [T-0014]
+depends_on: [T-0014, T-1101]
 spec: [LEX-001, LEX-002, LEX-003, LEX-004, LEX-010, LEX-011, LEX-012, LEX-020, LEX-021, LEX-022, LEX-030, LEX-031, LEX-032, LEX-033, LEX-034, LEX-035, LEX-040, LEX-041, LEX-042, LEX-050, LEX-051, LEX-052, LEX-053, LEX-054, LEX-055, LEX-060, LEX-061]
 paths: [tests/conformance/lexical/]
 estimate: M
@@ -31,6 +31,7 @@ Spec rules: LEX-001, LEX-002, LEX-003, LEX-004, LEX-010, LEX-011, LEX-012, LEX-0
 Anything not listed in the acceptance criteria; create follow-up tasks.
 
 ## Log
+- 2026-11-10 language-architect: dependency on the ADR-0018 migration tasks added in PR #20 so that this task cannot start against the indentation grammar; T-1108 retargets its text.
 
 2026-11-10 language-architect (owner-delegated, ADR-0016): New lexical rules to cover: LEX-003 (extended set, no allowlist), LEX-005, LEX-011/031 (trivia), LEX-036, LEX-040..042, 050, 053..055.
 

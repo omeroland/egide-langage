@@ -16,7 +16,7 @@ claimed_at:
 
 ## Goal
 
-Port the 26 files of tests/security/semantics and tests/security/syntax. Requires an explicit owner exception to the append-only rule (open question 6 of ADR-0018). Add attack tests: misleading indentation, discard inside a one-line block, whitespace-only edits.
+Port the 26 files of tests/security/semantics and tests/security/syntax. Follow the rule and mapping table of docs/adr/attachments/0018-security-test-port.md (same diagnostic codes and logical positions, one-to-one mapping, retirements only with the owner's approval). Delivered as a `governance/*` PR merged by the owner: the append-only exception is a proposal (open question 6 of ADR-0018), not granted. Add attack tests: misleading indentation, discard inside a one-line block, whitespace-only edits.
 
 ## Context
 

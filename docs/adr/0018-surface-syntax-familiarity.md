@@ -3,7 +3,10 @@
 - Status: Proposed
 - Date: 2026-11-10
 - Deciders: owner
-- Decided by: proposed, owner confirmation required. This ADR would reverse a founding decision (ADR-0005). The
+- Decided by: proposed, owner confirmation required. **Relayed decision (not verifiable by the author):** the coordinator
+  reports that the owner confirmed option B in chat on 2026-11-10, with the defaults for Q2-Q5 and Q7 below. The author
+  does not accept its own ADR (role rule), so the status stays `Proposed`: the owner's merge of this PR is the
+  acceptance, and T-1100 flips the status line afterwards. This ADR would reverse a founding decision (ADR-0005). The
   owner-delegated "decide now, review at the MVP" regime of ADR-0013..0017 does **not** cover it, and nothing in it has
   been applied: `spec/`, the grammar and the existing ADRs are untouched.
 - Spec chapters affected: 1, 2, 3 (rewritten in part), 4-13 (examples only), `spec/grammar/egide.ebnf`, `spec/README.md`
@@ -348,7 +351,7 @@ machinery and the audience-familiarity risk above.
 1. The AST is layout-agnostic (`ast.mli` header), so a second front end is a lexer pass and a `parser.mly`, not a
    rewrite of later phases (*extrapolated* size: 500-800 lines).
 2. Both grammars are verified conflict-free (`0013-menhir-check.mly` and `0018-menhir-braces.mly`); both stay in the
-   repository. The owner should tag `main` before the migration PR (`pre-adr-0018`) so that T-0007 and its tests are
+   repository. The owner should tag `main` before the migration PR (`pre-braces`) so that T-0007 and its tests are
    recoverable. I do not create tags.
 3. The cost of reversing grows with the corpus. Today the corpus is 148 files of which 40 change; the stdlib is 11 lines.
    Decide at or before the first stdlib module, and re-measure at the MVP review (T-1109).
@@ -356,44 +359,51 @@ machinery and the audience-familiarity risk above.
    or reviewers; reviewers report that brace-less habits or misleading indentation passed review; or the corpus shows that
    one-line blocks dominate and hurt readability.
 
-### Plan (tasks T-1100..T-1109, all `backlog`, nothing starts before acceptance)
+### Plan (tasks T-1100..T-1109) and order of the pull requests
+
+State after PR #20: T-1035 is closed as superseded; T-0009, T-0015, T-0016, T-0017 and T-1032 gained dependencies on
+the migration tasks (T-1101, T-1102, T-1104), so the board itself prevents work against the indentation grammar.
 
 | Task | Role | Size | Depends on | Content |
 |------|------|------|------------|---------|
-| T-1100 | language-architect | S | none | **Decision gate.** Do not claim before this ADR is `Accepted` on `main`. Records the decision, applies the ADR amendments and index status. |
+| T-1100 | language-architect | S | none (ready once #20 is merged) | ADR status line, amendments of ADR-0005/0013/0015/0016, index. |
 | T-1101 | language-architect | M | T-1100 | Spec ch. 2 (LEX rules, W0003, diagnostics catalogue). |
-| T-1102 | language-architect | M | T-1100 | Spec ch. 3 and `egide.ebnf`; ch. 1 §1.2; `spec/README.md` wrappers. |
+| T-1102 | language-architect | M | T-1100 | Spec ch. 3, `egide.ebnf`, ch. 1 §1.2, ch. 8 ERR-002, `spec/README.md` wrappers. |
 | T-1103 | docs-writer | M | T-1101, T-1102 | Re-bracket the `egide` blocks of ch. 4-13, `README.md`, `examples/` (4), `stdlib/std/prelude.egd`. |
-| T-1104 | syntax-engineer | M | T-1101 | Replace the layout pass by the termination pass; remove `INDENT`, `DEDENT`, `ELIF`; cancel T-1035. |
+| T-1104 | syntax-engineer | M | T-1101 | Termination pass replaces the layout pass; remove `INDENT`, `DEDENT`, `ELIF`. |
 | T-1105 | syntax-engineer | S | T-1104 | W0003 check. |
-| T-1106 | test-engineer | M | T-1101 | Replace the 13 `layout_*` tests, edit `source_crlf_accepted`, add tests for the new rules and for the A/B controls of 3.3. |
-| T-1107 | security-reviewer | M | T-1102 | Port the 26 `tests/security` files (owner exception to append-only), add tests for misleading indentation, one-line-block discard (ERR-002), `{`-on-next-line. |
-| T-1108 | language-architect | S | T-1102 | Retarget T-0009..T-0013, T-0015, T-0017, T-1031, T-1032 to the new grammar; record T-1035 as superseded. |
-| T-1109 | language-architect | S | T-1104 | MVP checkpoint: re-run `0018-check.py`, measure the revert triggers, confirm or revert. |
+| T-1106 | test-engineer | M | T-1101 | Replace the 13 `layout_*` tests, edit `source_crlf_accepted`, new lexical tests. |
+| T-1107 | security-reviewer | M | T-1102 | Port the 26 `tests/security` files by the rule in [`attachments/0018-security-test-port.md`](attachments/0018-security-test-port.md); needs the owner's governance PR (Q6). |
+| T-1108 | language-architect | S | T-1102 | Retarget the text of T-0009..T-0013, T-0015, T-0017, T-1031, T-1032 to the new grammar. |
+| T-1109 | language-architect | S | T-1104 | MVP checkpoint of the revert triggers. |
 
-Order: T-1100, then T-1101 and T-1102 in parallel, then T-1104, T-1106 and T-1107 in parallel, then T-1103, T-1105,
-T-1108, T-1109. Estimated size: 10 tasks (7 M, 3 S), about 6 sequential steps.
+Pull requests, in order (protected paths first, because the owner merges them and everything else follows):
 
-**Blocked during migration:** T-0009, T-0010, T-0011, T-0012, T-0013 (parser), T-1031 (cover checks), T-1032, T-0015,
-the layout-dependent part of T-0016/T-0017, and T-0090/T-0091 design details. **Not blocked:** T-0003, T-0004, T-0005,
-T-0025, T-1030 (AST), T-1033, T-1036, T-1037, T-1039, T-1080, T-1006, T-0029 (none depends on blocks). Asking the
-orchestrator to hold T-0009 until the owner decides avoids writing a parser against a grammar that may change.
+1. **PR #20** (this one): ADR, annex, tasks, board guards. Owner merges.
+2. **`adr/` PR "ADR-0018 accepted"** (T-1100): status and amendments. Small. Owner merges.
+3. **`adr/` PRs for the spec** (T-1101 ch. 2 and T-1102 ch. 3 + EBNF + ERR-002), **in parallel** (disjoint files). Owner merges both. Nothing else may start before the grammar is on `main`, except step 4.
+4. **After T-1101 merges, in parallel:** T-1104 (lexer termination pass, `compiler/`) and T-1106 (conformance tests, `tests/conformance/`); T-1103 (docs and examples, `adr/` branch because it touches `spec/`) after both spec PRs.
+5. **`governance/` PR for `tests/security`** (T-1107): port and mapping check, owner merges (Q6). Parallel with step 4, after T-1102.
+6. **Parsers**: T-1108 (retarget text) then T-0009, T-0010, T-0011, T-0012, T-0013 in sequence (they depend on T-1102 and T-1104), then T-1031, T-1032 and the test tasks T-0015..T-0017; T-1105 after T-1104; T-1109 at the MVP.
 
-### Open questions for the owner
+**Not blocked at any point:** T-0003, T-0004, T-0005, T-0025, T-1030 (AST), T-1033, T-1036, T-1037, T-1039, T-1080, T-1006, T-0029.
 
-1. B, or keep D? (This ADR recommends B; D remains a coherent choice.)
-2. `#` comments (recommended: keep) or `//`?
-3. `and`/`or`/`not` (recommended: keep) or `&&`/`||`/`!`?
-4. W0003 as a warning plus `fmt --check` plus no suppression in dependencies (recommended), or an error?
-5. Trailing blocks: keep (recommended: smallest change), or drop in favour of closures inside the parentheses, which
-   removes SYN-062/064 and `trailing_call` but needs SYN-030 relaxed?
-6. May `tests/security/` be ported in one governance PR despite its append-only rule?
-7. May `main` be tagged before migration?
+### Open questions for the owner, and their state
+
+| # | Question | State |
+|---|----------|-------|
+| 1 | B or D | B, per the relayed owner decision (confirm by merging) |
+| 2 | `#` or `//` comments | `#` kept (relayed default) |
+| 3 | `and`/`or`/`not` or `&&`/`||`/`!` | `and`/`or`/`not` kept (relayed default) |
+| 4 | W0003 severity | warning, `fmt --check` fails, not suppressed in dependencies (relayed default) |
+| 5 | Trailing blocks | kept (relayed default) |
+| 6 | Port of `tests/security` despite append-only | **OPEN**: a proposal for a `governance/*` PR merged by the owner; rule in [`attachments/0018-security-test-port.md`](attachments/0018-security-test-port.md) |
+| 7 | Tag `main` before migration | `pre-braces`, to be created by the owner (agents do not tag) |
 
 ### Incidental findings (independent of this decision)
 
 - LEX-021 reserves `unsafe`, yet MEM-070 names `std.unsafe.Ptr[T]`: `path = IDENT { "." IDENT }` cannot parse
-  `std.unsafe`. Found while parsing the annex tour. One of the two must change (a module name other than `unsafe`, or a
-  contextual keyword); a `spec-question` or ADR is needed. Not addressed here.
+  `std.unsafe`. Found while parsing the annex tour. Raised as `tasks/blocked/Q-0050-unsafe-keyword-versus-std-unsafe-path.md`
+  (recommendation: rename the module). Not addressed here.
 - `docs/roadmap.md` phase 0 exit criteria ("every production has a parse test; all `egide` code blocks parse") hold
   under either surface; the migration only moves the date.
