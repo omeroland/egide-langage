@@ -42,7 +42,7 @@ let name cp =
   | _
     when (cp >= 0xFE00 && cp <= 0xFE0F)
          || (cp >= 0xE0100 && cp <= 0xE01EF)
-         || (cp >= 0x180B && cp <= 0x180D) ->
+         || (cp >= 0x180B && cp <= 0x180F && cp <> 0x180E) ->
       "variation selector"
   | _ when cp land 0xFFFE = 0xFFFE || (cp >= 0xFDD0 && cp <= 0xFDEF) -> "noncharacter"
   | _ -> "format or default-ignorable character"

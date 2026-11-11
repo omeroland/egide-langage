@@ -6,7 +6,7 @@ phase: 0
 role: syntax-engineer
 depends_on: [T-0006]
 spec: [LEX-003, LEX-050]
-paths: [compiler/lib/syntax/source_check.ml, compiler/lib/syntax/source_check.mli, compiler/lib/syntax/lexer.ml, compiler/lib/source/, compiler/lib/diagnostics/forbidden_set.ml, compiler/lib/diagnostics/forbidden_set.mli, compiler/test/syntax/, compiler/test/diagnostics/, tools/gen/, tests/conformance/lexical/]
+paths: [tools/check-generated.sh, .gitignore, docs/diagnostics.md, compiler/lib/syntax/source_check.ml, compiler/lib/syntax/source_check.mli, compiler/lib/syntax/lexer.ml, compiler/lib/source/, compiler/lib/diagnostics/forbidden_set.ml, compiler/lib/diagnostics/forbidden_set.mli, compiler/test/syntax/, compiler/test/diagnostics/, tools/gen/, tests/conformance/lexical/]
 estimate: S
 labels: []
 status: done
@@ -24,15 +24,15 @@ ADR-0016 and ADR-0017 (security review S2). The set is: Cf ∪ Default_Ignorable
 
 ## Acceptance criteria
 
-- [ ] `tools/gen/unicode_forbidden.py` reads `DerivedCoreProperties.txt`, `UnicodeData.txt`, `PropList.txt` of Unicode 16.0.0 (digests recorded in the generated header) and writes `compiler/lib/source/forbidden_table.ml` (neutral package: `egide.syntax` depends on `egide.diagnostics`, so a table in `compiler/lib/syntax/` would be unreachable from `Forbidden_set` without a dependency cycle); `tools/check-generated.sh` fails when stale
-- [ ] Every code point of the reviewer's gap list, TAG, Hangul fillers, CGJ, variation selectors, all 170 Cf, noncharacters: rejected in comments, strings and code (E0004), table-driven test against an independently written oracle
-- [ ] Neighbours accepted (U+00AC, U+00AE, U+2060 is Cf so rejected; U+FE10, U+E1000 accepted unless DICP)
-- [ ] `Zs` other than U+0020 accepted in comments and strings, E0051 elsewhere
-- [ ] `"\u{200D}"`, `"\u{E0041}"`, `"\u{1B}"` accepted by the lexer (LEX-050); surrogates and values above 10FFFF are E0041
-- [ ] `Egide_diagnostics.Forbidden_set.mem` is a lookup in that table (the hand-written ranges are deleted; there is no `provisional` flag); a differential test compares the generated table with `Forbidden_set.mem` over 0..0x10FFFF, and a cross test checks `lexer rejects cp => Escape.is_dangerous cp` over all scalars (T-1039 / LEX-006)
-- [ ] The test `forbidden set is backed by the generated table from phase 1` in `compiler/test/diagnostics/test_escape.ml` passes (it requires `compiler/lib/source/forbidden_table.ml` and a use of it in `forbidden_set.ml` from phase 1)
-- [ ] The oracle of the differential and neutralisation tests is written independently of the generator (separate code path, not importing the generator's parsing), and the upstream Unicode 16.0.0 file digests are pinned in the repository, so a regenerated table cannot silently change the expected set
-- [ ] The table is never read from the host at run time; a test pins the table's digest
+- [x] `tools/gen/unicode_forbidden.py` reads `DerivedCoreProperties.txt`, `UnicodeData.txt`, `PropList.txt` of Unicode 16.0.0 (digests recorded in the generated header) and writes `compiler/lib/source/forbidden_table.ml` (neutral package: `egide.syntax` depends on `egide.diagnostics`, so a table in `compiler/lib/syntax/` would be unreachable from `Forbidden_set` without a dependency cycle); `tools/check-generated.sh` fails when stale
+- [x] Every code point of the reviewer's gap list, TAG, Hangul fillers, CGJ, variation selectors, all 170 Cf, noncharacters: rejected in comments, strings and code (E0004), table-driven test against an independently written oracle
+- [x] Neighbours accepted (U+00AC, U+00AE, U+2060 is Cf so rejected; U+FE10, U+E1000 accepted unless DICP)
+- [x] `Zs` other than U+0020 accepted in comments and strings, E0051 elsewhere
+- [x] `"\u{200D}"`, `"\u{E0041}"`, `"\u{1B}"` accepted by the lexer (LEX-050); surrogates and values above 10FFFF are E0041
+- [x] `Egide_diagnostics.Forbidden_set.mem` is a lookup in that table (the hand-written ranges are deleted; there is no `provisional` flag); a differential test compares the generated table with `Forbidden_set.mem` over 0..0x10FFFF, and a cross test checks `lexer rejects cp => Escape.is_dangerous cp` over all scalars (T-1039 / LEX-006)
+- [x] The test `forbidden set is backed by the generated table from phase 1` in `compiler/test/diagnostics/test_escape.ml` passes (it requires `compiler/lib/source/forbidden_table.ml` and a use of it in `forbidden_set.ml` from phase 1)
+- [x] The oracle of the differential and neutralisation tests is written independently of the generator (separate code path, not importing the generator's parsing), and the upstream Unicode 16.0.0 file digests are pinned in the repository, so a regenerated table cannot silently change the expected set
+- [x] The table is never read from the host at run time; a test pins the table's digest
 
 ## Out of scope
 
@@ -52,6 +52,8 @@ Anything not listed in the acceptance criteria; create follow-up tasks.
 2026-11-11 syntax-engineer: existing test expectations changed because ADR-0017 changed the spec, not to get green: (1) `test_lexer_hardening.ml` oracle `is_forbidden_spec` now uses the property oracle; (2) U+FFFF and U+10FFFF are noncharacters, so the UTF-8 boundary test expects one E0004 per occurrence (`diags=2`) and the allowed-neighbours list drops U+2065 (DICP) and U+10FFFF for U+2054 and U+10FFFD; (3) `tests/conformance/lexical/bytes_utf8_boundaries_accepted.egd` uses U+FFFD and U+10FFFD instead of U+FFFF and U+10FFFF (the well-formedness of those two boundaries is still tested in (2)). Bug fixed on the way: the provisional `Forbidden_set.mem` returned true for negative integers (`-1 land 0xFFFE`).
 
 2026-11-11 syntax-engineer: the E0004 message names the well-known characters and otherwise the class ("format or default-ignorable character", "tag character", "variation selector", "noncharacter"); full Unicode names would need UnicodeData names in the table. Not done: follow-up only if wanted.
+
+2026-11-11 syntax-engineer (review of PR #31): (1) the criteria are ticked only where a test or run verified them; the stale-table failure of `tools/check-generated.sh` was verified by mutating the table (exit 1). (2) `tools/check-generated.sh` and `.gitignore` (the `tools/gen/.ucd-cache/` entry) are outside the paths declared at claim time but are required by the first criterion; `docs/diagnostics.md` (E0004 wording) was added on review; paths extended above. (3) `check-generated.sh` needs network on a clean checkout (it downloads the three upstream files into `tools/gen/.ucd-cache/` when absent): the digest pin protects integrity, not availability; offline, pre-populate that directory or pass `--ucd-dir` to the generator. (4) `compiler/test/diagnostics/oracle/derive_oracle.js` re-derives the oracle's literal ranges; it needs Node.js with ICU and is not run in CI. (5) U+180F is labelled "variation selector" (U+180E is Cf and keeps the generic label); `E0004 class labels` test.
 
 ## Outcome
 

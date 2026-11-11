@@ -321,3 +321,19 @@ let%test "the table module performs no I/O" =
     with Not_found -> false
   in
   not (List.exists contains [ "open_in"; "Sys."; "Unix"; "In_channel"; "Stdlib.input" ])
+
+(* spec: LEX-003 — the class label in the E0004 message (docs/diagnostics.md): U+180F is a variation selector, U+180E
+   is Cf, U+E0041 a tag character, U+FDD0 a noncharacter. *)
+let%test "E0004 class labels" =
+  let label cp =
+    match lex ("# a" ^ utf8 cp ^ "b\n") with
+    | [ d ] -> d.message
+    | _ -> ""
+  in
+  let has_sub s sub =
+    try ignore (Str.search_forward (Str.regexp_string sub) s 0); true with Not_found -> false
+  in
+  List.for_all
+    (fun (cp, l) -> has_sub (label cp) ("(" ^ l ^ ")") || (fail "U+%04X: %s" cp (label cp); false))
+    [ (0x180F, "variation selector"); (0x180B, "variation selector"); (0x180E, "format or default-ignorable character");
+      (0xE0041, "tag character"); (0xFDD0, "noncharacter"); (0x1B, "control character") ]
