@@ -20,7 +20,17 @@ let duration_unit = function
   | u -> invalid_arg ("Parser.duration_unit: " ^ u)
 %}
 
-%start <Ast.file> file
+(* Node ids (T-1006) come from an explicit generator, supplied by the caller as the functor argument [Ids]: the
+   parser has no global state. Each node's id is allocated when its production is reduced, so the numbering is a
+   function of the parse alone. *)
+%parameter <Ids : sig type file = Ast.file val fresh : unit -> Node_id.t end>
+
+(* What avoids warning 67 (unused functor parameter in the generated parser.mli, an error in the dev profile, and
+   the fix is not to silence it) is [type file = Ast.file] in the parameter signature above: Menhir then writes the
+   start type as [Ids.file] in parser.mli, so the signature mentions [Ids]. Typing the start symbol [<Ids.file>] is
+   the explicit form of what Menhir infers anyway; it is kept so that this does not depend on that inference. Every
+   instantiation (Parse, tests) must supply [type file = Ast.file]. *)
+%start <Ids.file> file
 
 %%
 
@@ -34,10 +44,10 @@ module_decl:
   | KW_MODULE p = path { p }
 
 ident:
-  | name = IDENT { ({ name; span = span $loc } : ident) }
+  | name = IDENT { ({ id = Ids.fresh (); name; span = span $loc } : ident) }
 
 path:
-  | segments = separated_nonempty_list(DOT, ident) { ({ segments; span = span $loc } : path) }
+  | segments = separated_nonempty_list(DOT, ident) { ({ id = Ids.fresh (); segments; span = span $loc } : path) }
 
 import_decl:
   | KW_IMPORT p = path alias = option(preceded(KW_AS, ident))
@@ -46,10 +56,11 @@ import_decl:
 
 top_decl:
   | KW_LET name = ident EQ value = expr
-    { { attrs = []; vis = Private; decl = Const { name; ty = None; value }; span = span $loc } }
+    { { id = Ids.fresh (); attrs = []; vis = Private; decl = Const { name; ty = None; value };
+        span = span $loc } }
 
 expr:
-  | e = expr_desc { { expr = e; span = span $loc } }
+  | e = expr_desc { { id = Ids.fresh (); expr = e; span = span $loc } }
 
 expr_desc:
   | i = INT { Lit (Int i) }

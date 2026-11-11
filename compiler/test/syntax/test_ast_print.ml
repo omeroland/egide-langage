@@ -6,15 +6,20 @@ open Ast
 
 let sp = Egide_source.Span.dummy
 
+(* Every node built here gets a fresh id from one generator (T-1006). Printing omits ids by default, so the snapshots
+   do not depend on it; test_node_ids.ml covers the ids themselves. *)
+let gen = Node_id.Gen.create ()
+let nid () = Node_id.Gen.fresh gen
+
 (* ---------- builders ---------- *)
 
-let id name : ident = { name; span = sp }
-let path s : path = { segments = List.map id (String.split_on_char '.' s); span = sp }
-let e expr : expr = { expr; span = sp }
-let p pat : pattern = { pat; span = sp }
-let t ty : ty = { ty; span = sp }
-let s stmt : stmt = { stmt; span = sp }
-let blk stmts : block = { stmts; span = sp }
+let id name : ident = { id = nid (); name; span = sp }
+let path s : path = { id = nid (); segments = List.map id (String.split_on_char '.' s); span = sp }
+let e expr : expr = { id = nid (); expr; span = sp }
+let p pat : pattern = { id = nid (); pat; span = sp }
+let t ty : ty = { id = nid (); ty; span = sp }
+let s stmt : stmt = { id = nid (); stmt; span = sp }
+let blk stmts : block = { id = nid (); stmts; span = sp }
 let x name = e (Path (path name))
 let int n = e (Lit (Int n))
 let str v = e (Lit (String v))
@@ -37,14 +42,18 @@ let rec ga_of_ty (ty : ty) : gen_arg =
   | Ty_fn _ | Ty_dyn _ -> Ga_type_only ty
 
 let tapp name args = t (Ty_path { path = path name; args = List.map ga_of_ty args })
-let bound ?(args = []) name : bound = { path = path name; args; span = sp }
+let bound ?(args = []) name : bound = { id = nid (); path = path name; args; span = sp }
 let bin op lhs rhs = e (Binary { op; lhs; rhs })
 
 let arg ?label ?(inout = false) value : arg =
   let label = Option.map id label in
-  { arg = (if inout then Arg_inout { label; value } else Arg_plain { label; value }); span = sp }
+  {
+    id = nid ();
+    arg = (if inout then Arg_inout { label; value } else Arg_plain { label; value });
+    span = sp;
+  }
 
-let using_arg name value : arg = { arg = Arg_using (id name, value); span = sp }
+let using_arg name value : arg = { id = nid (); arg = Arg_using (id name, value); span = sp }
 let call f args = e (Call { callee = f; args })
 let dot target name = e (Field { target; name = id name })
 let pbind n = p (Pat_bind (id n))
@@ -53,24 +62,24 @@ let lparam ?(mode = By_read) ?ty name : lambda_param = { mode; name = id name; t
 let typed name ty : typed_ident = { name = id name; ty; span = sp }
 
 let param ?(mode = By_read) ?default name ty : param =
-  { mode; kind = Param_named { name = id name; ty; default }; span = sp }
+  { id = nid (); mode; kind = Param_named { name = id name; ty; default }; span = sp }
 
-let self_param mode : param = { mode; kind = Param_self; span = sp }
+let self_param mode : param = { id = nid (); mode; kind = Param_self; span = sp }
 
 let fsig ?(generics = []) ?ret ?(using = []) name params : fn_sig =
   { name = id name; generics; params; ret; using; span = sp }
 
-let fn_decl sig_ stmts : fn_decl = { sig_; body = blk stmts; span = sp }
-let decl ?(attrs = []) ?(vis = Private) d : decl = { attrs; vis; decl = d; span = sp }
+let fn_decl sig_ stmts : fn_decl = { id = nid (); sig_; body = blk stmts; span = sp }
+let decl ?(attrs = []) ?(vis = Private) d : decl = { id = nid (); attrs; vis; decl = d; span = sp }
 let attr ?args name : attribute = { name = id name; args; span = sp }
 
 let field ?(attrs = []) ?(vis = Private) ?default name ty : field =
-  { attrs; vis; name = id name; ty; default; span = sp }
+  { id = nid (); attrs; vis; name = id name; ty; default; span = sp }
 
-let variant ?(fields = Vf_none) name : variant = { name = id name; fields; span = sp }
+let variant ?(fields = Vf_none) name : variant = { id = nid (); name = id name; fields; span = sp }
 
 let generic ?(comptime = false) ?(bounds : bound list = []) name : generic =
-  { comptime; name = id name; bounds; span = sp }
+  { id = nid (); comptime; name = id name; bounds; span = sp }
 
 let file ?(imports = []) m decls : file = { module_path = path m; imports; decls; span = sp }
 let import d : import = { import = d; span = sp }
@@ -151,7 +160,11 @@ let%expect_test "struct, enum, trait, impl and type declarations of spec 3.3" =
             supertraits = [];
             items =
               [
-                { item = Ti_sig (fsig "display" [ self_param By_read ] ~ret:(tn "str")); span = sp };
+                {
+                  id = nid ();
+                  item = Ti_sig (fsig "display" [ self_param By_read ] ~ret:(tn "str"));
+                  span = sp;
+                };
               ];
           }));
   let display_body =
@@ -179,6 +192,7 @@ let%expect_test "struct, enum, trait, impl and type declarations of spec 3.3" =
             items =
               [
                 {
+                  id = nid ();
                   item =
                     Ii_fn
                       {
@@ -282,9 +296,14 @@ let%expect_test
             supertraits = [ bound "Len"; bound "Show" ];
             items =
               [
-                { item = Ti_type { name = id "Item"; bound = Some (bound "Eq") }; span = sp };
-                { item = Ti_type { name = id "Key"; bound = None }; span = sp };
                 {
+                  id = nid ();
+                  item = Ti_type { name = id "Item"; bound = Some (bound "Eq") };
+                  span = sp;
+                };
+                { id = nid (); item = Ti_type { name = id "Key"; bound = None }; span = sp };
+                {
+                  id = nid ();
                   item =
                     Ti_fn
                       (fn_decl
@@ -303,8 +322,9 @@ let%expect_test
             self_ty = tapp "Box" [ tn "T" ];
             items =
               [
-                { item = Ii_type { name = id "Item"; ty = tn "T" }; span = sp };
+                { id = nid (); item = Ii_type { name = id "Item"; ty = tn "T" }; span = sp };
                 {
+                  id = nid ();
                   item =
                     Ii_fn
                       {
@@ -802,28 +822,18 @@ let%expect_test "spans mode on hand-built nodes" =
   let at l c1 c2 =
     Egide_source.Span.make ~file:"t.egd" ~start:{ line = l; col = c1 } ~stop:{ line = l; col = c2 }
   in
-  let ident name sp : ident = { name; span = sp } in
-  let target =
-    { expr = Path { segments = [ ident "f" (at 1 1 2) ]; span = at 1 1 2 }; span = at 1 1 2 }
-  in
-  let callee : expr = { expr = Call { callee = target; args = [] }; span = at 1 1 4 } in
-  let tgt : expr =
-    {
-      expr =
-        Field
-          {
-            target =
-              {
-                expr = Path { segments = [ ident "t" (at 2 1 2) ]; span = at 2 1 2 };
-                span = at 2 1 2;
-              };
-            name = ident "n" (at 2 3 4);
-          };
-      span = at 2 1 4;
-    }
-  in
+  let ident name sp : ident = { id = nid (); name; span = sp } in
+  let ex expr span : expr = { id = nid (); expr; span } in
+  let pth name sp = ex (Path { id = nid (); segments = [ ident name sp ]; span = sp }) sp in
+  let target = pth "f" (at 1 1 2) in
+  let callee = ex (Call { callee = target; args = [] }) (at 1 1 4) in
+  let tgt = ex (Field { target = pth "t" (at 2 1 2); name = ident "n" (at 2 3 4) }) (at 2 1 4) in
   let st : stmt =
-    { stmt = Assign { target = tgt; op = Add_assign; value = callee }; span = at 2 1 9 }
+    {
+      id = nid ();
+      stmt = Assign { target = tgt; op = Add_assign; value = callee };
+      span = at 2 1 9;
+    }
   in
   print_endline (Print.stmt ~spans:true st);
   [%expect
@@ -873,7 +883,8 @@ let%expect_test "pp_* formatters print the same text as the string functions" =
 
 (* ---------- equality ---------- *)
 
-let%expect_test "structural equality includes spans; printed equality ignores them" =
+(* spec: none (T-1006: equality compares node ids as well) *)
+let%expect_test "structural equality includes spans and ids; printed equality ignores them" =
   let parse src =
     match Parse.file ~file:"t.egd" src with Some f, _ -> f | None, _ -> assert false
   in
@@ -884,19 +895,27 @@ let%expect_test "structural equality includes spans; printed equality ignores th
     (Print.file a = Print.file shifted);
   Printf.printf "different value: %b, printed: %b\n" (equal_file a other)
     (Print.file a = Print.file other);
-  Printf.printf "expr: %b %b\n" (equal_expr (int "1") (int "1")) (equal_expr (int "1") (int "01"));
+  (* Builders allocate a fresh id per node: same shape, different ids, so structurally different. *)
+  let one = int "1" and ty_int = tn "int" and brk = blk [] in
+  (* Different literal text is never equal, with the same id or with fresh ones. *)
+  let same_id = { one with expr = Lit (Int "01") } in
+  Printf.printf "expr: %b %b %b %b %b\n" (equal_expr one one)
+    (equal_expr (int "1") (int "1"))
+    (equal_expr (int "1") (int "01"))
+    (equal_expr one same_id)
+    (Print.expr (int "1") = Print.expr (int "1"));
   Printf.printf "pattern: %b, ty: %b, stmt: %b, block: %b, decl: %b\n"
     (equal_pattern (p Pat_wild) (pbind "_"))
-    (equal_ty (tn "int") (tn "int"))
+    (equal_ty ty_int ty_int)
     (equal_stmt (s Continue) (s (Break None)))
-    (equal_block (blk []) (blk []))
+    (equal_block brk brk)
     (equal_decl (List.hd a.decls) (List.hd b.decls));
   [%expect
     {|
     same source: true
     shifted spans: false, printed: true
     different value: false, printed: false
-    expr: true false
+    expr: true false false false true
     pattern: false, ty: true, stmt: false, block: true, decl: true
     |}]
 

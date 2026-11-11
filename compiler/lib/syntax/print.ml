@@ -6,7 +6,7 @@ open Ast
 (* When a list must be broken, its leading atoms stay on the head line, and so do its first [keep] items if they fit
    (e.g. the callee of a call: [keep] counts the head, the span atom if any, and the subject). *)
 type sx = Atom of string | List of { keep : int; items : sx list }
-type ctx = { spans : bool }
+type ctx = { spans : bool; ids : bool }
 
 let width = 100
 
@@ -80,18 +80,27 @@ let span_s (sp : span) =
   Printf.sprintf "%d:%d-%d:%d" sp.start.line sp.start.col sp.stop.line sp.stop.col
 
 let span_atoms c sp = if c.spans then [ Atom ("@" ^ span_s sp) ] else []
+let id_s id = Printf.sprintf "#%d" (Node_id.to_int id)
 
-let node ?(subject = false) c head sp items =
-  let prefix = Atom head :: span_atoms c sp in
+(* Ids are printed only with [~ids:true], as an [#n] atom after the span atom. Where a node has no atom of its own
+   (see print.mli), the caller passes no [id]. *)
+let id_atoms c = function Some id when c.ids -> [ Atom (id_s id) ] | _ -> []
+
+let node ?(subject = false) ?id c head sp items =
+  let prefix = (Atom head :: span_atoms c sp) @ id_atoms c id in
   List { keep = (if subject then List.length prefix + 1 else 0); items = prefix @ items }
 
 let group ?(subject = false) head items =
   List { keep = (if subject then 2 else 0); items = Atom head :: items }
 
-let named c name sp = if c.spans then Atom (name ^ "@" ^ span_s sp) else Atom name
-let ident c (i : ident) = named c i.name i.span
+let named ?id c name sp =
+  let sfx = if c.spans then "@" ^ span_s sp else "" in
+  let sfx = match id with Some id when c.ids -> sfx ^ id_s id | _ -> sfx in
+  Atom (name ^ sfx)
+
+let ident c (i : ident) = named ~id:i.id c i.name i.span
 let path_s (p : path) = String.concat "." (List.map (fun (i : ident) -> i.name) p.segments)
-let path c (p : path) = named c (path_s p) p.span
+let path ?id c (p : path) = named ~id:(Option.value id ~default:p.id) c (path_s p) p.span
 let flag b s = if b then [ Atom s ] else []
 let opt f = function None -> [] | Some v -> [ f v ]
 
@@ -144,26 +153,27 @@ let assign_s = function
 
 (* ---------- tree → S-expression ---------- *)
 
-let rec literal c sp = function
-  | Int s -> node c "int" sp [ Atom s ]
-  | Float s -> node c "float" sp [ Atom s ]
-  | Duration { amount; unit } -> node c "duration" sp [ Atom amount; Atom (duration_unit_s unit) ]
-  | String s -> node c "string" sp [ Atom (quote s) ]
-  | Raw_string s -> node c "raw" sp [ Atom (quote s) ]
-  | Bytes s -> node c "bytes" sp [ Atom (quote ~bytes:true s) ]
-  | Char u -> node c "char" sp [ Atom (quote (utf8 u)) ]
+let rec literal ?id c sp = function
+  | Int s -> node ?id c "int" sp [ Atom s ]
+  | Float s -> node ?id c "float" sp [ Atom s ]
+  | Duration { amount; unit } ->
+      node ?id c "duration" sp [ Atom amount; Atom (duration_unit_s unit) ]
+  | String s -> node ?id c "string" sp [ Atom (quote s) ]
+  | Raw_string s -> node ?id c "raw" sp [ Atom (quote s) ]
+  | Bytes s -> node ?id c "bytes" sp [ Atom (quote ~bytes:true s) ]
+  | Char u -> node ?id c "char" sp [ Atom (quote (utf8 u)) ]
   | Template { prefix; parts } ->
-      node c "template" sp (ident c prefix :: List.map (template_part c) parts)
-  | Bool b -> node c "bool" sp [ Atom (string_of_bool b) ]
+      node ?id c "template" sp (ident c prefix :: List.map (template_part c) parts)
+  | Bool b -> node ?id c "bool" sp [ Atom (string_of_bool b) ]
 
 and template_part c = function
   | Text { text; span } -> node c "text" span [ Atom (quote text) ]
   | Interp e -> expr c e
 
 and expr c (x : expr) =
-  let n ?subject head items = node ?subject c head x.span items in
+  let n ?subject head items = node ?subject ~id:x.id c head x.span items in
   match x.expr with
-  | Lit l -> literal c x.span l
+  | Lit l -> literal ~id:x.id c x.span l
   | Path p -> n "path" [ path c p ]
   | Self -> n "self" []
   | Self_type -> n "Self" []
@@ -237,29 +247,30 @@ and case_arm c (a : case_arm) =
 and arg c (a : arg) =
   match a.arg with
   | Arg_plain { label = None; value } -> expr c value
-  | Arg_plain { label = Some l; value } -> node c "label" a.span [ ident c l; expr c value ]
-  | Arg_inout { label = None; value } -> node c "&" a.span [ expr c value ]
+  | Arg_plain { label = Some l; value } ->
+      node ~id:a.id c "label" a.span [ ident c l; expr c value ]
+  | Arg_inout { label = None; value } -> node ~id:a.id c "&" a.span [ expr c value ]
   | Arg_inout { label = Some l; value } ->
-      node c "label" a.span [ ident c l; group "&" [ expr c value ] ]
-  | Arg_using (name, value) -> node c "using" a.span [ ident c name; expr c value ]
+      node ~id:a.id c "label" a.span [ ident c l; group "&" [ expr c value ] ]
+  | Arg_using (name, value) -> node ~id:a.id c "using" a.span [ ident c name; expr c value ]
 
 and gen_arg c = function Ga_expr e -> expr c e | Ga_type_only t -> ty c t
 
 (* A bound prints like the path type it is. *)
 and bound c (b : bound) =
   match b.args with
-  | [] -> path c b.path
-  | args -> node c "apply" b.span (path c b.path :: List.map (gen_arg c) args)
+  | [] -> path ~id:b.id c b.path
+  | args -> node ~id:b.id c "apply" b.span (path c b.path :: List.map (gen_arg c) args)
 
 and lambda_param c (p : lambda_param) =
   node c "param" p.span ((mode_flags p.mode @ [ ident c p.name ]) @ opt (ty c) p.ty)
 
 and lambda_params c ps = group "params" (List.map (lambda_param c) ps)
-and block c (b : block) = node c "block" b.span (List.map (stmt c) b.stmts)
+and block c (b : block) = node ~id:b.id c "block" b.span (List.map (stmt c) b.stmts)
 and annot c = opt (fun t -> group ":" [ ty c t ])
 
 and stmt c (st : stmt) =
-  let n ?subject head items = node ?subject c head st.span items in
+  let n ?subject head items = node ?subject ~id:st.id c head st.span items in
   match st.stmt with
   | Expr e -> expr c e
   | Let { pat; ty = t; value; else_ } ->
@@ -285,12 +296,12 @@ and with_item c (w : with_item) =
   | Some nm -> node c "bind" w.span [ ident c nm; expr c w.value ]
 
 and pattern c (pt : pattern) =
-  let n ?subject head items = node ?subject c head pt.span items in
+  let n ?subject head items = node ?subject ~id:pt.id c head pt.span items in
   match pt.pat with
-  | Pat_wild -> named c "_" pt.span
-  | Pat_bind i -> ident c i
+  | Pat_wild -> named ~id:pt.id c "_" pt.span
+  | Pat_bind i -> named ~id:pt.id c i.name i.span
   | Pat_const p -> n "const" [ path c p ]
-  | Pat_lit lp -> lit_pattern c lp
+  | Pat_lit lp -> lit_pattern ~id:pt.id c lp
   | Pat_range { lo; hi; inclusive } ->
       n (if inclusive then "..=" else "..") [ lit_pattern c lo; lit_pattern c hi ]
   | Pat_ctor { path = p; fields } -> n "ctor" (path c p :: List.map (field_pattern c) fields)
@@ -299,9 +310,9 @@ and pattern c (pt : pattern) =
   | Pat_or ps -> n "|" (List.map (pattern c) ps)
   | Pat_as { pat; name } -> n ~subject:true "as" [ pattern c pat; ident c name ]
 
-and lit_pattern c (lp : lit_pattern) =
-  let l = literal c lp.span lp.lit in
-  if lp.negated then node c "-" lp.span [ l ] else l
+and lit_pattern ?id c (lp : lit_pattern) =
+  if lp.negated then node ?id c "-" lp.span [ literal c lp.span lp.lit ]
+  else literal ?id c lp.span lp.lit
 
 and field_pattern c = function
   | Fp_field { label = None; pat; _ } -> pattern c pat
@@ -314,9 +325,9 @@ and list_pattern c = function
   | Lp_rest { name = Some nm; span } -> node c ".." span [ ident c nm ]
 
 and ty c (t : ty) =
-  let n ?subject head items = node ?subject c head t.span items in
+  let n ?subject head items = node ?subject ~id:t.id c head t.span items in
   match t.ty with
-  | Ty_path { path = p; args = [] } -> named c (path_s p) t.span
+  | Ty_path { path = p; args = [] } -> named ~id:t.id c (path_s p) t.span
   | Ty_path { path = p; args } -> n "apply" (path c p :: List.map (gen_arg c) args)
   | Ty_tuple ts -> n "tuple-type" (List.map (ty c) ts)
   | Ty_fn { params; ret; using } ->
@@ -324,7 +335,7 @@ and ty c (t : ty) =
         ((group "params" (List.map (ty c) params) :: opt (fun r -> group "->" [ ty c r ]) ret)
         @ if using = [] then [] else [ group "using" (List.map (bound c) using) ])
   | Ty_dyn bs -> n "dyn" (List.map (bound c) bs)
-  | Ty_self -> named c "Self" t.span
+  | Ty_self -> named ~id:t.id c "Self" t.span
   | Ty_optional inner -> n "?" [ ty c inner ]
 
 (* ---------- declarations ---------- *)
@@ -342,7 +353,7 @@ let generics c = function
   | [] -> []
   | gs ->
       let generic (g : generic) =
-        node c "generic" g.span
+        node ~id:g.id c "generic" g.span
           ((flag g.comptime "comptime" @ [ ident c g.name ]) @ List.map (bound c) g.bounds)
       in
       [ group "generics" (List.map generic gs) ]
@@ -352,9 +363,9 @@ let typed c (ti : typed_ident) =
 
 let param c (pr : param) =
   match pr.kind with
-  | Param_self -> node c "param" pr.span (mode_flags pr.mode @ [ Atom "self" ])
+  | Param_self -> node ~id:pr.id c "param" pr.span (mode_flags pr.mode @ [ Atom "self" ])
   | Param_named { name; ty = t; default } ->
-      node c "param" pr.span
+      node ~id:pr.id c "param" pr.span
         ((mode_flags pr.mode @ [ ident c name; ty c t ])
         @ opt (fun d -> group "default" [ expr c d ]) default)
 
@@ -365,11 +376,11 @@ let fn_parts c (sg : fn_sig) =
   @ opt (fun t -> group "->" [ ty c t ]) sg.ret
   @ match sg.using with [] -> [] | u -> [ group "using" (List.map (typed c) u) ]
 
-let fn_node c ~head ~flags ~da sp (sg : fn_sig) body =
-  node c head sp ((flags @ [ ident c sg.name ]) @ da @ fn_parts c sg @ opt (block c) body)
+let fn_node c ~id ~head ~flags ~da sp (sg : fn_sig) body =
+  node ~id c head sp ((flags @ [ ident c sg.name ]) @ da @ fn_parts c sg @ opt (block c) body)
 
 let field c (f : field) =
-  node c "field" f.span
+  node ~id:f.id c "field" f.span
     ((vis_atoms f.vis @ [ ident c f.name ])
     @ List.map (attribute c) f.attrs
     @ [ ty c f.ty ]
@@ -382,27 +393,28 @@ let variant c (v : variant) =
     | Vf_positional ts -> [ group "positional" (List.map (ty c) ts) ]
     | Vf_named tis -> [ group "named" (List.map (typed c) tis) ]
   in
-  node c "variant" v.span (ident c v.name :: fields)
+  node ~id:v.id c "variant" v.span (ident c v.name :: fields)
 
 let trait_item c (ti : trait_item) =
   match ti.item with
-  | Ti_sig sg -> fn_node c ~head:"fn-sig" ~flags:[] ~da:[] ti.span sg None
-  | Ti_fn f -> fn_node c ~head:"fn" ~flags:[] ~da:[] ti.span f.sig_ (Some f.body)
-  | Ti_type { name; bound = b } -> node c "assoc-type" ti.span (ident c name :: opt (bound c) b)
+  | Ti_sig sg -> fn_node c ~id:ti.id ~head:"fn-sig" ~flags:[] ~da:[] ti.span sg None
+  | Ti_fn f -> fn_node c ~id:ti.id ~head:"fn" ~flags:[] ~da:[] ti.span f.sig_ (Some f.body)
+  | Ti_type { name; bound = b } ->
+      node ~id:ti.id c "assoc-type" ti.span (ident c name :: opt (bound c) b)
 
 let impl_item c (ii : impl_item) =
   match ii.item with
   | Ii_fn { attrs; vis; fn_ } ->
-      fn_node c ~head:"fn" ~flags:(vis_atoms vis)
+      fn_node c ~id:ii.id ~head:"fn" ~flags:(vis_atoms vis)
         ~da:(List.map (attribute c) attrs)
         ii.span fn_.sig_ (Some fn_.body)
-  | Ii_type { name; ty = t } -> node c "assoc-type" ii.span [ ident c name; ty c t ]
+  | Ii_type { name; ty = t } -> node ~id:ii.id c "assoc-type" ii.span [ ident c name; ty c t ]
 
 let decl c (d : decl) =
   let pub = vis_atoms d.vis and da = List.map (attribute c) d.attrs in
-  let n ?subject head items = node ?subject c head d.span items in
+  let n ?subject head items = node ?subject ~id:d.id c head d.span items in
   match d.decl with
-  | Fn f -> fn_node c ~head:"fn" ~flags:pub ~da d.span f.sig_ (Some f.body)
+  | Fn f -> fn_node c ~id:d.id ~head:"fn" ~flags:pub ~da d.span f.sig_ (Some f.body)
   | Struct { name; generics = g; fields } ->
       n "struct" ((pub @ [ ident c name ]) @ da @ generics c g @ List.map (field c) fields)
   | Enum { name; generics = g; variants } ->
@@ -463,14 +475,14 @@ let file_s c (f : file) =
 
 (* ---------- public interface ---------- *)
 
-let ctx spans = { spans }
-let file ?(spans = false) f = file_s (ctx spans) f
-let decl ?(spans = false) d = to_string (decl (ctx spans) d)
-let stmt ?(spans = false) s = to_string (stmt (ctx spans) s)
-let block ?(spans = false) b = to_string (block (ctx spans) b)
-let expr ?(spans = false) e = to_string (expr (ctx spans) e)
-let pattern ?(spans = false) p = to_string (pattern (ctx spans) p)
-let ty ?(spans = false) t = to_string (ty (ctx spans) t)
+let ctx spans ids = { spans; ids }
+let file ?(spans = false) ?(ids = false) f = file_s (ctx spans ids) f
+let decl ?(spans = false) ?(ids = false) d = to_string (decl (ctx spans ids) d)
+let stmt ?(spans = false) ?(ids = false) s = to_string (stmt (ctx spans ids) s)
+let block ?(spans = false) ?(ids = false) b = to_string (block (ctx spans ids) b)
+let expr ?(spans = false) ?(ids = false) e = to_string (expr (ctx spans ids) e)
+let pattern ?(spans = false) ?(ids = false) p = to_string (pattern (ctx spans ids) p)
+let ty ?(spans = false) ?(ids = false) t = to_string (ty (ctx spans ids) t)
 let pp_with f fmt v = Format.pp_print_string fmt (f v)
 let pp_file fmt v = pp_with (fun v -> file v) fmt v
 let pp_decl fmt v = pp_with (fun v -> decl v) fmt v

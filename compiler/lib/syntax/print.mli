@@ -11,10 +11,17 @@
     [~spans:true], in which case each node prints its span as an [@line:col-line:col] atom after its
     head, and each identifier, path and plain type is suffixed with its span. (Spans of wrapper
     records whose extent equals a printed child, such as a positional argument or a [fn_sig] inside
-    a declaration, are not repeated.) A list longer than 100 bytes at its indentation is broken
-    after its leading atoms (and its subject, such as the callee of a call, if it fits), each
-    remaining child on its own line indented by two spaces. A file renders as its [(module …)] line
-    followed by one line per import and declaration, indented by two spaces.
+    a declaration, are not repeated.) With [~ids:true] (default [false], so snapshots stay free of
+    ids) each node also prints its {!Node_id.t} as an [#n] atom after its span atom, and each bare
+    atom is suffixed [#n] after its span suffix. A node that prints as a bare atom shows its own id
+    (a path, [Pat_bind], a type or bound without arguments, [_], [Self]) and the id of the
+    identifier or path inside is not shown; a wrapper that adds no syntax ([Stmt.Expr], a plain
+    unlabelled argument, the [fn_decl] inside a declaration or item) shows its child's id, not its
+    own. So the output lists every id of a tree except those of such wrappers; use the tree itself
+    to enumerate all ids. A list longer than 100 bytes at its indentation is broken after its
+    leading atoms (and its subject, such as the callee of a call, if it fits), each remaining child
+    on its own line indented by two spaces. A file renders as its [(module …)] line followed by one
+    line per import and declaration, indented by two spaces.
 
     The head of each node kind:
     - literals: [(int 1)] [(float 1.5)] [(duration 5 s)] [(string "…")] [(raw "…")] [(bytes "…")]
@@ -52,15 +59,15 @@
     - files: [(module a.b)] [(import a.b)] [(import a.b (items x (y as z)) as w)]
       [(import-go "pkg" as name)] *)
 
-val file : ?spans:bool -> Ast.file -> string
+val file : ?spans:bool -> ?ids:bool -> Ast.file -> string
 (** The whole file, without a trailing newline. *)
 
-val decl : ?spans:bool -> Ast.decl -> string
-val stmt : ?spans:bool -> Ast.stmt -> string
-val block : ?spans:bool -> Ast.block -> string
-val expr : ?spans:bool -> Ast.expr -> string
-val pattern : ?spans:bool -> Ast.pattern -> string
-val ty : ?spans:bool -> Ast.ty -> string
+val decl : ?spans:bool -> ?ids:bool -> Ast.decl -> string
+val stmt : ?spans:bool -> ?ids:bool -> Ast.stmt -> string
+val block : ?spans:bool -> ?ids:bool -> Ast.block -> string
+val expr : ?spans:bool -> ?ids:bool -> Ast.expr -> string
+val pattern : ?spans:bool -> ?ids:bool -> Ast.pattern -> string
+val ty : ?spans:bool -> ?ids:bool -> Ast.ty -> string
 
 (** {2 Formatters}
 
