@@ -62,6 +62,14 @@ and would be unusable). Run init in a sandbox: not possible in Go's runtime. Do 
 - The PKG-030 sentence carries both `go_override:` (ADR-0022) and `go_init:` and the lock rule is PKG-043 (ADR-0024); this
   branch is a merge of the previous branches in the stack, so it is rebase-clean against ADR-0024.
 
+### Fourth-pass review (APPROVE, conditional on ADR-0024)
+
+- GO-045.3 ("cgo, `.syso` and unselected files are not in the init set") is true only once ADR-0024 B-1' is fixed: a plain
+  `.go` file with `//go:cgo_import_dynamic` loads a shared library before `main` under `CGO_ENABLED=0` (reproduced by the
+  reviewer). ADR-0024 now rejects those directives (E0706) and requires a static binary (E0710), and GO-045.3 states the
+  dependency in the rule text: **GO-045 MUST NOT be applied without GO-046.** This ADR stays blocked on ADR-0024.
+- The root case of `go_init:` is given in the text of E0704 (the root lists it in `[package].allow`, PKG-032).
+
 ## Decision
 
 Apply the spec diff: GO-045, GO-042 item 4, PKG-030 (`go_init:`), PKG-043 (lock records init classes), GOP-005, GOP-006,

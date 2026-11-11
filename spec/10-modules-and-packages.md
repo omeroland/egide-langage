@@ -51,16 +51,15 @@ Thanks to capabilities (chapter 6), a dependency can only do what the code passe
 I/O permissions. It controls only the ways around the model.
 
 - **[PKG-030]** A dependency whose code (transitively) contains `unsafe`, C FFI, impure Go calls or `@go_threadsafe` MUST be listed with
-  the matching `allow` entries: `"unsafe"`, `"ffi:<library>"`, `"go:<module>"`, `"go_init:<module>"` (GO-045), `"go_threadsafe:<go module>"` (GO-032), `"go_override:<import path>.<Func>"` (GO-044), `"test-capabilities"`.
+  the matching `allow` entries: `"unsafe"`, `"ffi:<library>"`, `"go:<module>"`, `"go_init:<module>"` (GO-045), `"go_threadsafe:<go module>"` (GO-032), `"go_override:<import path>.<Func>=<digest>"` (GO-044), `"test-capabilities"`.
   A dependency update that introduces a new breach fails the build until the manifest is updated.
 - **[PKG-031]** `allow` entries are not transitive: every package that (transitively) depends on a breaching package
   declares it, so the breach is visible at every level. An `allow` list is read only from the manifest of the package that
   declares the dependency edge, never as a union over the graph, so a dependency cannot satisfy a gate of its dependent.
 - **[PKG-032]** The gate protects a package from its dependencies and also covers its own code. A package lists its own
-  breaches (`unsafe`, `@go_threadsafe`, an override of GO-044) in `allow = [...]` of its `[package]` table, with the
-  entries of PKG-030. For the **root** package this list is mandatory: a breach in the root's own code that is not listed
+  breaches in `allow = [...]` of its `[package]` table, with every kind of entry of PKG-030. For the **root** package this list is mandatory: a breach in the root's own code that is not listed
   there fails the build with the code of the breach (E0421 for `@go_threadsafe`, E0701 for an override, E0703 for
-  `unsafe`, `ffi:<library>`, `go:<module>` and `test-capabilities`). For a dependency
+  every other entry kind: `unsafe`, `ffi:<library>`, `go:<module>`, `test-capabilities` and any entry kind added later). For a dependency
   it is informational (it feeds `egide audit`) and **never** satisfies the gate of a dependent, which is the `allow` of
   the edge (PKG-031). A manifest-less script (TOOL-011) has an empty list unless its leading comment block declares one.
 
@@ -68,18 +67,20 @@ I/O permissions. It controls only the ways around the model.
 
 - **[PKG-040]** `egide.lock` records, for every package: exact version, SHA-256 of the source archive, the publisher's
   Sigstore signature bundle, the `allow` breaches found, and for Go modules the `go.sum` lines, the per-function
-  capability classification (GO-042) the overrides (GO-044) and, for each override, the **underlying** class (before the override). Classifications and
-  overrides are keyed by (build tuple, declaring package, function), where the build tuple is the set of settings that
-  select Go files (`GOOS`, `GOARCH`, tags and the rest, defined by GO 046 of ADR-0024), so that package B never reads the
-  override of package A and a result computed for one tuple is not reused for another.
+  capability classification (GO-042) and the overrides (GO-044) with, for each, the set of discharged findings and its
+  digest. A classification is keyed by (build tuple, Go package, function); an override by (build tuple, Égide package that
+  declares it, Go package, function), so that package B never reads the override of package A, even when both depend on the
+  same Go module. The build tuple is the set of settings that select Go files (`GOOS`, `GOARCH`, tags and the rest of the Go
+  build), so a result computed for one tuple is not reused for another.
 - **[PKG-041]** Builds verify every hash and signature. A mismatch is a fatal error; there is no flag to skip it.
 - **[PKG-042]** Installing or building a package never executes code of that package with authority: there are no
   build scripts, install hooks or post-install steps (INT-005). The same holds for the Go modules of `[go]`: their analysis
   and build run under GO-046 (no cgo, no toolchain download, no `go generate`, no inherited environment).
 - **[PKG-043]** For the Go closure `egide.lock` also records the Go toolchain version, the SHA-256 of its distribution
-  archive and of the installed `GOROOT` tree, for the native backend the identity of the C toolchain (GO-046.1), the SHA-256
+  archive and of the installed `GOROOT` tree, for the native backend the hash of the C toolchain tree (GO-046.1), the SHA-256
   of every module directory used (GO-046.4), the classification of each package's initialisation (GO-045) and the
-  per-function classification under one key, **(build tuple, declaring package, function)** (GO-046.6, PKG-040).
+  per-function classification, under the keys of PKG-040 ((build tuple, Go package, function); overrides add the declaring
+  Égide package).
 
 ## 10.6 Reproducibility and provenance
 

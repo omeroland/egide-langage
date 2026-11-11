@@ -77,21 +77,35 @@ as a union over the graph (the variant that would let a dependency satisfy its d
 | Finding | Evidence | Resolution |
 |---------|----------|------------|
 | B-1: `Func.Pkg()` ownership accepts a local interface method (`type Sink interface{ Write([]byte)(int, error) }`, also embedded in a struct) and a body-less function (assembly stub, `//go:linkname`). Attack: `func Stdout() Sink { return os.Stdout }`, override `m.Sink.Write`, and a write to fd 1 is pure | established (reproduced); the last step extrapolated | GO-044.1 adds to E0702: interface methods (also promoted or via a type parameter), functions without a Go body, and functions whose body triggers GO-042 item 2. The target must have a Go body whose own call graph GO-042 analyses. Overrides exist for items 1 and 3 of GO-042 (calls through values; exported-variable writes), never item 2 |
-| B-2: an accepted override masks a later true positive: GO-043 compares the effective class, which stays `pure`; the same for a tuple on which the function is not pure | extrapolated | the lock records the **underlying** class per tuple next to the override; drift compares it; growth of the capability set under an override is E0701 until the entry is re-confirmed by `egide lock` (GO-044.5) |
+| B-2: an accepted override masks a later true positive: GO-043 compares the effective class, which stays `pure`; the same for a tuple on which the function is not pure | extrapolated | the lock records the **underlying** class per tuple next to the override; drift compares it; growth of the capability set under an override is E0701 until the entry is re-confirmed by `egide lock` (GO-044.5) | (superseded by B-2' below)
 | B-3: duplicated clause in MEM-071; no code for an unlisted `unsafe`/`ffi:`/`go:`/`test-capabilities` in the root; `[package].allow` missing from PKG-010 and the manifest example | established | MEM-071 fixed; new code E0703; PKG-010 and the 10.2 example updated |
 | Non-blocking 1: the key grammar is ambiguous for dotted path elements | extrapolated | longest prefix that is a package of a `[go]` module; ambiguity is E0702 |
 | Non-blocking 3: generic functions | extrapolated | `Func.Origin()`; the override applies to every instantiation |
 | Non-blocking 5: a script's comment block declares its own `allow` | established | TOOL-011 says it is the author's consent, not the runner's |
 | Non-blocking 2: overlap with the other ADR PRs | established | the lock key is **(build tuple, declaring package, function)**, stated here in PKG-040; see "Merge order" |
 
+### Fourth-pass findings (security review of head 81683258; reasoned from the text and from `go/types` behaviour reproduced earlier, not re-run)
+
+| Finding | Resolution |
+|---------|------------|
+| B-1': the E0702 exclusions are bypassed by a one-line exported wrapper in the same module: around an interface method (`V{w io.Writer}` returning `os.Stdout`), around an unexported assembly stub, or a direct `os.WriteFile`. "Never item 2" was decoration (extrapolated attack, established text) | option A of the reviewer: an override **discharges only the findings of GO-042 items 1 and 3** below the function; the **residual** (item 2 findings and every call classified other than `pure`) must be empty, else E0702 prints it (GO-044.2). Wrappers over a stub or over `os.WriteFile` are rejected; a wrapper over an interface call is the canonical item 1 false positive and stays legal, its consent being the digest of item 5 |
+| B-2': the "underlying class" is vacuous for an item 1 override: that class is already `Go`, the top of the lattice, and no order was defined, so a version adding a file write does not grow `{Go}` (extrapolated) | the lock records the **set of discharged findings** (function reached, kind, instantiation) and requires an empty residual. A version that adds `os.WriteFile` makes the residual non-empty (E0702); a version that adds another dynamic call changes the discharged set (E0701). Nothing is collapsed to `Go` |
+| B-3': re-confirmation by `egide lock` is silent: the confirmation state lives in the lock that the command rewrites, so a bot or CI run clears E0701 with no human decision (established from the text) | the `allow` entry carries the confirmed state, `go_override:m.F=<digest>`; `egide lock` and `egide update` never edit `allow`; `egide lock --confirm go_override:m.F` rewrites that one entry, prints the set difference, and refuses to run without the function named, in any mode (GO-044.5, 6). Digest rather than a readable set because the discharged set is a list of call sites, not of capability classes; `egide audit` prints it in full. Owner's choice: a readable list is the alternative |
+| Non-blocking 1: "declaring package" in PKG-040 is ambiguous | classification keyed (tuple, Go package, function); override keyed (tuple, declaring Égide package, Go package, function) |
+| Non-blocking 2: PKG-032 enumerated root breaches incompletely | "every kind of entry of PKG-030"; E0703 covers every kind that has no code of its own. The root case of `go_init:` is given its code in ADR-0025 |
+| Non-blocking 3: E0702 and the digest must be evaluated per tuple (`purego` versus an assembly stub) | GO-044.6 |
+| Non-blocking 4: generics | the confirmed set is computed per instantiation used by Égide source; a new instantiation is a changed set |
+| Non-blocking 5, 6: "allocated in merge order" is inexact; "GO 046"/"PKG 043" typos in normative text | reworded ("allocated so that the catalogue stays sorted"); the spec text no longer cites ADR or sibling rule ids |
+| Non-blocking 7: with #29 merged first, `docs/adr/README.md` conflicts on the last row | trivial, keep both rows |
+
 ### Merge order
 
 Recommended: **#32, #33, #34, #35**, as a stack (each PR's base is the previous branch; GitHub retargets to `main` as they
 merge). #29 and #30 touch only ch. 2/3 and can merge at any time; they conflict with the others only in
 `docs/adr/README.md` and `docs/diagnostics.md` rows. Use merge commits, not squashes, for the stacked PRs. Codes were
-allocated in merge order so the catalogue stays sorted: #32 E0701-E0703, #35 E0704-E0705, #34 E0706-E0708, #33 E0709. The
-PKG-030 sentence is extended by #32 (`go_override:`) and by #35 (`go_init:`); the lock rules are PKG-040 (here: key, overrides,
-underlying class) and PKG 043 (#34: toolchain, cache, tuple).
+allocated so that the catalogue stays sorted: ADR-0022 E0701-E0703, ADR-0025 E0704-E0705, ADR-0024 E0706-E0708, ADR-0023 E0709
+(this is not the stack order). The PKG-030 sentence is extended by this ADR (`go_override:`) and by ADR-0025 (`go_init:`); the
+lock rules are PKG-040 (here) and the Go-closure lock rule of ADR-0024.
 
 ## Decision
 
