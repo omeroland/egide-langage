@@ -6,7 +6,7 @@
 - Decided by: proposed by the `language-architect`; **not accepted**. The owner's merge of this PR is the acceptance.
   The owner-delegated regime of ADR-0013..0017 does not cover this ADR.
 - Spec chapters affected: 3 (SYN-015, SYN-023, SYN-053), `spec/grammar/egide.ebnf`, `docs/diagnostics.md`
-- Answers: Q-0022 (attribute arguments; the duplicate Q-0022 file of the ADR-0017 re-review, item 1 and the first row of
+- Answers: Q-0022 (attribute arguments; the ADR-0017 re-review file, formerly a second Q-0022 and renamed Q-0053 in this PR: item 1 and the first row of
   item 2), Q-0023, Q-0024
 - Consistency with ADR-0018 (braces, Proposed): the three productions below do not mention blocks except through the
   existing `block_expr` nonterminal, which ADR-0018 redefines; they carry over unchanged. Examples use the braces form.
@@ -38,7 +38,7 @@ closed (SYN-023, E0117), so it does not.
 Rule: arguments are `expr` or `label: expr`; after a labelled argument all are labelled (as SYN-030 for calls). Each
 attribute accepts exactly the arguments of its table row. A new code **E0122** covers missing, extra, repeated,
 unlabelled or unknown-label arguments and a non-literal `reason`; E0118 stays for a string that breaks SYN-018. This
-also settles the first row of item 2 of the duplicate Q-0022 ("which code?"): E0122, not E0117 (which means "unknown
+also settles the first row of item 2 of Q-0053 (formerly the duplicate Q-0022) ("which code?"): E0122, not E0117 (which means "unknown
 attribute or wrong target") and not E0118 (string content). The AST change is `attribute.args : (string option * expr)
 list option` (syntax-engineer, T-1031 follow-up). The E0107 PoC (`@derive((a: int))`) is unaffected: a parenthesised
 item is still an `expr`.
@@ -73,7 +73,7 @@ E0100, while SYN-015 calls it both "a grammar restriction" and the generic E0104
 
 Security note: nothing is weakened. The check still rejects exactly the same programs; CT-002/E0610 still reject
 `unsafe`/`given`/`with` nested deeper in the initialiser (lambda bodies, branches), which the grammar never covered
-(raised in item 9 of the duplicate Q-0022, still open).
+(raised in item 9 of Q-0053 (formerly the duplicate Q-0022), still open).
 
 ### Verification (established, reproducible)
 
@@ -113,7 +113,6 @@ In the three tables above.
 ## Recommendations / Next Steps
 
 1. Owner: merge to accept. All three choices are mechanical; the one to look at is 3 (A2 vs plain E0100 B).
-2. Q-0023, Q-0024 and the first Q-0022 file are marked answered in this PR. The second Q-0022 file (re-review) keeps
-   items 2 (other rows), 3 to 9 open; **the two files share the id Q-0022**, which `tools` do not check (only T- files
-   are). I recommend renaming the second to Q-0053 in a separate hygiene change (references: grep "Q-0022").
+2. Q-0023, Q-0024 and Q-0022 are marked answered in this PR. Q-0053 (the re-review file, renamed here from its
+   duplicate id Q-0022; no `T-` file referenced it by file name) keeps items 2 (other rows) and 3 to 9 open.
 3. Not verified: behaviour with the real lexer; E0122 wording.

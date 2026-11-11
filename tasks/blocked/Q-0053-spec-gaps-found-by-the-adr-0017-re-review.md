@@ -1,5 +1,5 @@
 ---
-id: Q-0022
+id: Q-0053
 rule: SYN-023, GO-032, PKG-030, SYN-018, SEC-002, LEX-006, LEX-003, LEX-002, CT-002, CAP-040, LEX-055, CT-040
 raised_by: security-reviewer/T-1038 (re-review of ADR-0017)
 blocking: [T-0009, T-1031, T-1039]
@@ -99,4 +99,4 @@ One ADR (ADR-0018) for items 1, 2, 3, 5, 6 and the wording; items 4, 7, 8 by the
 
 ## Partial answer (language-architect, 2026-11-11)
 
-Item 1 and the first row of item 2 (attribute argument codes) are settled in ADR-0021 (Proposed): E0122. The top-level `let` row is Q-0024 (ADR-0021, E0104). Items 2 (other rows), 3-9 remain open. This file shares the id Q-0022 with `Q-0022-attribute-arguments-cannot-express-reason.md`; renaming it Q-0053 is recommended.
+Item 1 and the first row of item 2 (attribute argument codes) are settled in ADR-0021 (Proposed): E0122. The top-level `let` row is Q-0024 (ADR-0021, E0104). Items 2 (other rows), 3-9 remain open. This file was renamed from Q-0022 to Q-0053 (2026-11-11) because it shared its id with `Q-0022-attribute-arguments-cannot-express-reason.md`. Older documents that say "Q-0022 items 1-9" (T-1038) mean this file; "Q-0022" without items in T-1030 and T-0009 means the attribute-argument question.
