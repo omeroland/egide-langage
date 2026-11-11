@@ -1,0 +1,6 @@
+# spec: LEX-041
+# expect: lex-fail
+# diagnostic: E0031 at 6:9
+module tests.lexical.numeric_fail_identifier_after_float
+
+let a = 1.5ms

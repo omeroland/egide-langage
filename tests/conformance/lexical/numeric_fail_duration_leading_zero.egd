@@ -1,0 +1,6 @@
+# spec: LEX-040, LEX-042
+# expect: lex-fail
+# diagnostic: E0030 at 6:9
+module tests.lexical.numeric_fail_duration_leading_zero
+
+let a = 05.ms

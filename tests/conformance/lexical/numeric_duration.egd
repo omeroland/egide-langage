@@ -1,0 +1,11 @@
+# spec: LEX-042
+# expect: lex-pass
+module tests.lexical.numeric_duration
+
+let a = 500.ms
+let b = 5.s
+let c = 30.min
+let d = 1.ns
+let e = 2.us
+let f = 3.h
+let g = 1_0.s

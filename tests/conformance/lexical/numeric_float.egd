@@ -1,0 +1,12 @@
+# spec: LEX-041
+# expect: lex-pass
+module tests.lexical.numeric_float
+
+let a = 1.5
+let b = 1e9
+let c = 2.5e-3
+let d = 1e+9
+let e = 1_000.25
+let f = 1.5_0
+let g = 1e1_0
+let h = 0.5

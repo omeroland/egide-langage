@@ -1,0 +1,9 @@
+# spec: LEX-040
+# expect: lex-pass
+module tests.lexical.numeric_int_prefixed
+
+let a = 0x7F
+let b = 0xdead_BEEF
+let c = 0o755
+let d = 0b1010
+let e = 0b1_0
