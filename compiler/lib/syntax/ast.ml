@@ -1,11 +1,27 @@
 (* Types: see ast.mli for the documentation of every node and the EBNF production it represents. *)
 
 type span = Egide_source.Span.t
+
+(* [Egide_source.Span] has a printer but no equality, and the library is outside T-0029's paths, so the two functions
+   the derivers look up by name for [span] are defined here. Spans are records of strings and integers: structural
+   equality is exact. *)
+let pp_span = Egide_source.Span.pp
+let equal_span (a : span) b = a = b
+
+(* [Uchar.pp] does not exist in OCaml 5.2 (the floor in dune-project). Scalar values print as [U+XXXX], the Unicode
+   notation; [Uchar.equal] exists, so [eq] needs nothing. *)
+let pp_uchar fmt u = Format.fprintf fmt "U+%04X" (Uchar.to_int u)
+
 type ident = { id : Node_id.t; name : string; span : span }
+[@@deriving show, eq]
 type path = { id : Node_id.t; segments : ident list; span : span }
+[@@deriving show, eq]
 type duration_unit = Ns | Us | Ms | S | Min | H
+[@@deriving show, eq]
 type mode = By_read | Inout | Take | Comptime
+[@@deriving show, eq]
 type unary_op = Neg | Bit_not | Not
+[@@deriving show, eq]
 
 type binary_op =
   | Pipe
@@ -22,8 +38,10 @@ type binary_op =
   | Div
   | Rem
   | Pow
+[@@deriving show, eq]
 
 type cmp_op = Eq | Ne | Lt | Le | Gt | Ge
+[@@deriving show, eq]
 
 type assign_op =
   | Simple_assign
@@ -37,6 +55,7 @@ type assign_op =
   | Bit_xor_assign
   | Shl_assign
   | Shr_assign
+[@@deriving show, eq]
 
 type literal =
   | Int of string
@@ -45,7 +64,7 @@ type literal =
   | String of string
   | Raw_string of string
   | Bytes of string
-  | Char of Uchar.t
+  | Char of (Uchar.t [@printer pp_uchar])
   | Template of { prefix : ident; parts : template_part list }
   | Bool of bool
 
@@ -223,8 +242,10 @@ and decl_desc =
   | Const of { name : ident; ty : ty option; value : expr }
 
 and type_def = Alias of ty | Newtype of { ty : ty; where_ : expr option }
+[@@deriving show, eq]
 
 type import_item = { name : ident; alias : ident option; span : span }
+[@@deriving show, eq]
 
 type import = { import : import_desc; span : span }
 
@@ -233,16 +254,7 @@ and import_desc =
   | Import_go of { package : string; package_span : span; alias : ident }
 
 and import_form = Whole | Alias_as of ident | Items of import_item list
+[@@deriving show, eq]
 
 type file = { module_path : path; imports : import list; decls : decl list; span : span }
-
-(* Equality (the role of [@@deriving eq], see T-0008 Log). Stdlib structural equality is exact here: the tree holds
-   only strings, booleans, integers ([Uchar.t], span positions, node ids), options, lists, records and constructors, with no
-   functional values, no floats (float literals are kept as source text) and no cycles. *)
-let equal_file (a : file) b = a = b
-let equal_decl (a : decl) b = a = b
-let equal_stmt (a : stmt) b = a = b
-let equal_block (a : block) b = a = b
-let equal_expr (a : expr) b = a = b
-let equal_pattern (a : pattern) b = a = b
-let equal_ty (a : ty) b = a = b
+[@@deriving show, eq]

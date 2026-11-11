@@ -19,6 +19,7 @@
   (dune (>= 3.14))
   (menhir (>= 20231231))
   (sedlex (>= 3.2))
+  (ppx_deriving (>= 6.0))
   (ppx_expect :with-test)
   (alcotest :with-test)
   (qcheck-core :with-test)

@@ -18,7 +18,7 @@
       [fn_decl]s. A wrapper whose identity is that of a child it always contains ([lambda_param],
       [typed_ident], [with_item], [case_arm], [if_branch], [map_entry], [attribute], [fn_sig],
       [import], and the pieces of a pattern or clause) has none: key a side table on the child's id.
-      Ids are stored in the tree, so structural equality ({!equal_file} and the like) compares them:
+      Ids are stored in the tree, so the derived equality ({!equal_file} and the like) compares them:
       two parses of one source are equal, two hand-built trees with distinct ids are not.
       {b Which id keys what.} Some constructs carry several ids; passes use one convention so that
       they find each other's entries. {e Binders} (a [let] or [for] variable, a parameter, a
@@ -44,21 +44,32 @@
 
 type span = Egide_source.Span.t
 
+val pp_span : Format.formatter -> span -> unit
+(** [file:line:col] of the start ({!Egide_source.Span.pp}); the derived printers use it for every [span]. *)
+
+val equal_span : span -> span -> bool
+(** Structural: file name and both positions. *)
+
 type ident = { id : Node_id.t; name : string; span : span }
+[@@deriving show, eq]
 (** [IDENT]. *)
 
 type path = { id : Node_id.t; segments : ident list; span : span }
+[@@deriving show, eq]
 (** [path = IDENT { "." IDENT }]. [segments] is never empty. *)
 
 type duration_unit = Ns | Us | Ms | S | Min | H  (** LEX-042 *)
+[@@deriving show, eq]
 
 type mode =
   | By_read  (** no keyword: read access, the default (MEM-020) *)
   | Inout  (** [inout] (MEM-021) *)
   | Take  (** [take] (MEM-023) *)
   | Comptime  (** [comptime] (CT-010); only on [param], not on [lambda_param] *)
+[@@deriving show, eq]
 
 type unary_op = Neg  (** [-] *) | Bit_not  (** [~] *) | Not  (** [not] *)
+[@@deriving show, eq]
 
 type binary_op =
   | Pipe  (** [|>] (SYN-037) *)
@@ -75,8 +86,10 @@ type binary_op =
   | Div
   | Rem
   | Pow  (** [**], right-associative (LEX-062) *)
+[@@deriving show, eq]
 
 type cmp_op = Eq | Ne | Lt | Le | Gt | Ge  (** [cmp_op] *)
+[@@deriving show, eq]
 
 type assign_op =
   | Simple_assign  (** [=] *)
@@ -90,6 +103,7 @@ type assign_op =
   | Bit_xor_assign
   | Shl_assign
   | Shr_assign  (** [assign_op] *)
+[@@deriving show, eq]
 
 (** {1 Expressions} *)
 
@@ -416,10 +430,12 @@ and type_def =
   | Alias of ty  (** [type A = T] *)
   | Newtype of { ty : ty; where_ : expr option }
       (** [type A = new T [ where expr ]]; [where] exists only here (TYP-030, TYP-031, SYN-024) *)
+[@@deriving show, eq]
 
 (** {1 Files} *)
 
 type import_item = { name : ident; alias : ident option; span : span }
+[@@deriving show, eq]
 (** [import_item = IDENT [ "as" IDENT ]] *)
 
 type import = { import : import_desc; span : span }
@@ -435,23 +451,22 @@ and import_form =
   | Whole  (** [import a.b] *)
   | Alias_as of ident  (** [import a.b as c] (SYN-002: [as] only on a single path) *)
   | Items of import_item list  (** [import a.b.{X, Y as Z}] (never empty) *)
+[@@deriving show, eq]
 
 type file = { module_path : path; imports : import list; decls : decl list; span : span }
+[@@deriving show, eq]
 (** [file = module_decl NEWLINE { import_decl NEWLINE } { top_decl } EOF];
     [module_decl = "module" path] (SYN-001, SYN-002). *)
 
-(** {1 Equality}
+(** {1 Derived functions}
 
-    Structural equality, spans and node ids included. These play the role of [[@@deriving eq]] (see
-    T-0008 Log): the names are the ones ppx_deriving would generate so that callers do not change
-    when it is adopted ([Node_id.equal] is what the derived functions will call on the [id] fields).
-    For equality that ignores spans and ids, compare the {!Print} renderings, which omit both by
-    default. *)
+    Every type above has [[@@deriving show, eq]] (ppx_deriving, ADR-0001): [pp_x], [show_x] and
+    [equal_x], for example {!pp_expr}, {!show_file}, {!equal_decl}. They are generated, so they are
+    not listed here.
 
-val equal_file : file -> file -> bool
-val equal_decl : decl -> decl -> bool
-val equal_stmt : stmt -> stmt -> bool
-val equal_block : block -> block -> bool
-val equal_expr : expr -> expr -> bool
-val equal_pattern : pattern -> pattern -> bool
-val equal_ty : ty -> ty -> bool
+    - [equal_x] is structural and compares spans and node ids ({!Node_id.equal} on the [id] fields),
+      as the hand-written functions it replaced did. For equality that ignores spans and ids,
+      compare the {!Print} renderings, which omit both by default.
+    - [pp_x] / [show_x] print OCaml record syntax with spans ([file:line:col]) and ids ([#n]), for
+      debugging. They are {b not} the S-expression: use [Print.pp_x] for that (snapshot tests, the
+      [egide parse] output). A [Uchar.t] prints as [U+XXXX]. *)

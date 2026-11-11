@@ -31,10 +31,9 @@ let%expect_test "derived show prints records with ids and spans" =
 let%expect_test "derived show covers constructors, options, lists and Uchar" =
   let ch = e (Lit (Char (Uchar.of_int 0x1F600))) in
   let s = show_expr ch in
-  Printf.printf "has constructor: %b, has id: %b\n"
-    (contains s "Lit")
-    (contains s "#");
-  [%expect {| has constructor: true, has id: true |}]
+  Printf.printf "has constructor: %b, has id: %b, uchar: %b\n" (contains s "Lit") (contains s "#")
+    (contains s "U+1F600");
+  [%expect {| has constructor: true, has id: true, uchar: true |}]
 
 (* The S-expression formatter is not replaced: no ids, no record syntax. *)
 let%expect_test "Print.pp_expr stays the S-expression, Ast.pp_expr is the derived one" =
@@ -64,7 +63,7 @@ let%expect_test "equal_* on ident, path, bound, arg, literal compare ids and spa
   Printf.printf "path: %b %b\n" (equal_path pa pa) (equal_path pa (path "m"));
   let b : bound = { id = nid (); path = pa; args = []; span = sp } in
   Printf.printf "bound: %b %b\n" (equal_bound b b) (equal_bound b { b with id = nid () });
-  let ar : arg = { id = nid (); arg = Arg_plain { label = None; value = e (Lit Nil) }; span = sp } in
+  let ar : arg = { id = nid (); arg = Arg_plain { label = None; value = e (Lit (Bool true)) }; span = sp } in
   Printf.printf "arg: %b %b\n" (equal_arg ar ar) (equal_arg ar { ar with span = sp2 });
   Printf.printf "literal: %b %b %b\n"
     (equal_literal (Int "1") (Int "1"))

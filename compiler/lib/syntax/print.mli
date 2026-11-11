@@ -71,8 +71,14 @@ val ty : ?spans:bool -> ?ids:bool -> Ast.ty -> string
 
 (** {2 Formatters}
 
-    [pp_x fmt v] prints [x v] (without spans). They play the role of [[@@deriving show]] (see T-0008
-    Log), e.g. as Alcotest testables. *)
+    [pp_x fmt v] prints [x v] (without spans or ids), e.g. as Alcotest testables.
+
+    These are the S-expression formatters and they are kept on purpose (T-0029): {!Ast.pp_expr} and
+    its siblings, derived by [[@@deriving show]], print the OCaml record syntax with every span and
+    every [#n] id, which is the right output for debugging a pass and the wrong one for a snapshot
+    (every node would print an id that depends on the grammar). Inside this module [Ast] is opened,
+    so these definitions shadow the derived ones; outside, write [Print.pp_expr] for the
+    S-expression and [Ast.pp_expr] for the dump. *)
 
 val pp_file : Format.formatter -> Ast.file -> unit
 val pp_decl : Format.formatter -> Ast.decl -> unit
