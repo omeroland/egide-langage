@@ -4,7 +4,7 @@ title: Conformance tests for chapter 3 (syntax)
 kind: task
 phase: 0
 role: test-engineer
-depends_on: [T-0014]
+depends_on: [T-0014, T-1102]
 spec: [SYN-001, SYN-002, SYN-003, SYN-010, SYN-012, SYN-020, SYN-030, SYN-031, SYN-036, SYN-038, SYN-039, SYN-050, SYN-060, SYN-062, SYN-100, SYN-101]
 paths: [tests/conformance/syntax/]
 estimate: M
@@ -31,6 +31,7 @@ Spec rules: SYN-001, SYN-002, SYN-003, SYN-010, SYN-012, SYN-020, SYN-030, SYN-0
 Anything not listed in the acceptance criteria; create follow-up tasks.
 
 ## Log
+- 2026-11-10 language-architect: dependency on the ADR-0018 migration tasks added in PR #20 so that this task cannot start against the indentation grammar; T-1108 retargets its text.
 
 2026-11-10 language-architect (owner-delegated, ADR-0016): Q-0021: spec blocks are tagged; see T-0015. New syntax rules to cover: SYN-005, 015, 016, 017, 024, 042, 043, 044, 053, 065 and the checks of T-1031.
 
