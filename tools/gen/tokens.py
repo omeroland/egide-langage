@@ -35,18 +35,18 @@ and template = { prefix : string; parts : part list }
 
 and part =
   | Tpl_lit of string
-      (* literal text, raw, doubled braces collapsed to one brace, dedented for a triple-quoted template *)
+    (* literal text, raw, doubled braces collapsed to one brace, dedented for a triple-quoted template *)
   | Tpl_interp of interp
 
 and interp = {
-  open_pos : Lexing.position;  (* the opening brace *)
-  close_pos : Lexing.position;  (* just after the closing brace *)
+  open_pos : Lexing.position; (* the opening brace *)
+  close_pos : Lexing.position; (* just after the closing brace *)
   toks : (token * Lexing.position * Lexing.position) list;
       (* the expression, tokenised by the same lexer: no layout tokens, no spec *)
   spec : spec option;
 }
 
-and spec = { text : string; spec_pos : Lexing.position  (* the first character after the colon *) }
+and spec = { text : string; spec_pos : Lexing.position (* the first character after the colon *) }
 """
 
 def main():
