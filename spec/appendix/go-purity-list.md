@@ -76,7 +76,7 @@ The authoritative data is `go-purity/go1.25.lst`; task T-0040 generates and revi
 
 - **[GOP-005]** For every standard package the list holds a line `<import path>.init <class>` giving the class of the
   package's initialisers and of those of the standard packages it imports. `<import path>.*` does not cover `init`.
-  Only `pure` makes the package importable (E0704 otherwise). A `forbidden` package of A.3 has the init class `forbidden`
+  Only `pure` makes the package importable (E0705 otherwise). A `forbidden` package of A.3 has the init class `forbidden`
   unless a line says otherwise (`syscall`, `unsafe` and the runtime-bound packages of A.5 are the expected exceptions).
   The lines are reviewed under GOP-003, and the review decides explicitly, for each of them, packages whose
   initialisation reads the environment or registers state (`net/http`, `crypto/*`, `database/sql`, `os`).
@@ -84,7 +84,8 @@ The authoritative data is `go-purity/go1.25.lst`; task T-0040 generates and revi
 ## A.5 Runtime-bound packages
 
 - **[GOP-006]** The packages linked by the Égide runtime (`runtime/go/rt`) are exempt from the init rules of GO-045 because
-  every Égide program links them anyway: the standard packages imported by `runtime/go/rt` (today `context`, `errors`,
+  every program of the Go backend links them anyway (on the native backend only programs with Go interop do, and the
+  exemption then only skips a check on packages that are linked anyway): the standard packages imported by `runtime/go/rt` (today `context`, `errors`,
   `fmt`, `io`, `os`, `sync`, `time`) and their transitive standard imports, listed in the file `go1.25.runtime-bound`
   next to the list. The file is generated from the runtime's import graph and versioned with the list. A CI check fails if
   the committed file differs from the one generated from `runtime/go/rt`, so that a change of the runtime's imports cannot

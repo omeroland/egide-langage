@@ -34,9 +34,9 @@ barrier, and CAP-051 says guarantees do not rely on it.
 
 | Finding | Resolution |
 |---------|------------|
-| B1 (established from appendix A.3): `net/http/pprof`, `expvar`, `plugin` are `forbidden` and dangerous through initialisation; a single `go:std` entry made a third-party `import _ "net/http/pprof"` acceptable | init class `forbidden` is E0704 with no entry; no `go:std` entry exists |
+| B1 (established from appendix A.3): `net/http/pprof`, `expvar`, `plugin` are `forbidden` and dangerous through initialisation; a single `go:std` entry made a third-party `import _ "net/http/pprof"` acceptable | init class `forbidden` is E0705 with no entry; no `go:std` entry exists |
 | C1 (second pass): 45.1 must say the test applies to every standard package in the closure, including through third-party packages | GO-045.1 says so explicitly, with `plugin` as the example |
-| N1: `go:<module>` was shared with call authority, so approving calls approved later initialisers | separate key `go_init:<module>` (E0703); std init classes are a reviewed per-Go-version baseline, not a per-root decision |
+| N1: `go:<module>` was shared with call authority, so approving calls approved later initialisers | separate key `go_init:<module>` (E0704); std init classes are a reviewed per-Go-version baseline, not a per-root decision |
 | N2 (extrapolated): callbacks registered in `init` (`image.RegisterFormat`, `sql.Register`, `http.HandleFunc`, `signal.Notify`) are invoked later by pure-classified functions | GO-042 item 4: a function value passed as argument, stored in a variable or field, or started with `go`/`defer` counts as called by the function that does it. Conservative; it will over-classify (extrapolated) |
 | N5, C3: the runtime exclusion list was unenumerated and generated | GOP-006: enumerated file, generated from `runtime/go/rt` imports, CI fails if the committed file differs from the generated one, review under GOP-003 |
 | C6 (extrapolated): GOP-005 accepts only `pure`; `net/http` reads `GODEBUG` at init, so under GO-042 it classifies non-pure unless a reviewer writes `net/http.init pure` | accepted: GOP-005 requires an explicit reviewed decision for `net/http`, `crypto/*`, `database/sql`, `os`; T-0040 makes them |
@@ -47,10 +47,25 @@ barrier, and CAP-051 says guarantees do not rely on it.
 Forbid every Go package with a non-pure init set: rejected (*extrapolated*: `client-go` registers schemes and flags at init
 and would be unusable). Run init in a sandbox: not possible in Go's runtime. Do nothing: contradicts "auditable" (11.2).
 
+### Third-pass review (APPROVE after ADR-0024; wording residuals applied)
+
+- **R-1 (extrapolated).** A callback registered in an init (`image.RegisterFormat`) later runs through a std dispatcher the
+  list classifies pure (`image.Decode`, `crypto.Hash.New`, `sql.Open`). The consent is the `go_init:` entry, but its apparent
+  scope is start-up. GO-045.2 now says the entry grants the recorded set of capability classes wherever the callbacks are
+  reachable, and `egide audit` prints the callbacks.
+- **R-2 (extrapolated).** The entry is per module, the class is per init set: drift compares the capability set, not
+  "impure" (a module approved for `env` whose update adds `net` fails, E0704), so the masking of ADR-0022 B-2 does not recur.
+- GOP-006 says "every program of the Go backend" (on the native backend only Go-interop programs link the runtime packages).
+- T-0040 must be told that an absent `.init` line is `go` and therefore E0705 (fail closed): a new Go minor with unreviewed
+  packages breaks builds until they are reviewed. Codes follow merge order: E0704 (impure init not listed), E0705 (forbidden or
+  non-`pure` standard init).
+- The PKG-030 sentence carries both `go_override:` (ADR-0022) and `go_init:` and the lock rule is PKG-043 (ADR-0024); this
+  branch is a merge of the previous branches in the stack, so it is rebase-clean against ADR-0024.
+
 ## Decision
 
 Apply the spec diff: GO-045, GO-042 item 4, PKG-030 (`go_init:`), PKG-043 (lock records init classes), GOP-005, GOP-006,
-diagnostics E0703 and E0704 (E07xx).
+diagnostics E0704 and E0705 (E07xx).
 
 ## Consequences
 
