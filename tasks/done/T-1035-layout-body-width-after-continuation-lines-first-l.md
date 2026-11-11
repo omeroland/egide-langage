@@ -9,7 +9,7 @@ spec: [LEX-030, LEX-032]
 paths: [compiler/lib/syntax/layout.ml, compiler/lib/syntax/layout.mli, compiler/test/syntax/, tests/conformance/lexical/]
 estimate: S
 labels: []
-status: backlog
+status: done
 claimed_by:
 claimed_at:
 ---
@@ -34,5 +34,7 @@ LEX-032 step 2 uses b = indentation of the last physical line when that line is 
 Anything not listed in the acceptance criteria; create follow-up tasks.
 
 ## Log
+- 2026-11-10 language-architect: superseded by ADR-0018 (braces): no indentation stack, so no body-width rule. Closed in PR #20.
 
 ## Outcome
+Not implemented: superseded by ADR-0018 and T-1104 (line-termination pass). Q-0016 is moot once ADR-0018 is accepted.

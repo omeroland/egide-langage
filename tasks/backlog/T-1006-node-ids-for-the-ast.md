@@ -39,4 +39,6 @@ Side tables themselves (resolve/types).
 
 ## Log
 
+2026-11-10 syntax-engineer (T-1030): merge after T-1030 (PR #17). New nodes needing ids: `bound`, `arg` / `arg_desc`, `type_def` is not a node. `parser.mly` was touched by T-1030 (three constructor hunks of the seed subset).
+
 ## Outcome

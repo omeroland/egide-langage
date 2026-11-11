@@ -4,7 +4,7 @@ title: Conformance tests for the layout token contract (LEX-036)
 kind: task
 phase: 0
 role: test-engineer
-depends_on: [T-0007]
+depends_on: [T-0007, T-1104]
 spec: [LEX-033, LEX-036]
 paths: [tests/conformance/lexical/]
 estimate: M
@@ -32,5 +32,6 @@ ADR-0013 fixed the contract to the existing LEX-032 behaviour; no lexer change i
 Anything not listed in the acceptance criteria; create follow-up tasks.
 
 ## Log
+- 2026-11-10 language-architect: dependency on the ADR-0018 migration tasks added in PR #20 so that this task cannot start against the indentation grammar; T-1108 retargets its text.
 
 ## Outcome
