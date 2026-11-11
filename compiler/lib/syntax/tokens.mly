@@ -2,6 +2,7 @@
 %token <string> IDENT
 %token <string> INT
 %token <string> FLOAT
+%token <string * string> DURATION
 %token <string> STRING
 %token KW_AND  (* and *)
 %token KW_AS  (* as *)

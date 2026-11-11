@@ -8,6 +8,16 @@
 open Ast
 
 let span (s, e) = Egide_source.Span.of_lexing s e
+
+(* LEX-042: the lexer only produces DURATION with one of the six unit names. *)
+let duration_unit = function
+  | "ns" -> Ns
+  | "us" -> Us
+  | "ms" -> Ms
+  | "s" -> S
+  | "min" -> Min
+  | "h" -> H
+  | u -> invalid_arg ("Parser.duration_unit: " ^ u)
 %}
 
 %start <Ast.file> file
@@ -44,6 +54,7 @@ expr:
 expr_desc:
   | i = INT { Lit (Int i) }
   | f = FLOAT { Lit (Float f) }
+  | d = DURATION { let amount, unit = d in Lit (Duration { amount; unit = duration_unit unit }) }
   | s = STRING { Lit (String s) }
   | KW_TRUE { Lit (Bool true) }
   | KW_FALSE { Lit (Bool false) }

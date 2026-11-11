@@ -32,7 +32,7 @@ let%expect_test "integer literals: decimal, hexadecimal, octal, binary, with und
     4:1-5 INT("0x7F")
     5:1-12 INT("0xdead_BEEF")
     6:1-6 INT("0o755")
-    7:1-8 INT("0b1010")
+    7:1-7 INT("0b1010")
     8:1-6 INT("0b1_0")
     |}]
 
@@ -132,7 +132,7 @@ let%expect_test "malformed integer literals" =
     {|
     1:1-5 INT("1__0")
     2:1-3 INT("1_")
-    3:1-6 INT("0x_1")
+    3:1-5 INT("0x_1")
     4:1-3 INT("0x")
     5:1-6 INT("0b102")
     6:1-4 INT("0o8")
@@ -144,13 +144,13 @@ let%expect_test "malformed integer literals" =
     12:1-6 INT("12abc")
     E0030 1:1-1:5 `_` may not be doubled in a numeric literal
     E0030 2:1-2:3 a digit group may not end with `_`
-    E0030 3:1-3:6 a digit group may not start with `_`
+    E0030 3:1-3:5 a digit group may not start with `_`
     E0030 4:1-4:3 `0x` must be followed by digits
     E0030 5:1-5:6 `2` is not a valid digit of a binary literal
     E0030 6:1-6:4 `8` is not a valid digit of an octal literal
     E0030 7:1-7:5 `G` is not a valid digit of a hexadecimal literal
     E0030 8:1-8:5 leading zero in `0755` [write 0o755 for octal]
-    E0030 9:1-9:4 leading zero in `0_1` [write 0o_1 for octal]
+    E0030 9:1-9:4 leading zero in `0_1`
     E0030 10:1-10:5 `X1F` directly follows the numeric literal `0` [integer prefixes are lowercase: 0x, 0o, 0b]
     E0030 11:1-11:4 `ms` directly follows the numeric literal `5`
     E0030 12:1-12:6 `abc` directly follows the numeric literal `12`
@@ -190,9 +190,9 @@ let%expect_test "the integer part of a duration is validated like any decimal in
     1:1-6 DURATION("05", "ms")
     2:1-7 DURATION("1__0", "s")
     3:1-5 DURATION("1_", "s")
-    E0030 1:1-1:3 leading zero in `05` [write 0o5 for octal]
-    E0030 2:1-2:4 `_` may not be doubled in a numeric literal
-    E0030 3:1-3:3 a digit group may not end with `_`
+    E0030 1:1-1:6 leading zero in `05` [write 0o5 for octal]
+    E0030 2:1-2:7 `_` may not be doubled in a numeric literal
+    E0030 3:1-3:5 a digit group may not end with `_`
     |}]
 
 (* ---------------------------------------------------------------------------------------------------------- *)
