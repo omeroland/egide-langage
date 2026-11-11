@@ -274,7 +274,17 @@ let%expect_test "a tab in the margin of a triple-quoted string" =
     |}];
   (* a tab that is not in the margin is text *)
   show "\"\"\"\n  a\tb\n  \"\"\"";
-  [%expect {| 1:1-3:6 STRING("a\tb\n") |}]
+  [%expect {| 1:1-3:6 STRING("a\tb\n") |}];
+  (* review of PR #26: a tab in the indentation but beyond the margin is content, not E0005 *)
+  show "\"\"\"\n  a\n    \tb\n  \"\"\"";
+  [%expect {| 1:1-4:6 STRING("a\n  \tb\n") |}];
+  (* extrapolated (Q-0051.3): a tab on a blank line is E0005 *)
+  show "\"\"\"\n  a\n\t\n  b\n  \"\"\"";
+  [%expect
+    {|
+    1:1-5:6 STRING("a\n\nb\n")
+    E0005 3:1-3:2 tab character in the margin of a triple-quoted string; indent with spaces
+    |}]
 
 (* spec: LEX-053 *)
 let%expect_test "byte strings" =

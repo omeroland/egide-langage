@@ -1,0 +1,9 @@
+# spec: LEX-051, LEX-004
+# expect: lex-pass
+# LEX-051: only a tab in the margin is E0005; a tab after the margin is text (extrapolated reading, Q-0051.3).
+module tests.lexical.string_triple_tab_after_margin
+
+let a = """
+  a
+    	b
+  """
