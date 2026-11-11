@@ -1,0 +1,7 @@
+# spec: LEX-050, LEX-051
+# expect: lex-fail
+# diagnostic: E0040 at 6:9
+module tests.lexical.string_fail_triple_unterminated
+
+let a = """abc
+  def

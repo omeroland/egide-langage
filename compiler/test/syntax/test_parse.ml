@@ -55,3 +55,27 @@ let%expect_test "duration literals" =
 let%expect_test "1. is a syntax error, not a lexical one" =
   show "module m\nlet a = 1.\n";
   [%expect {| t.egd:2:10: error[E0100]: syntax error: unexpected . (SYN-001) |}]
+
+(* spec: LEX-050, LEX-052, LEX-053, LEX-054, EBNF `literal = ... | STRING | RAW_STRING | BYTES | CHAR` — the literal
+   forms reach the AST; a forbidden code point written as an escape is printed as an escape (LEX-006). *)
+let%expect_test "string, raw string, byte string and character literals" =
+  show
+    "module m\n\
+     let a = \"x\\n\\u{202E}y\"\n\
+     let b = r\"C:\\dir\\\"\n\
+     let c = b\"\\xFF!\"\n\
+     let d = '\\u{E9}'\n\
+     let e = '\\u{202E}'\n\
+     let f = \"\"\"\n\
+    \  hi\n\
+    \  \"\"\"\n";
+  [%expect
+    {|
+    (module m)
+      (let a (string "x\n\u{202E}y"))
+      (let b (raw "C:\\dir\\"))
+      (let c (bytes "\xff!"))
+      (let d (char "é"))
+      (let e (char "\u{202E}"))
+      (let f (string "hi\n"))
+    |}]

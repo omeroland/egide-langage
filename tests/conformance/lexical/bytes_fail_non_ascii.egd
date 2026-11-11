@@ -1,0 +1,11 @@
+# spec: LEX-053
+# expect: lex-fail
+# diagnostic: E0043 at 9:11
+# diagnostic: E0043 at 10:11
+# diagnostic: E0043 at 11:11
+# diagnostic: E0043 at 11:12
+module tests.lexical.bytes_fail_non_ascii
+
+let a = b"é"
+let b = b"	"
+let c = b"日本"

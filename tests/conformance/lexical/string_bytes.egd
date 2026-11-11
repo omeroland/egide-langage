@@ -1,0 +1,8 @@
+# spec: LEX-053
+# expect: lex-pass
+module tests.lexical.string_bytes
+
+let a = b"abc \x00\xFF\xff"
+let b = b"\\ \" \n \t \r \0"
+let c = b""
+let d = b"~ !"

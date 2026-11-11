@@ -1,0 +1,7 @@
+# spec: LEX-050
+# expect: lex-fail
+# diagnostic: E0040 at 6:9
+module tests.lexical.string_fail_newline_in_string
+
+let a = "abc
+let b = 1

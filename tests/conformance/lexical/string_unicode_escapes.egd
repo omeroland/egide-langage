@@ -1,0 +1,10 @@
+# spec: LEX-050, LEX-003
+# expect: lex-pass
+# LEX-050: an escape may denote a character that LEX-003 forbids in the source text; the value is escaped on output (LEX-006).
+module tests.lexical.string_unicode_escapes
+
+let a = "\u{41}"
+let b = "\u{e9}\u{E9}\u{000041}"
+let c = "\u{10FFFF}"
+let d = "\u{0}"
+let e = "\u{202E}\u{200D}\u{1B}"

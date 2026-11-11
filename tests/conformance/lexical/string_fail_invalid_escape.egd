@@ -1,0 +1,12 @@
+# spec: LEX-050
+# expect: lex-fail
+# diagnostic: E0041 at 9:10
+# diagnostic: E0041 at 10:12
+# diagnostic: E0041 at 11:10
+# diagnostic: E0041 at 12:11
+module tests.lexical.string_fail_invalid_escape
+
+let a = "\q"
+let b = "ok\x41"
+let c = "\'"
+let d = "a\ b"

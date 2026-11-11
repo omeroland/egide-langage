@@ -1,0 +1,8 @@
+# spec: LEX-052
+# expect: lex-pass
+module tests.lexical.string_raw
+
+let a = r"C:\dir\"
+let b = r"\n\u{zz}\q"
+let c = r""
+let d = r"""a\"""

@@ -1,11 +1,11 @@
 ---
 id: T-1080
-title: Lexer — bound the number of diagnostics per file (E0003/E0004 flood)
+title: Lexer — bound the number of diagnostics per file (E0003/E0004/E0005/E0040..E0043 flood)
 kind: task
 phase: 0
 role: syntax-engineer
 depends_on: [T-0006]
-spec: [LEX-002, LEX-003]
+spec: [LEX-002, LEX-003, LEX-050, LEX-051, LEX-053, LEX-054]
 paths: [compiler/lib/syntax/, compiler/test/syntax/, tests/conformance/lexical/, docs/diagnostics.md]
 estimate: S
 labels: [security, perf]
@@ -21,6 +21,10 @@ characters: runs of identical lexical errors are collapsed, or the number of dia
 `egide lex|check|build` and the language server stay bounded on untrusted input.
 
 ## Context
+
+**Added by T-0004 review (PR #26):** E0041, E0043 and E0005 (margin of a triple-quoted string) are also reported once
+per occurrence inside literals: 200 k `\q` in one string is about 64 MB of diagnostics, 400 k about 177 MB. The bound
+applies to them too.
 
 Finding F1 of the security review of T-0006 (PR #1). T-0006 collapsed E0001 and E0005 into one diagnostic per run, but
 E0004 (forbidden character, LEX-003) and E0003 (lone CR, LEX-002) are still reported once per character. Measured on
@@ -59,6 +63,11 @@ must keep passing unchanged (they are append-only or must not be weakened).
       and that the first diagnostic is unchanged.
 - [ ] `tests/security/` is passing unchanged; no test weakened.
 - [ ] `make ci` passes.
+
+- [ ] (Added by the security review of PR #26, F2.) The bound covers E0040, E0041, E0042, E0043 and E0005 (margin of a
+      triple-quoted string) as well: `b"` followed by 1,000,000 `é` is 1,000,000 E0043 (162 MB measured), 200 k `\q` is
+      64 MB, 400 k is 177 MB. A unit test with 1,000,000 bad escapes asserts a bounded count and that the first
+      diagnostic is unchanged; the file still fails whatever the cap.
 
 ## Out of scope
 

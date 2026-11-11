@@ -1,0 +1,9 @@
+# spec: LEX-053
+# expect: lex-fail
+# diagnostic: E0043 at 7:10
+# Q-0051.6: LEX-053 has no triple-quoted byte string.
+module tests.lexical.bytes_fail_triple_quoted
+
+let a = b"""
+  x
+  """

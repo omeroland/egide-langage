@@ -1,0 +1,16 @@
+# spec: LEX-053
+# expect: lex-fail
+# diagnostic: E0043 at 11:11
+# diagnostic: E0043 at 12:11
+# diagnostic: E0043 at 13:11
+# diagnostic: E0041 at 14:11
+# diagnostic: E0041 at 15:11
+# diagnostic: E0041 at 16:11
+module tests.lexical.bytes_fail_escape
+
+let a = b"\u{41}"
+let b = b"\{"
+let c = b"\}"
+let d = b"\x4"
+let e = b"\q"
+let f = b"\'"

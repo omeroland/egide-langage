@@ -35,4 +35,10 @@ Anything not listed in the acceptance criteria; create follow-up tasks.
 
 ## Log
 
+2026-11-11 syntax-engineer (T-0004, security review F7): diagnostic messages that quote a token or a value are built
+with OCaml's `%S` in places (the `lex` command prints `STRING("\195\169")`: `é` as decimal bytes, backslashes doubled), and
+then pass through `Escape.display`, which doubles the backslashes again. The output is safe but unreadable and not
+injective with respect to the value. Decide, in this task and in the T-1039 follow-ups, one rendering of a string value
+for tools (UTF-8 text through `Escape.display`, no `%S`).
+
 ## Outcome

@@ -1,0 +1,14 @@
+# spec: LEX-054, LEX-050
+# expect: lex-fail
+# diagnostic: E0041 at 10:10
+# diagnostic: E0041 at 11:10
+# diagnostic: E0041 at 12:10
+# diagnostic: E0041 at 13:10
+# diagnostic: E0041 at 14:10
+module tests.lexical.char_fail_escape
+
+let a = '\{'
+let b = '\}'
+let c = '\x41'
+let d = '\u{D800}'
+let e = '\q'

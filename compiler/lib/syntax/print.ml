@@ -50,24 +50,43 @@ let to_string ?(indent = 0) sx =
 
 (* ---------- atoms ---------- *)
 
-(* Strings are decoded UTF-8 (LEX-001) and printed as is, except quotes, backslashes and control characters. Byte
-   strings may hold any byte: non-ASCII and control bytes are printed as [\xHH] (LEX-053). *)
+(* Strings are decoded UTF-8 (LEX-001) and printed as is, except quotes, backslashes, control characters and every code
+   point that Escape.is_dangerous (LEX-006: the LEX-003 set, bidirectional controls, Zs other than U+0020, C1): a value
+   can hold them since `\u{H}` accepts any scalar value (LEX-050), and the printed text must lex back to the same
+   value, which a raw forbidden character would not (E0004). Byte strings may hold any byte: non-ASCII and control
+   bytes are printed as [\xHH] (LEX-053). *)
 let quote ?(bytes = false) s =
-  let b = Buffer.create (String.length s + 2) in
+  let n = String.length s in
+  let b = Buffer.create (n + 2) in
   Buffer.add_char b '"';
-  String.iter
-    (fun ch ->
-      match ch with
-      | '"' -> Buffer.add_string b "\\\""
-      | '\\' -> Buffer.add_string b "\\\\"
-      | '\n' -> Buffer.add_string b "\\n"
-      | '\t' -> Buffer.add_string b "\\t"
-      | '\r' -> Buffer.add_string b "\\r"
-      | c when bytes && (Char.code c < 0x20 || Char.code c >= 0x7f) ->
-          Printf.bprintf b "\\x%02x" (Char.code c)
-      | c when Char.code c < 0x20 || Char.code c = 0x7f -> Printf.bprintf b "\\u{%X}" (Char.code c)
-      | c -> Buffer.add_char b c)
-    s;
+  let rec go i =
+    if i < n then begin
+      let ch = s.[i] in
+      if bytes || Char.code ch < 0x80 then begin
+        (match ch with
+        | '"' -> Buffer.add_string b "\\\""
+        | '\\' -> Buffer.add_string b "\\\\"
+        | '\n' -> Buffer.add_string b "\\n"
+        | '\t' -> Buffer.add_string b "\\t"
+        | '\r' -> Buffer.add_string b "\\r"
+        | c when bytes && (Char.code c < 0x20 || Char.code c >= 0x7f) ->
+            Printf.bprintf b "\\x%02x" (Char.code c)
+        | c when Char.code c < 0x20 || Char.code c = 0x7f ->
+            Printf.bprintf b "\\u{%X}" (Char.code c)
+        | c -> Buffer.add_char b c);
+        go (i + 1)
+      end
+      else begin
+        let d = String.get_utf_8_uchar s i in
+        let w = Uchar.utf_decode_length d in
+        let cp = Uchar.to_int (Uchar.utf_decode_uchar d) in
+        if Egide_diagnostics.Escape.is_dangerous cp then Printf.bprintf b "\\u{%X}" cp
+        else Buffer.add_substring b s i w;
+        go (i + w)
+      end
+    end
+  in
+  go 0;
   Buffer.add_char b '"';
   Buffer.contents b
 
