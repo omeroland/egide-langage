@@ -44,6 +44,15 @@ Anything not listed in the acceptance criteria; create follow-up tasks.
 - Alternative rejected: making `Escape.display` leave backslash alone in excerpts (source is full of `\`). Rejected because an escaped ESC and the literal source text `\u{1B}` would then be indistinguishable (LEX-006 lists `\` explicitly).
 - Not covered (no such code yet, tasks must call `Escape`): audit, SBOM, lockfile, LSP, test and panic output. Follow-up T-1110 records the obligation. ocamlformat 0.28.1 does not build in this environment: formatting not machine-checked locally.
 
+2026-11-10 tooling-engineer: security review follow-up (non-blocking findings F1-F5).
+- F1 (fixed in tests, structural part deferred to T-1111): the lint is now a tokenizer (comments, strings, quoted strings, char literals), checks identifier paths, rejects opens, includes and aliases of Format, Fmt, Unix, Out_channel, Stdlib and Printf (except sprintf, ksprintf, bprintf, asprintf) and the banned print/output values, and scans every `.ml` in `compiler/bin/` and `compiler/lib/diagnostics/` (output.ml excepted). The review's bypass snippets are tests that must be rejected.
+- F2 (fixed in the task, not in code): T-1033 now puts the generated table in `compiler/lib/source/` (neutral package; the dune graph is source <- diagnostics <- syntax), its paths include `forbidden_set.ml/.mli`, `compiler/test/diagnostics/` and `tools/gen/`, and its acceptance criteria add the differential and cross tests. Do this amendment's reading before claiming T-1033.
+- F3 (fixed): `Forbidden_set.provisional` is deleted. The expiry test now requires, from phase 1 or once T-1033 is done, that `compiler/lib/source/forbidden_table.ml` exists and that `forbidden_set.ml` uses it. Still bypassable by creating an empty file with the right name: T-1033's differential test against the pinned table (digest) is the real check.
+- F4 (fixed): `Output.line`/`eline` (LF escaped) by default, `Output.block`/`eblock` for multi-line text. `main.ml` uses `block` for diagnostics, the AST and usage, `line` elsewhere.
+- F5 (partly fixed): in JSON mode the I/O error is a JSON line `{"kind":"io_error",...}` instead of plain text; it is not in the diagnostics schema (a code needs the owner), noted in T-1110 with the `Span.pp` and `Print.pp_*` remarks.
+- Tests added: full sweep over every scalar against an independent oracle, log-injection matrix (14 separators across message, label, note, fix, file name, excerpt, three renderers).
+- Process note: the follow-up tests and code were written in the same session and committed together, not in a separate red commit; the lint test was checked by hand to fail on an injected `Format.eprintf` in `main.ml`.
+
 ## Outcome
 
 Added `Escape`, `Forbidden_set`, `Output` to `compiler/lib/diagnostics/`; all diagnostic renderers (human, excerpts, JSON) and the CLI (`compiler/bin/main.ml`) route every string through them. `make ci` passes locally except the ocamlformat check, skipped because ocamlformat is not installed here.

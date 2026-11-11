@@ -18,14 +18,14 @@ let utf8 cp =
 
 let u_escape cp = Printf.sprintf "\\u{%X}" cp
 
-let display_of ~guard s =
+let display_of ~guard ~keep_lf s =
   let b = Buffer.create (String.length s) in
   List.iter
     (fun u ->
       match u with
       | Text.Byte x -> Buffer.add_string b (Printf.sprintf "\\x%02X" x)
       | Scalar 0x5C -> Buffer.add_string b (if guard then "\\" else "\\\\")
-      | Scalar 0x0A -> Buffer.add_string b (if guard then "\n" else "\\n")
+      | Scalar 0x0A -> Buffer.add_string b (if keep_lf then "\n" else "\\n")
       | Scalar 0x0D when not guard -> Buffer.add_string b "\\r"
       | Scalar 0x09 when not guard -> Buffer.add_string b "\\t"
       | Scalar cp when is_dangerous cp -> Buffer.add_string b (u_escape cp)
@@ -33,8 +33,9 @@ let display_of ~guard s =
     (Text.units s);
   Buffer.contents b
 
-let display = display_of ~guard:false
-let neutralize = display_of ~guard:true
+let display = display_of ~guard:false ~keep_lf:false
+let neutralize = display_of ~guard:true ~keep_lf:true
+let neutralize_line = display_of ~guard:true ~keep_lf:false
 
 let display_quoted s =
   let b = Buffer.create (String.length s + 2) in
@@ -76,7 +77,7 @@ let display_unit u =
       (utf8 cp, Text.cells cp)
   | _ ->
       let s =
-        display_of ~guard:false
+        display_of ~guard:false ~keep_lf:false
           (match u with Text.Scalar cp -> utf8 cp | Text.Byte x -> String.make 1 (Char.chr x))
       in
       (s, String.length s)

@@ -6,7 +6,7 @@ phase: 0
 role: syntax-engineer
 depends_on: [T-0006]
 spec: [LEX-003, LEX-050]
-paths: [compiler/lib/syntax/source_check.ml, compiler/lib/syntax/source_check.mli, compiler/lib/syntax/lexer.ml, compiler/test/syntax/, tests/conformance/lexical/]
+paths: [compiler/lib/syntax/source_check.ml, compiler/lib/syntax/source_check.mli, compiler/lib/syntax/lexer.ml, compiler/lib/source/, compiler/lib/diagnostics/forbidden_set.ml, compiler/lib/diagnostics/forbidden_set.mli, compiler/test/syntax/, compiler/test/diagnostics/, tools/gen/, tests/conformance/lexical/]
 estimate: S
 labels: []
 status: backlog
@@ -24,11 +24,13 @@ ADR-0016 and ADR-0017 (security review S2). The set is: Cf ∪ Default_Ignorable
 
 ## Acceptance criteria
 
-- [ ] `tools/gen/unicode_forbidden.py` reads `DerivedCoreProperties.txt`, `UnicodeData.txt`, `PropList.txt` of Unicode 16.0.0 (digests recorded in the generated header) and writes `compiler/lib/syntax/forbidden_table.ml`; `tools/check-generated.sh` fails when stale
+- [ ] `tools/gen/unicode_forbidden.py` reads `DerivedCoreProperties.txt`, `UnicodeData.txt`, `PropList.txt` of Unicode 16.0.0 (digests recorded in the generated header) and writes `compiler/lib/source/forbidden_table.ml` (neutral package: `egide.syntax` depends on `egide.diagnostics`, so a table in `compiler/lib/syntax/` would be unreachable from `Forbidden_set` without a dependency cycle); `tools/check-generated.sh` fails when stale
 - [ ] Every code point of the reviewer's gap list, TAG, Hangul fillers, CGJ, variation selectors, all 170 Cf, noncharacters: rejected in comments, strings and code (E0004), table-driven test against an independently written oracle
 - [ ] Neighbours accepted (U+00AC, U+00AE, U+2060 is Cf so rejected; U+FE10, U+E1000 accepted unless DICP)
 - [ ] `Zs` other than U+0020 accepted in comments and strings, E0051 elsewhere
 - [ ] `"\u{200D}"`, `"\u{E0041}"`, `"\u{1B}"` accepted by the lexer (LEX-050); surrogates and values above 10FFFF are E0041
+- [ ] `Egide_diagnostics.Forbidden_set.mem` is a lookup in that table (the hand-written ranges are deleted; there is no `provisional` flag); a differential test compares the generated table with `Forbidden_set.mem` over 0..0x10FFFF, and a cross test checks `lexer rejects cp => Escape.is_dangerous cp` over all scalars (T-1039 / LEX-006)
+- [ ] The test `forbidden set is backed by the generated table from phase 1` in `compiler/test/diagnostics/test_escape.ml` passes (it requires `compiler/lib/source/forbidden_table.ml` and a use of it in `forbidden_set.ml` from phase 1)
 - [ ] The table is never read from the host at run time; a test pins the table's digest
 
 ## Out of scope
@@ -36,6 +38,8 @@ ADR-0016 and ADR-0017 (security review S2). The set is: Cf ∪ Default_Ignorable
 Anything not listed in the acceptance criteria; create follow-up tasks.
 
 ## Log
+
+2026-11-10 tooling-engineer (T-1039 security review F2): paths extended and the table moved to `compiler/lib/source/` (dune graph: `egide.source` <- `egide.diagnostics` <- `egide.syntax`). Do this before claiming T-1033: it must replace `Forbidden_set.mem` of T-1039 (hand-written approximation, no flag) instead of keeping a second copy of the set.
 
 2026-11-10 language-architect (owner-delegated, ADR-0017, security review resolution): Rewritten: property-defined set, pinned table, generator script. The proxy of the authoring session could not download the Unicode files, so the generator is unwritten and the digests are to be recorded by the implementer.
 

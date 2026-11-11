@@ -1,5 +1,3 @@
-let provisional = true
-
 (* Inclusive ranges, sorted by start; see the .mli for the provenance of each group. *)
 let ranges =
   [|

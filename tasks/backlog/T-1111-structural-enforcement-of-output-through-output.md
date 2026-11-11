@@ -1,0 +1,37 @@
+---
+id: T-1111
+title: Structural enforcement of Output-only I/O (replace the text-scan lint)
+kind: task
+phase: 0
+role: tooling-engineer
+depends_on: [T-1039]
+spec: [LEX-006]
+paths: [compiler/bin/, compiler/lib/diagnostics/, compiler/test/diagnostics/]
+estimate: S
+labels: [security]
+status: backlog
+claimed_by:
+claimed_at:
+---
+
+## Goal
+
+Make "no string reaches stdout/stderr without `Escape`" a compile-time property of `compiler/bin/`, instead of a token scan.
+
+## Context
+
+Security review of T-1039 (F1). The test-side lint of T-1039 tokenizes sources and rejects known I/O paths, aliases and opens, but a new primitive, a function reached through another library, or `Unix.descr_of_out_channel` can still slip through. Suggested design: a module `Egide_diagnostics.Restricted` that shadows `print_*`, `prerr_*`, `stdout`, `stderr`, `Printf`, `Format`, `Fmt`, `Unix` and `Out_channel` with `[@@alert egide_raw_io "use Output"]`; compile `compiler/bin` with `-open Egide_diagnostics.Restricted -alert ++egide_raw_io`. `Output` itself is compiled without it. Keep the text lint as a second layer.
+
+## Acceptance criteria
+
+- [ ] A bin module calling any shadowed primitive fails to build (a dune rule or expect test demonstrates it)
+- [ ] The twelve bypass snippets of the T-1039 review (`bypass_snippets` in `test_escape.ml`) fail to build or to lint
+- [ ] `egide.syntax` and other libraries that print (e.g. `Span.pp`, `Print.pp_*`) are listed in the Log with a decision: route through `Escape.display`, delete, or document
+
+## Out of scope
+
+Anything not listed in the acceptance criteria; create follow-up tasks.
+
+## Log
+
+## Outcome

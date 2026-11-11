@@ -8,12 +8,11 @@
     Hangul fillers, the combining grapheme joiner and the noncharacters. Over-escaping is safe for
     output (LEX-006); under-escaping is not.
 
-    T-1033 replaces the body of {!mem} with a lookup in its generated table and sets {!provisional}
-    to [false]; nothing else changes. A test fails when {!provisional} is still [true] once phase 1
-    has started or T-1033 is in [tasks/done/]. *)
-
-val provisional : bool
-(** [true] while {!mem} is the hand-written approximation. *)
+    T-1033 replaces the body of {!mem} with a lookup in its generated table, which lives in the
+    neutral package [compiler/lib/source/] (the syntax library depends on this one, so the table
+    cannot live there). There is deliberately no flag to flip: a test requires, from phase 1 or once
+    T-1033 is done, that [compiler/lib/source/forbidden_table.ml] exists and that [forbidden_set.ml]
+    uses it. *)
 
 val mem : int -> bool
 (** [mem cp] is [true] when [cp] is in the LEX-003 set (tab and LF included: output escaping does

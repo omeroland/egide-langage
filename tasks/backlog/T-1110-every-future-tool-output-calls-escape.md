@@ -22,6 +22,8 @@ When each tool that prints source text or string values is implemented (`egide a
 
 T-1039 (ADR-0017 S1) adds `Escape`, `Output`, `Forbidden_set` and a lint on `compiler/bin/main.ml` and `diagnostic.ml`. The lint is a source scan; new renderers in other directories (`compiler/lib/pkg/`, `compiler/lib/lsp/`) are not covered until they are added to it. Also pending: `Print.quote` in the AST printer should render the LEX-003 set as `\u{H}` (syntax-engineer, after T-1033).
 
+Also pending (security review of T-1039, F4/F5): new tools must use `Output.line`/`Output.eline` for single-line output (audit rows, LSP messages, SBOM entries) and `Output.block` only for text that is multi-line by construction. `Egide_source.Span.pp` prints the file name raw and `Print.pp_*` use `Format` outside `Output`; they are not reachable from the CLI today, but must be deleted, routed through `Escape.display`, or documented (T-1111 decides). In `--error-format=json` mode the I/O error of `main.ml` is currently a non-schema JSON line `{"kind":"io_error","message":...}`: a catalogued diagnostic code for I/O errors in docs/diagnostics.md (owner) is needed.
+
 ## Acceptance criteria
 
 - [ ] The lint test lists every renderer source file and fails on raw print primitives or a missing `Escape.` use

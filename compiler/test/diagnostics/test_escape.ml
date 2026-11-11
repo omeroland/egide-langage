@@ -257,19 +257,26 @@ let%test "escape covers the forbidden set, Zs, bidi and DEL" =
 
 let read path = In_channel.with_open_bin path In_channel.input_all
 
-(* T-1039 Log: the forbidden set is provisional until T-1033 embeds the property-defined table. This
-   test fails once phase 1 has started or T-1033 is done while the provisional set is still wired. *)
-let%test "provisional forbidden set is replaced by T-1033 after phase 0" =
+let contains s sub =
+  try
+    ignore (Str.search_forward (Str.regexp_string sub) s 0);
+    true
+  with Not_found -> false
+
+(* T-1039 Log (F3): there is no flag to flip. From phase 1, or once T-1033 is done, the generated
+   table of T-1033 must exist in the neutral package compiler/lib/source/ (the syntax library depends
+   on egide.diagnostics, so the table cannot live in syntax) and Forbidden_set must use it. *)
+let%test "forbidden set is backed by the generated table from phase 1" =
   let phase = int_of_string (String.trim (read "../../../tasks/PHASE")) in
   let done_ =
-    Array.exists
-      (fun f -> String.starts_with ~prefix:"T-1033" f)
-      (Sys.readdir "../../../tasks/done")
+    Array.exists (fun f -> String.starts_with ~prefix:"T-1033" f) (Sys.readdir "../../../tasks/done")
   in
-  let ok = (not F.provisional) || (phase < 1 && not done_) in
+  let table = Sys.file_exists "../../lib/source/forbidden_table.ml" in
+  let wired = contains (read "../../lib/diagnostics/forbidden_set.ml") "Forbidden_table" in
+  let ok = (phase < 1 && not done_) || (table && wired) in
   if not ok then
     print_endline
-      "Forbidden_set is still provisional: wire the T-1033 table (LEX-003) behind Forbidden_set.mem";
+      "Forbidden_set is still the hand-written set: wire compiler/lib/source/forbidden_table.ml (T-1033)";
   ok
 
 (* ---- the stdout/stderr guard ---- *)
@@ -336,53 +343,255 @@ let%expect_test "messages escape values and backslashes" =
       note: a\nb \\u{1B}[2K
     |}]
 
-(* ---- lint: nothing prints a source string without the escaping function ---- *)
 
-let strip_comments s =
-  (* Remove OCaml comments (non-nested enough for this code base) so documentation may mention the names. *)
-  Str.global_replace (Str.regexp "(\\*\\([^*]\\|\\*[^)]\\)*\\*)") "" s
+(* ---- full sweep over every Unicode scalar value (security review of T-1039, candidate 1) ---- *)
 
-let forbidden_primitives =
+(* Independent, hand-written oracle (not Forbidden_set): Cc, C1, Zs, bidi, the Cf and DICP groups of
+   LEX-003 and the noncharacters. *)
+let oracle_wide cp =
+  oracle_dangerous cp
+  || cp = 0x034F
+  || (cp >= 0x0600 && cp <= 0x0605)
+  || cp = 0x06DD || cp = 0x070F
+  || (cp >= 0x115F && cp <= 0x1160)
+  || (cp >= 0x17B4 && cp <= 0x17B5)
+  || (cp >= 0x180B && cp <= 0x180F)
+  || cp = 0x3164
+  || (cp >= 0xFDD0 && cp <= 0xFDEF)
+  || (cp >= 0xFE00 && cp <= 0xFE0F)
+  || cp = 0xFFA0
+  || (cp >= 0xFFF0 && cp <= 0xFFFB)
+  || cp land 0xFFFE = 0xFFFE
+
+let%test "sweep: every scalar value is escaped when the oracle says so, and never leaks" =
+  let bad = ref [] in
+  for cp = 0 to 0x10FFFF do
+    if not (cp >= 0xD800 && cp <= 0xDFFF) then begin
+      let s = utf8 cp in
+      if oracle_wide cp && not (E.is_dangerous cp) then bad := Printf.sprintf "U+%04X missed" cp :: !bad;
+      let outs = [ E.display s; E.neutralize s; E.neutralize_line s; E.json_safe s ] in
+      if List.exists leaks outs then bad := Printf.sprintf "U+%04X leaks" cp :: !bad;
+      (* display and neutralize_line never emit a raw LF *)
+      if String.contains (E.display s) '\n' || String.contains (E.neutralize_line s) '\n' then
+        bad := Printf.sprintf "U+%04X LF" cp :: !bad
+    end
+  done;
+  if !bad <> [] then List.iter print_endline (List.filteri (fun i _ -> i < 10) !bad);
+  !bad = []
+
+(* ---- log-injection matrix (candidate 2): a separator in any field never forges an output line ---- *)
+
+let separators =
+  [ "\n"; "\r\n"; "\r"; "\xC2\x85"; "\xE2\x80\xA8"; "\xE2\x80\xA9"; "\x0B"; "\x0C"; "\\n"; "\\\n";
+    "\x00"; "\xE2\x80"; "\xC0\x8A"; "\xED\xA0\x80" ]
+
+let lines s = List.length (String.split_on_char '\n' s)
+
+let starts_fake s =
+  List.exists (fun l -> String.starts_with ~prefix:"FAKE" (String.trim l)) (String.split_on_char '\n' s)
+
+let injection_diag sep =
+  let p = "x" ^ sep ^ "FAKE: error[E9999]: pwned" in
+  ( p,
+    D.error ~rule:"LEX-003" ~code:"E0004"
+      ~labels:[ D.label (sp ~file:p 1 1 1 2) p ]
+      ~notes:[ p ]
+      ~fixes:[ D.fix p [ D.edit (sp ~file:p 1 1 1 1) p ] ]
+      (sp ~file:p 1 1 1 2) p )
+
+let%test "injection matrix: no forged line, same line count as a benign payload" =
+  let _, benign = injection_diag " " in
+  let render d src =
+    [ D.to_human d; D.render_human ~sources:(fun _ -> Some src) d; D.to_json d ]
+  in
+  let base = List.map lines (render benign "x FAKE: error[E9999]: pwned\n") in
+  List.for_all
+    (fun sep ->
+      let p, d = injection_diag sep in
+      let outs = render d (p ^ "\n") in
+      let ok = List.map lines outs = base && not (List.exists starts_fake outs) in
+      if not ok then Printf.printf "injection via %S\n" sep;
+      ok)
+    separators
+
+let%test "neutralize_line escapes LF and keeps backslash" =
+  E.neutralize_line "a\nb\\c\x1b" = "a\\nb\\c\\u{1B}"
+
+(* ---- lint: nothing prints a source string without the escaping function ----
+
+   A small OCaml tokenizer (comments, strings, quoted strings and char literals handled) feeds a
+   check on identifier paths, so that a string such as "(*" cannot hide a call, and aliases and
+   opens of the I/O modules are rejected. It is a defence in depth, not the guarantee: structural
+   enforcement is T-1111. *)
+
+let tokens src =
+  let n = String.length src in
+  let toks = ref [] in
+  let is_id c = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c = '_' || c = '\'' in
+  let rec skip_string i =
+    if i >= n then i
+    else match src.[i] with '"' -> i + 1 | '\\' -> skip_string (i + 2) | _ -> skip_string (i + 1)
+  in
+  (* a quoted string opens with an open brace, lowercase letters or underscores, then a bar *)
+  let quoted_end i =
+    let j = ref (i + 1) in
+    while !j < n && ((src.[!j] >= 'a' && src.[!j] <= 'z') || src.[!j] = '_') do incr j done;
+    if !j < n && src.[!j] = '|' then begin
+      let close = "|" ^ String.sub src (i + 1) (!j - i - 1) ^ "}" in
+      match Str.search_forward (Str.regexp_string close) src (!j + 1) with
+      | k -> Some (k + String.length close)
+      | exception Not_found -> Some n
+    end
+    else None
+  in
+  let rec comment i depth =
+    if i >= n then i
+    else if src.[i] = '(' && i + 1 < n && src.[i + 1] = '*' then comment (i + 2) (depth + 1)
+    else if src.[i] = '*' && i + 1 < n && src.[i + 1] = ')' then
+      if depth = 1 then i + 2 else comment (i + 2) (depth - 1)
+    else if src.[i] = '"' then comment (skip_string (i + 1)) depth
+    else comment (i + 1) depth
+  in
+  let rec go i =
+    if i < n then
+      let c = src.[i] in
+      if c = '(' && i + 1 < n && src.[i + 1] = '*' then go (comment (i + 2) 1)
+      else if c = '"' then (toks := "\"" :: !toks; go (skip_string (i + 1)))
+      else if c = '{' && quoted_end i <> None then
+        (toks := "\"" :: !toks; go (Option.get (quoted_end i)))
+      else if c = '\'' && i + 2 < n && src.[i + 1] <> '\\' && src.[i + 2] = '\'' then
+        (toks := "'" :: !toks; go (i + 3))
+      else if c = '\'' && i + 1 < n && src.[i + 1] = '\\' then
+        (match String.index_from_opt src (i + 2) '\'' with
+         | Some k -> toks := "'" :: !toks; go (k + 1)
+         | None -> go (i + 1))
+      else if is_id c && not (c = '\'') then begin
+        (* identifier path: A.B.c, dots included *)
+        let j = ref i in
+        let continue = ref true in
+        while !continue do
+          while !j < n && is_id src.[!j] do incr j done;
+          if !j + 1 < n && src.[!j] = '.' && is_id src.[!j + 1] && src.[!j + 1] <> '\'' then incr j
+          else continue := false
+        done;
+        toks := String.sub src i (!j - i) :: !toks;
+        go !j
+      end
+      else (if c <> ' ' && c <> '\n' && c <> '\t' && c <> '\r' then toks := String.make 1 c :: !toks; go (i + 1))
+  in
+  go 0;
+  List.rev !toks
+
+let restricted_modules = [ "Format"; "Fmt"; "Unix"; "Out_channel"; "Stdlib"; "Printf"; "Logs"; "Eio" ]
+let safe_printf = [ "sprintf"; "ksprintf"; "bprintf"; "asprintf" ]
+
+let banned_values =
+  [ "print_string"; "print_bytes"; "print_char"; "print_int"; "print_float"; "print_endline";
+    "print_newline"; "prerr_string"; "prerr_bytes"; "prerr_char"; "prerr_int"; "prerr_float";
+    "prerr_endline"; "prerr_newline"; "stdout"; "stderr"; "output"; "output_string"; "output_bytes";
+    "output_char"; "output_substring"; "output_byte"; "flush"; "flush_all"; "printf"; "eprintf";
+    "fprintf"; "ifprintf"; "kfprintf"; "pr"; "epr"; "std_formatter"; "err_formatter" ]
+
+(* Violations in [src]; [Printf.sprintf] and friends are the only allowed use of restricted modules. *)
+let lint_violations src =
+  let toks = tokens src in
+  let viol = ref [] in
+  let add m = viol := m :: !viol in
+  let check_path p =
+    match String.split_on_char '.' p with
+    | [ "Printf"; f ] when List.mem f safe_printf -> ()
+    | [ m ] when List.mem m restricted_modules -> add ("module " ^ m)
+    | m :: _ when List.mem m restricted_modules -> add ("path " ^ p)
+    | [ v ] when List.mem v banned_values -> add ("value " ^ v)
+    | _ -> ()
+  in
+  let rec walk = function
+    | ("open" | "include") :: p :: rest ->
+        (* any open of a restricted module hides later unqualified uses *)
+        (match String.split_on_char '.' p with
+         | m :: _ when List.mem m restricted_modules -> add ("open " ^ p)
+         | _ -> ());
+        walk rest
+    | "module" :: _ :: "=" :: p :: rest ->
+        (match String.split_on_char '.' p with
+         | m :: _ when List.mem m restricted_modules -> add ("alias " ^ p)
+         | _ -> ());
+        walk rest
+    | t :: rest ->
+        if t <> "\"" && t <> "'" && String.length t > 0 && (t.[0] >= 'A' && t.[0] <= 'z' || t.[0] = '_')
+        then check_path t;
+        walk rest
+    | [] -> ()
+  in
+  walk toks;
+  List.rev !viol
+
+(* The twelve bypass snippets of the security review of T-1039 (F1): each must now be rejected. *)
+let bypass_snippets =
   [
-    "print_string";
-    "print_endline";
-    "print_char";
-    "prerr_endline";
-    "prerr_string";
-    "Printf.printf";
-    "Printf.eprintf";
-    "output_string";
-    "Out_channel.output";
-    "Out_channel.output_string";
-    "stdout";
-    "stderr";
-    "Format.print";
+    "let _ = \"(*\"\nlet () = print_endline s\nlet _ = 1 (* x *)";
+    "let () = Format.eprintf \"%s\" s";
+    "let () = Format.fprintf Format.err_formatter \"%s\" s";
+    "let () = prerr_char 'x'";
+    "let () = prerr_bytes b";
+    "let () = print_bytes b";
+    "let () = print_newline ()";
+    "module P = Printf\nlet () = P.eprintf \"%s\" s";
+    "open Printf\nlet () = eprintf \"%s\" s";
+    "let () = Fmt.pr \"%s\" s";
+    "let () = Fmt.epr \"%s\" s";
+    "let () = Unix.write_substring Unix.stderr s 0 1";
+    "let () = Stdlib.print_endline s";
+    "let () = {x|(*|x}; print_endline s";
+    "let () = Out_channel.output_string stdout s";
   ]
 
-let contains s sub =
-  try
-    ignore (Str.search_forward (Str.regexp_string sub) s 0);
-    true
-  with Not_found -> false
+let%test "lint rejects every bypass snippet" =
+  List.for_all
+    (fun sn ->
+      let v = lint_violations sn in
+      if v = [] then Printf.printf "lint missed: %S\n" sn;
+      v <> [])
+    bypass_snippets
 
-(* spec: LEX-006 — the CLI writes to stdout/stderr only through Output (which neutralises); the
-   renderers of the diagnostics library use Escape and never the raw primitives or the old Text
-   escapers. Output.ml and its test are the only places allowed to touch the channels. *)
-let%test "lint: main.ml prints only through Output" =
-  let src = strip_comments (read "../../bin/main.ml") in
-  let bad = List.filter (contains src) forbidden_primitives in
-  if bad <> [] then Printf.printf "main.ml uses raw primitives: %s\n" (String.concat ", " bad);
-  bad = [] && contains src "Output."
+let%test "lint accepts comments, strings and Printf.sprintf" =
+  List.for_all
+    (fun sn -> lint_violations sn = [])
+    [
+      "(* print_endline \"(*\" *) let s = Printf.sprintf \"%d\" 1";
+      "let s = \"print_endline stdout Format.eprintf\" ^ {|stderr|}";
+      "let c = '\"' and d = 'a' let x : 'a list = []";
+      "let () = Output.line (Escape.display m)";
+    ]
 
-let%test "lint: diagnostic.ml renders through Escape only" =
-  let src = strip_comments (read "../../lib/diagnostics/diagnostic.ml") in
-  let bad =
-    List.filter (contains src)
-      ("Text.sanitize" :: "Text.json_string" :: "<U+" :: forbidden_primitives)
-  in
-  if bad <> [] then Printf.printf "diagnostic.ml: %s\n" (String.concat ", " bad);
-  bad = [] && contains src "Escape."
+let ml_files dir =
+  Sys.readdir dir |> Array.to_list
+  |> List.filter (fun f -> Filename.check_suffix f ".ml")
+  |> List.sort compare
+  |> List.map (fun f -> (Filename.concat dir f, f))
 
-let%test "lint: Text no longer exports an escaper" =
-  let src = read "../../lib/diagnostics/text.mli" in
-  not (contains src "sanitize" || contains src "json_string")
+(* spec: LEX-006 — every module of the CLI and of the diagnostics library (output.ml, which owns the
+   channels, excepted) writes nothing except through Output, and uses no escaper but Escape. *)
+let%test "lint: bin and diagnostics sources are clean" =
+  let files = ml_files "../../bin" @ ml_files "../../lib/diagnostics" in
+  let files = List.filter (fun (_, f) -> f <> "output.ml") files in
+  let ok = ref (List.length files >= 5) in
+  List.iter
+    (fun (path, _) ->
+      let src = read path in
+      let v = lint_violations src in
+      if v <> [] then (
+        ok := false;
+        Printf.printf "%s: %s\n" path (String.concat ", " v)))
+    files;
+  let main = read "../../bin/main.ml" in
+  let calls = List.filter (fun t -> String.starts_with ~prefix:"Output." t) (tokens main) in
+  (* the CLI must have no output path other than Output, and use it at least for diagnostics *)
+  !ok && List.length calls >= 5
+
+let%test "lint: Text no longer exports an escaper, diagnostic.ml uses Escape" =
+  let mli = read "../../lib/diagnostics/text.mli" in
+  let d = read "../../lib/diagnostics/diagnostic.ml" in
+  (not (contains mli "sanitize" || contains mli "json_string"))
+  && (not (contains d "<U+"))
+  && List.exists (fun t -> String.starts_with ~prefix:"Escape." t) (tokens d)

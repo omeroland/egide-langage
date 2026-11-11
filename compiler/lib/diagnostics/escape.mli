@@ -38,3 +38,7 @@ val neutralize : string -> string
 (** Last-resort guard for the output layer ({!Output}): escapes the dangerous set and invalid bytes
     as {!display} does, but leaves LF (the line structure) and backslash alone, so that text which
     already went through {!display} is not escaped twice. Not an alternative to {!display}. *)
+
+val neutralize_line : string -> string
+(** As {!neutralize} for single-line contexts: LF is escaped too ([\n]), so a payload cannot forge a
+    line. Used by {!Output.line}. *)
