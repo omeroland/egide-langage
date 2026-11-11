@@ -38,4 +38,6 @@ Anything not listed in the acceptance criteria; create follow-up tasks.
 
 ## Log
 
+2026-11-10 syntax-engineer (T-0029, review of PR #25): ppx_deriving now generates `Ast.show_*` and `Ast.pp_*` for every node type. They are documented in ast.mli as reserved for tests and debugging, but nothing enforces it: extend the lint to reject `Ast.show_*` / `Ast.pp_*` (and `Print.pp_sexp_*` if they are to stay test-only) in compiler/bin and any tool library. `Ast.pp_span` escapes the file name with `Escape.display`; string literal values and identifiers in the derived output are OCaml-escaped, not `Escape.display`-escaped. `Print.pp_*` was renamed `Print.pp_sexp_*` by T-0029.
+
 ## Outcome
