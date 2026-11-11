@@ -467,12 +467,22 @@ let tokens src =
     end
     else None
   in
+  (* End of the char literal starting at [i] ('x', '"', '\n', '\"', '\''), if any; a type variable
+     such as 'a is not one. *)
+  let char_end i =
+    if i + 2 < n && src.[i] = '\'' && src.[i + 1] <> '\\' && src.[i + 2] = '\'' then Some (i + 3)
+    else if i + 3 < n && src.[i] = '\'' && src.[i + 1] = '\\' then
+      Option.map (fun k -> k + 1) (String.index_from_opt src (i + 3) '\'')
+    else None
+  in
   let rec comment i depth =
     if i >= n then i
     else if src.[i] = '(' && i + 1 < n && src.[i + 1] = '*' then comment (i + 2) (depth + 1)
     else if src.[i] = '*' && i + 1 < n && src.[i + 1] = ')' then
       if depth = 1 then i + 2 else comment (i + 2) (depth - 1)
     else if src.[i] = '"' then comment (skip_string (i + 1)) depth
+    else if src.[i] = '{' && quoted_end i <> None then comment (Option.get (quoted_end i)) depth
+    else if src.[i] = '\'' && char_end i <> None then comment (Option.get (char_end i)) depth
     else comment (i + 1) depth
   in
   let rec go i =
@@ -485,15 +495,9 @@ let tokens src =
       else if c = '{' && quoted_end i <> None then (
         toks := "\"" :: !toks;
         go (Option.get (quoted_end i)))
-      else if c = '\'' && i + 2 < n && src.[i + 1] <> '\\' && src.[i + 2] = '\'' then (
+      else if c = '\'' && char_end i <> None then (
         toks := "'" :: !toks;
-        go (i + 3))
-      else if c = '\'' && i + 1 < n && src.[i + 1] = '\\' then
-        match String.index_from_opt src (i + 2) '\'' with
-        | Some k ->
-            toks := "'" :: !toks;
-            go (k + 1)
-        | None -> go (i + 1)
+        go (Option.get (char_end i)))
       else if is_id c && not (c = '\'') then begin
         (* identifier path: A.B.c, dots included *)
         let j = ref i in
@@ -612,6 +616,12 @@ let bypass_snippets =
     "let () = Stdlib.print_endline s";
     "let () = {x|(*|x}; print_endline s";
     "let () = Out_channel.output_string stdout s";
+    (* R1: a char literal holding a double quote inside a comment must not open a string *)
+    "(* '\"' *) let () = print_endline s";
+    "(* '\\\"' *) let () = print_endline s";
+    "(* (* '\"' *) '\"' *) let () = print_endline s";
+    "(* {|\"|} *) let () = print_endline s";
+    "let c = '\\'' let () = print_endline s";
   ]
 
 let%test "lint rejects every bypass snippet" =

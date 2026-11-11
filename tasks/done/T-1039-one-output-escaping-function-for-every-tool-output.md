@@ -53,6 +53,8 @@ Anything not listed in the acceptance criteria; create follow-up tasks.
 - Tests added: full sweep over every scalar against an independent oracle, log-injection matrix (14 separators across message, label, note, fix, file name, excerpt, three renderers).
 - Process note: the follow-up tests and code were written in the same session and committed together, not in a separate red commit; the lint test was checked by hand to fail on an injected `Format.eprintf` in `main.ml`.
 
+2026-11-10 tooling-engineer: re-verification R1 fixed: the tokenizer now recognises char literals (`'"'`, `'\"'`, `'\''`) inside comments and code, and quoted strings inside comments; five snippets added to the must-reject list. R2-R4 (incomplete deny-list) are not added to the list; they are acceptance criteria of T-1111 with the Escaped.t requirement.
+
 ## Outcome
 
 Added `Escape`, `Forbidden_set`, `Output` to `compiler/lib/diagnostics/`; all diagnostic renderers (human, excerpts, JSON) and the CLI (`compiler/bin/main.ml`) route every string through them. `make ci` passes locally except the ocamlformat check, skipped because ocamlformat is not installed here.
