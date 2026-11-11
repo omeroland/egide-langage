@@ -23,13 +23,13 @@
       {b Which id keys what.} Some constructs carry several ids; passes use one convention so that
       they find each other's entries. {e Binders} (a [let] or [for] variable, a parameter, a
       generic, an item name) are keyed by the [id] of their [ident] (for [Pat_bind i], [i.id], not
-      the pattern's). {e References} are keyed by the [id] of the [path] ([Path p]: [p.id]; the
-      path of a [Ty_path], of a [bound], of a [Pat_const] or [Pat_ctor]), or by the [ident] of a
-      field or label. {e Typing and lowering results} are keyed by the [id] of the [expr],
-      [pattern], [ty], [stmt] or [param] itself: the type of a variable use is stored under the
-      [expr.id], its resolution under the [path.id]. A wrapper that adds nothing ([Stmt.Expr]'s
-      [stmt], an unlabelled plain [arg]) is keyed only by a pass that annotates the wrapper itself.
-      A pass that wants a different assignment must write it here first.
+      the pattern's). {e References} are keyed by the [id] of the [path] ([Path p]: [p.id]; the path
+      of a [Ty_path], of a [bound], of a [Pat_const] or [Pat_ctor]), or by the [ident] of a field or
+      label. {e Typing and lowering results} are keyed by the [id] of the [expr], [pattern], [ty],
+      [stmt] or [param] itself: the type of a variable use is stored under the [expr.id], its
+      resolution under the [path.id]. A wrapper that adds nothing ([Stmt.Expr]'s [stmt], an
+      unlabelled plain [arg]) is keyed only by a pass that annotates the wrapper itself. A pass that
+      wants a different assignment must write it here first.
     - The tree is purely syntactic and immutable: no resolution or type information, no desugaring.
       Pipes, comprehensions, trailing blocks and [?] are desugared in HIR (docs/architecture.md §1).
     - Layout-only distinctions that carry no meaning (single-line vs indented block, [fn:] vs

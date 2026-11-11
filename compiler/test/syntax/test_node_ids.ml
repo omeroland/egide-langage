@@ -362,8 +362,8 @@ let%expect_test "a parsed file: ids are unique and below the generator count" =
   let gen = Node_id.Gen.create () in
   let f = parse ~gen src in
   let ids = ids_of_file f in
-  Printf.printf "nodes: %d, distinct: %b, all below count: %b\n" (List.length ids) (all_distinct ids)
-    (below_count gen ids);
+  Printf.printf "nodes: %d, distinct: %b, all below count: %b\n" (List.length ids)
+    (all_distinct ids) (below_count gen ids);
   [%expect {| nodes: 16, distinct: true, all below count: true |}]
 
 (* spec: none (architecture §2.4); same input, same ids, in the same order *)
