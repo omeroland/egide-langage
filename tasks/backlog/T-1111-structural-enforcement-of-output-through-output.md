@@ -28,6 +28,10 @@ Security review of T-1039 (F1). The test-side lint of T-1039 tokenizes sources a
 - [ ] The twelve bypass snippets of the T-1039 review (`bypass_snippets` in `test_escape.ml`) fail to build or to lint
 - [ ] `egide.syntax` and other libraries that print (e.g. `Span.pp`, `Print.pp_*`) are listed in the Log with a decision: route through `Escape.display`, delete, or document
 
+- [ ] Allow-list instead of deny-list: the allowed modules and functions of `compiler/bin/` are enumerated (or a dune rule / alert forbids everything else); the deny-list of the T-1039 lint is not extended piecemeal
+- [ ] The re-verification snippets of the T-1039 security review (R2-R4) are acceptance tests and must be rejected: `external` declarations of `caml_ml_open_descriptor_out` and `caml_ml_output`; `Buffer.output_buffer (open_out "/dev/stderr")`; `Marshal.to_channel`; `Printexc.print_backtrace`; `Sys.command` with a `printf ... 1>&2` payload
+- [ ] `Output.block` and `Output.eblock` take an abstract type (`Escaped.t`) that can only be produced by the escaped renderers (`Diagnostic.to_human`, `Print.file` wrapped by an escaping function), so a raw `string` cannot be passed; `Output.line` keeps taking `string` and escapes LF
+
 ## Out of scope
 
 Anything not listed in the acceptance criteria; create follow-up tasks.

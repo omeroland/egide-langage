@@ -31,6 +31,7 @@ ADR-0016 and ADR-0017 (security review S2). The set is: Cf ∪ Default_Ignorable
 - [ ] `"\u{200D}"`, `"\u{E0041}"`, `"\u{1B}"` accepted by the lexer (LEX-050); surrogates and values above 10FFFF are E0041
 - [ ] `Egide_diagnostics.Forbidden_set.mem` is a lookup in that table (the hand-written ranges are deleted; there is no `provisional` flag); a differential test compares the generated table with `Forbidden_set.mem` over 0..0x10FFFF, and a cross test checks `lexer rejects cp => Escape.is_dangerous cp` over all scalars (T-1039 / LEX-006)
 - [ ] The test `forbidden set is backed by the generated table from phase 1` in `compiler/test/diagnostics/test_escape.ml` passes (it requires `compiler/lib/source/forbidden_table.ml` and a use of it in `forbidden_set.ml` from phase 1)
+- [ ] The oracle of the differential and neutralisation tests is written independently of the generator (separate code path, not importing the generator's parsing), and the upstream Unicode 16.0.0 file digests are pinned in the repository, so a regenerated table cannot silently change the expected set
 - [ ] The table is never read from the host at run time; a test pins the table's digest
 
 ## Out of scope
