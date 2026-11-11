@@ -1,0 +1,9 @@
+# spec: SYN-023, GO-032
+# expect: parse-fail
+# diagnostic: E0117 at 8:5
+# phase: 1
+module tests.security.attribute_go_threadsafe_on_field
+
+struct S:
+    @go_threadsafe
+    x: int

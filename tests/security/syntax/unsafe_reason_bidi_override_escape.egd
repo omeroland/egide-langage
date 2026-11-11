@@ -1,0 +1,10 @@
+# spec: SYN-017, SYN-018
+# expect: parse-fail
+# diagnostic: E0110 at 9:20
+# phase: 1
+# Attack. Right-to-left override produced by an escape.
+module tests.security.unsafe_reason_bidi_override_escape
+
+fn f():
+    unsafe(reason: "ok \u{202E}dne eht"):
+        ()

@@ -1,0 +1,14 @@
+# spec: SYN-030, CAP-032
+# expect: compile-fail
+# diagnostic: E0120 at 14:13
+# phase: 4
+# Attack. using names a parameter that does not exist (SYN-030).
+module tests.security.using_names_no_using_parameter
+
+import std.cap.{Client}
+
+fn sync(n: int) using api: Client:
+    ()
+
+fn f(c: Client):
+    sync(1, using nope: c)

@@ -1,0 +1,12 @@
+# spec: CT-002, CAP-040
+# expect: compile-fail
+# diagnostic: E0610 at 12:9
+# phase: 2
+# Attack. Purity is transitive: a function containing unsafe is impure (CAP-040).
+module tests.security.toplevel_let_calls_impure_function
+
+fn helper() -> int:
+    unsafe(reason: "foreign call"):
+        0
+
+let P = helper()

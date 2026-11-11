@@ -1,0 +1,7 @@
+# spec: LEX-055
+# expect: lex-pass
+# phase: 1
+# Control. The limit itself (8 levels) is accepted.
+module tests.security.template_nesting_depth_8_accepted
+
+let q = f"{f"{f"{f"{f"{f"{f"{f"{1}"}"}"}"}"}"}"}"

@@ -1,0 +1,9 @@
+# spec: LEX-055
+# expect: lex-fail
+# diagnostic: E0044 at 9:20
+# phase: 1
+# Attack. Backslash first, then doubled braces, then a stray close brace: one defined reading (LEX-055).
+module tests.security.template_backslash_then_doubled_brace
+
+fn f(x: int):
+    let q = f"\{{x}}"

@@ -1,0 +1,7 @@
+# spec: LEX-003
+# expect: lex-pass
+# Control. Unassigned in Unicode 16.0.0 and without a forbidden property, so accepted (LEX-003).
+module tests.security.cp_unassigned_0378_comment_not_forbidden
+
+# a͸b
+let x = 1

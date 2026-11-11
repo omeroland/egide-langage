@@ -1,0 +1,16 @@
+# spec: ERR-002
+# expect: compile-fail
+# diagnostic: E0304 at 15:5
+# phase: 2
+# Attack. A Result bound to a never-read name (underscore included) is a discard.
+module tests.security.discard_never_read_result_binding
+
+enum E:
+    Bad
+
+fn g() -> Result[(), E]:
+    Ok(())
+
+fn f() -> Result[(), E]:
+    let _unused = g()
+    Ok(())

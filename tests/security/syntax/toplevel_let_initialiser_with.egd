@@ -1,0 +1,9 @@
+# spec: SYN-015, CT-002
+# expect: parse-fail
+# diagnostic: E0100 at 8:9
+# phase: 1
+# Attack. with at the head of a top-level let initialiser.
+module tests.security.toplevel_let_initialiser_with
+
+let P = with r = open():
+    1

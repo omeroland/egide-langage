@@ -1,0 +1,9 @@
+# spec: SYN-017, SYN-018
+# expect: parse-fail
+# diagnostic: E0110 at 8:20
+# phase: 1
+module tests.security.unsafe_reason_only_spaces
+
+fn f():
+    unsafe(reason: "   "):
+        ()

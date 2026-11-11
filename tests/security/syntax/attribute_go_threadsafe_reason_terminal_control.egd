@@ -1,0 +1,11 @@
+# spec: SYN-023, SYN-018, GO-032
+# expect: parse-fail
+# diagnostic: E0118 at 10:24
+# phase: 1
+# Attack. The reason of @go_threadsafe is listed by egide audit.
+module tests.security.attribute_go_threadsafe_reason_terminal_control
+
+import go "sync" as sync
+
+@go_threadsafe(reason: "\u{1B}[2K")
+type Pool = sync.Pool

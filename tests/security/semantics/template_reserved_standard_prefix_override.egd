@@ -1,0 +1,11 @@
+# spec: CT-040, CT-041
+# expect: compile-fail
+# diagnostic: E0602 at 8:1
+# phase: 2
+# Attack. A package re-registers a standard prefix and builds a sink from a str (SEC-017).
+module tests.security.template_reserved_standard_prefix_override
+
+@template("sql")
+fn my_sql(parts: comptime List[str]) -> Sql:
+    unsafe(reason: "build a sink from a string"):
+        Sql.from_str(parts[0])

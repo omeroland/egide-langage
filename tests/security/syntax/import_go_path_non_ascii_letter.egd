@@ -1,0 +1,8 @@
+# spec: GO-001, SYN-018
+# expect: parse-fail
+# diagnostic: E0115 at 8:11
+# phase: 1
+# Attack. Raw non-ASCII letter (a lookalike module path); import go paths are printable ASCII.
+module tests.security.import_go_path_non_ascii_letter
+
+import go "k8s.io/clïent-go" as k

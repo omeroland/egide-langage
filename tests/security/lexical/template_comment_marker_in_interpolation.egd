@@ -1,0 +1,12 @@
+# spec: LEX-055
+# expect: lex-fail
+# diagnostic: E0044 at 10:19
+# phase: 1
+# Attack. A hash inside an interpolation must not hide the closing brace from a reviewer.
+module tests.security.template_comment_marker_in_interpolation
+
+fn f(a: int, b: int):
+    let q = sql"""
+        select {a # }
+        , {b}
+        """

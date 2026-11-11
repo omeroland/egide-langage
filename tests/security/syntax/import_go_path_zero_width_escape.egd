@@ -1,0 +1,8 @@
+# spec: GO-001, SYN-018
+# expect: parse-fail
+# diagnostic: E0115 at 8:11
+# phase: 1
+# Attack. A path that prints like another module's must not be built from an escape.
+module tests.security.import_go_path_zero_width_escape
+
+import go "k8s.io/\u{200B}client-go" as k

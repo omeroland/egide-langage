@@ -1,0 +1,12 @@
+# spec: GO-032, PKG-030, PKG-031
+# expect: compile-fail
+# diagnostic: E0421 at 11:1
+# phase: 6
+# Attack. bytes is in the pure list, so no go allow is required; sharing GoRef[bytes.Buffer] between tasks
+# would be a data race in code without unsafe. Only the go_threadsafe allow entry stops it (INT-001).
+module tests.security.go_threadsafe_requires_manifest_allow_bytes
+
+import go "bytes" as bytes
+
+@go_threadsafe(reason: "bytes.Buffer is documented as safe for concurrent use")
+type Buf = bytes.Buffer

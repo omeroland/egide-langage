@@ -1,0 +1,9 @@
+# spec: SYN-030, CAP-032
+# expect: parse-fail
+# diagnostic: E0120 at 9:24
+# phase: 1
+# Attack. An explicit capability argument is the last argument.
+module tests.security.using_argument_before_positional
+
+fn f(c: Client):
+    sync(using api: c, 1)

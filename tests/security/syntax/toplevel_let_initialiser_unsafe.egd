@@ -1,0 +1,9 @@
+# spec: SYN-015, CT-002
+# expect: parse-fail
+# diagnostic: E0100 at 8:9
+# phase: 1
+# Attack. A top-level let is evaluated at build time (CT-002); unsafe is not an initialiser (grammar).
+module tests.security.toplevel_let_initialiser_unsafe
+
+let P = unsafe(reason: "foreign call at build time"):
+    ()
