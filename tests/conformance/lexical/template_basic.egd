@@ -1,0 +1,11 @@
+# spec: LEX-055
+# expect: lex-pass
+module tests.lexical.template_basic
+
+let a = f"a{b}c"
+let b = sql"SELECT * FROM t WHERE id = {id}"
+let c = f"{f"{x}"}"
+let d = f"{{literal}} {x:>8} {y:}"
+let e = re"^[a-z][a-z0-9-]{{2,62}}$"
+let g = f"{m["k"]} {c == '"'} { {1, 2} }"
+let h = f"\"{x}\n"

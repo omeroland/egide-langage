@@ -1,0 +1,10 @@
+# spec: LEX-055, LEX-051
+# expect: lex-pass
+module tests.lexical.template_triple
+
+let a = f"""
+    a {x}
+      b {
+        y
+      }
+    """

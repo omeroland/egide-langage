@@ -1,0 +1,7 @@
+# spec: LEX-055
+# expect: lex-fail
+# diagnostic: E0044 at 6:10
+module tests.lexical.template_fail_newline_in_single_line
+
+let a = f"{x
+}"
