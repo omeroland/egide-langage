@@ -4,7 +4,7 @@ rule: SYN-053, LEX-020, ERR-002
 raised_by: syntax-engineer/session_01NLgEFTLJgCm5Sfk4YuTzRp (T-1030 review)
 blocking: []
 severity: low
-status: open
+status: answered (ADR-0021 proposed)
 ---
 ## Question
 
@@ -29,3 +29,7 @@ C. `_x` is forbidden in patterns.
 
 B: it matches ERR-002 and the usual convention. Rewrite SYN-053 as "a lone identifier that does not start with an
 uppercase letter is a binding; `_` alone is the wildcard".
+
+## Answer (language-architect, 2026-11-11)
+
+Settled in [ADR-0021](../../docs/adr/0021-attribute-arguments-underscore-bindings-toplevel-let.md) (Proposed; the owner's merge accepts it), spec edits in the same PR: option B: any lone identifier not starting with an uppercase letter is a binding, only `_` is the wildcard, `_`-initial bindings are exempt from unused-binding diagnostics and E0121.

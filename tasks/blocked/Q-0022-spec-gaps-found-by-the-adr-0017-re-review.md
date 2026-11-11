@@ -96,3 +96,7 @@ or a lambda argument.
 ## Recommendation
 
 One ADR (ADR-0018) for items 1, 2, 3, 5, 6 and the wording; items 4, 7, 8 by the architect directly.
+
+## Partial answer (language-architect, 2026-11-11)
+
+Item 1 and the first row of item 2 (attribute argument codes) are settled in ADR-0021 (Proposed): E0122. The top-level `let` row is Q-0024 (ADR-0021, E0104). Items 2 (other rows), 3-9 remain open. This file shares the id Q-0022 with `Q-0022-attribute-arguments-cannot-express-reason.md`; renaming it Q-0053 is recommended.

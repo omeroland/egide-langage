@@ -72,8 +72,10 @@ checks this; anything else is E0106 "cannot assign to this expression". Positive
   of `let`, `var`, a top-level `let` or an assignment. Anywhere else (operand, argument, inside brackets, after
   `return`, `break`, `defer`, `yield`, as a lambda body) it is E0104 "this block-ended expression must stand alone;
   bind it with `let` first". A top-level `let` initialiser is further restricted: it may be an `expr` or an `if`, `match`, `loop`, `fn` lambda or
-  trailing-block call, but never `unsafe`, `given` or `with` (a grammar restriction), and it is evaluated under CAP-040
-  (CT-002). For a two-way value inside an expression use `a if c else b` (SYN-035).
+  trailing-block call, but never `unsafe`, `given` or `with`. The grammar reads any block-ended expression there
+  (a COVER production, SYN-005) and a post-parse check reports `unsafe`, `given` and `with` as E0104 with the hint
+  "bind it inside a function"; this is a check, not a Menhir error state, so the message does not depend on automaton
+  states. The initialiser is also evaluated under CAP-040 (CT-002). For a two-way value inside an expression use `a if c else b` (SYN-035).
 
   ```egide fragment
   let n = match c:          # OK: whole right-hand side of let
@@ -122,7 +124,14 @@ checks this; anything else is E0106 "cannot assign to this expression". Positive
   | `@acyclic` | `struct`, `enum` | none | MEM-062 |
   | `@test`, `@integration` | `fn` | none | TOOL-030, TOOL-031 |
   | `@property` | `fn` | none | TOOL-030 |
-  | `@go_threadsafe` | `type` alias of an imported Go type | `reason: "…"` (SYN-018), mandatory | GO-032, PKG-030 |
+  | `@go_threadsafe` | `type` alias of an imported Go type | `reason: "…"` (SYN-018), mandatory, a string literal | GO-032, PKG-030 |
+
+  Arguments are written `expr` or `label: expr`; once an argument is labelled, the following ones are labelled too
+  (as in SYN-030). Each attribute accepts exactly the arguments of its row: a missing, extra, repeated, unknown-label,
+  wrongly labelled or non-literal argument is E0122; a string argument that breaks SYN-018 is E0118. Labels exist only
+  for the rows that list one. Positive: `@go_threadsafe(reason: "documented as safe for concurrent use")`. Negative:
+  `@go_threadsafe("x")` (unlabelled), `@go_threadsafe(reason: "a", reason: "b")` and `@derive(Eq, reason: "x")` are
+  E0122. A parenthesised item is still an `expr`, so the cover check of `@derive((a: int))` (E0107) is unchanged.
 - **[SYN-024] Declaration forms.** `struct Name` (no fields) and `impl Trait for Type` (no items) may omit the `:` and
   the body; empty `enum`, `trait` and inherent `impl` bodies are errors. `where` is allowed only after `new`
   (TYP-031): `type A = int where self > 0` is a syntax error. Variant and constant names MUST start with an uppercase
@@ -207,7 +216,9 @@ match shape:
   name that has two or more segments (`State.Available`, `http.NOT_FOUND`) or is followed by `( … )` denotes a variant,
   struct or constant and MUST resolve (an unknown name is an error, never a binding). A lone identifier that starts
   with an uppercase letter (`None`, `Available`, `MAX`) denotes a variant or constant and MUST resolve. A lone
-  identifier that starts with a lowercase letter denotes a binding, and `_` is the wildcard. A dotted or constructor
+  identifier that does not start with an uppercase letter (`x`, `_x`, `_X`) denotes a binding, except that the exact
+  name `_` is the wildcard (LEX-020). A binding whose name starts with `_` is never E0121 and is exempt from any
+  unused-binding diagnostic; it may be read (ERR-002 counts a never-read `_x` `Result` binding as a discard). A dotted or constructor
   pattern whose last segment starts with a lowercase letter is E0112. Positive: `case None:` never
   binds, and `case State.Available:` matches that variant. Negative: `case State.available:` is E0112. "Resolve" means: to a variant, a unit struct or a top-level constant, never to a
   local binding, a type or a function. A lone lowercase binding whose name equals, ignoring case, a variant or constant
