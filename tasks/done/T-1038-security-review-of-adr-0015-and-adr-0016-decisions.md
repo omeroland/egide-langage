@@ -78,7 +78,7 @@ non-string, duplicated or extra argument; on an alias of a non-Go type, an alias
 `Untrusted.trust(reason: <non-literal>)` and a `trust` reason with a terminal escape; `f(api: c)` for a `using api`
 parameter; `if c: unsafe(…):` (SYN-061 gives no code); a raw tab or NUL escape in a reason; `let` with an irrefutable
 pattern before `else`; an unknown upper-case pattern name. E0420 and a dependency-level E0421 need a package fixture
-that the runner cannot express: task T-1041. All are listed in Q-0022.
+that the runner cannot express: task T-1159. All are listed in Q-0022.
 
-Follow-ups: Q-0022 (spec questions, `tasks/blocked/`), T-1041 (runner: package fixtures).
+Follow-ups: Q-0022 (spec questions, `tasks/blocked/`), T-1159 (runner: package fixtures).
 Open questions: Q-0022 items 1-9.
