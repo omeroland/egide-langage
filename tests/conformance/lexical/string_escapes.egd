@@ -1,0 +1,10 @@
+# spec: LEX-050
+# expect: lex-pass
+module tests.lexical.string_escapes
+
+let a = "a\\b"
+let b = "q\"q"
+let c = "\n\t\r\0"
+let d = "\{\}"
+let e = ""
+let f = "é日本"

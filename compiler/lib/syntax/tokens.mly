@@ -4,6 +4,8 @@
 %token <string> FLOAT
 %token <string * string> DURATION
 %token <string> STRING
+%token <string> BYTES
+%token <Uchar.t> CHAR
 %token KW_AND  (* and *)
 %token KW_AS  (* as *)
 %token KW_BREAK  (* break *)

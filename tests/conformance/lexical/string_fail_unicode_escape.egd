@@ -1,0 +1,18 @@
+# spec: LEX-050
+# expect: lex-fail
+# diagnostic: E0041 at 12:10
+# diagnostic: E0041 at 13:10
+# diagnostic: E0041 at 14:10
+# diagnostic: E0041 at 15:10
+# diagnostic: E0041 at 16:10
+# diagnostic: E0041 at 17:10
+# diagnostic: E0041 at 18:10
+module tests.lexical.string_fail_unicode_escape
+
+let a = "\u41"
+let b = "\u{}"
+let c = "\u{110000}"
+let d = "\u{D800}"
+let e = "\u{1234567}"
+let f = "\u{41"
+let g = "\u{zz}"

@@ -1,0 +1,6 @@
+# spec: LEX-054, LEX-004
+# expect: lex-fail
+# diagnostic: E0005 at 6:10
+module tests.lexical.char_fail_raw_tab
+
+let a = '	'

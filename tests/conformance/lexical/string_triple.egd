@@ -1,0 +1,15 @@
+# spec: LEX-051, LEX-050, LEX-052
+# expect: lex-pass
+module tests.lexical.string_triple
+
+let a = """one line"""
+let b = """
+    hello
+      world
+    """
+let c = """a "quoted" ""b"" c"""
+let d = """esc \" and \u{41} \n"""
+let e = r"""
+    raw \n
+    """
+let f = """"""

@@ -67,6 +67,8 @@ expr_desc:
   | f = FLOAT { Lit (Float f) }
   | d = DURATION { let amount, unit = d in Lit (Duration { amount; unit = duration_unit unit }) }
   | s = STRING { Lit (String s) }
+  | s = BYTES { Lit (Bytes s) }
+  | c = CHAR { Lit (Char c) }
   | KW_TRUE { Lit (Bool true) }
   | KW_FALSE { Lit (Bool false) }
   | p = path { Path p }

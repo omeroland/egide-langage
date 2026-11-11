@@ -1,0 +1,10 @@
+# spec: LEX-054
+# expect: lex-fail
+# diagnostic: E0042 at 8:9
+# diagnostic: E0042 at 9:9
+# diagnostic: E0042 at 10:9
+module tests.lexical.char_fail_count
+
+let a = ''
+let b = 'ab'
+let c = '\n\n'

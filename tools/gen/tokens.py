@@ -22,7 +22,7 @@ PUNCT = [  # (text, token) — longest first is handled by sedlex's longest matc
  (":","COLON"),("@","AT"),("(","LPAREN"),(")","RPAREN"),("[","LBRACKET"),("]","RBRACKET"),("{","LBRACE"),
  ("}","RBRACE")]
 
-VALUED = [("IDENT","string"),("INT","string"),("FLOAT","string"),("DURATION","string * string"),("STRING","string")]
+VALUED = [("IDENT","string"),("INT","string"),("FLOAT","string"),("DURATION","string * string"),("STRING","string"),("BYTES","string"),("CHAR","Uchar.t")]
 LAYOUT = ["NEWLINE","INDENT","DEDENT","EOF"]
 
 def main():
@@ -49,6 +49,8 @@ def main():
         for name, _ in VALUED:
             if name == "DURATION":  # payload: (amount, unit), LEX-042
                 f.write(f'  | {name} (a, u) -> Printf.sprintf "{name}(%S, %S)" a u\n')
+            elif name == "CHAR":  # payload: a Unicode scalar value, LEX-054
+                f.write(f'  | {name} c -> Printf.sprintf "{name}(U+%04X)" (Uchar.to_int c)\n')
             else:
                 f.write(f'  | {name} s -> Printf.sprintf "{name}(%S)" s\n')
         for k in KEYWORDS:

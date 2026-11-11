@@ -1,0 +1,8 @@
+# spec: LEX-050
+# expect: lex-fail
+# diagnostic: E0040 at 7:9
+# diagnostic: E0041 at 7:13
+module tests.lexical.string_fail_backslash_before_newline
+
+let a = "abc\
+let b = 1

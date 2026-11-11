@@ -53,6 +53,8 @@ let to_string = function
   | FLOAT s -> Printf.sprintf "FLOAT(%S)" s
   | DURATION (a, u) -> Printf.sprintf "DURATION(%S, %S)" a u
   | STRING s -> Printf.sprintf "STRING(%S)" s
+  | BYTES s -> Printf.sprintf "BYTES(%S)" s
+  | CHAR c -> Printf.sprintf "CHAR(U+%04X)" (Uchar.to_int c)
   | KW_AND -> "and"
   | KW_AS -> "as"
   | KW_BREAK -> "break"

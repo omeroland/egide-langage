@@ -1,0 +1,14 @@
+# spec: LEX-054
+# expect: lex-pass
+module tests.lexical.char_literals
+
+let a = 'a'
+let b = '\n'
+let c = '\u{E9}'
+let d = '\''
+let e = '"'
+let f = '\\'
+let g = 'é'
+let h = '\u{202E}'
+let i = '\\\"'
+let j = '\0'
