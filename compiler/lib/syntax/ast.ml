@@ -173,7 +173,6 @@ and fn_sig = {
 }
 
 and fn_decl = { sig_ : fn_sig; body : block; span : span }
-
 and visibility = Private | Pub | Pub_package
 
 and field = {
@@ -228,12 +227,7 @@ and import_desc =
 
 and import_form = Whole | Alias_as of ident | Items of import_item list
 
-type file = {
-  module_path : path;
-  imports : import list;
-  decls : decl list;
-  span : span;
-}
+type file = { module_path : path; imports : import list; decls : decl list; span : span }
 
 (* Equality (the role of [@@deriving eq], see T-0008 Log). Stdlib structural equality is exact here: the tree holds
    only strings, booleans, integers ([Uchar.t], span positions), options, lists, records and constructors, with no

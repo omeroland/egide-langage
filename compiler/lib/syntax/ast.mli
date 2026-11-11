@@ -111,8 +111,8 @@ and expr_desc =
            comp_clauses "}" | "{" expr comp_clauses "}"] (SYN-039). [clauses] starts with a
           [Comp_for]. *)
   | If of { branches : if_branch list; else_ : block option }
-      (** [if_expr], the only [if] node (ADR-0013). [branches] holds the [if] and every [elif] (never
-          empty); [else_] is mandatory when the value is used (SYN-013). *)
+      (** [if_expr], the only [if] node (ADR-0013). [branches] holds the [if] and every [elif]
+          (never empty); [else_] is mandatory when the value is used (SYN-013). *)
   | Match of { scrutinee : expr; arms : case_arm list }  (** [match_expr] (arms never empty) *)
   | Loop of block  (** [loop_expr]; its value is given by [break expr] *)
   | With of { items : with_item list; body : block }  (** [with_expr] (ERR-030, ERR-031) *)
@@ -125,8 +125,8 @@ and expr_desc =
       (** [postfix_expr = primary "(" [ args ] ")"] (SYN-030) *)
   | Index of { target : expr; args : gen_arg list }
       (** [postfix_expr = primary "[" gen_args "]"] (SYN-042, SYN-043). Indexing, slicing
-          ([xs[a..b]] is one [Ga_expr] holding a [Range]) and generic instantiation share this
-          node; name resolution decides which one it is. [args] is never empty. *)
+          ([xs[a..b]] is one [Ga_expr] holding a [Range]) and generic instantiation share this node;
+          name resolution decides which one it is. [args] is never empty. *)
   | Field of { target : expr; name : ident }  (** [postfix_expr = primary "." IDENT] *)
   | Try of expr  (** [postfix_expr = primary "?"] (SYN-034) *)
   | Unary of { op : unary_op; operand : expr }  (** [not_expr], [unary_expr] *)
@@ -135,8 +135,7 @@ and expr_desc =
           [shift_expr], [add_expr], [mul_expr], [pow_expr] *)
   | Compare of { first : expr; rest : (cmp_op * expr) list }
       (** [cmp_expr]; a chain [a < b <= c] is one node (SYN-036). [rest] is non-empty. *)
-  | Range of { lo : expr option; hi : expr option }
-      (** [range_expr]: [a..b], [a..], [..b], [..] *)
+  | Range of { lo : expr option; hi : expr option }  (** [range_expr]: [a..b], [a..], [..b], [..] *)
   | Range_incl of { lo : expr option; hi : expr }
       (** [range_expr]: [a..=b], [..=b]. The upper bound is mandatory (SYN-040). *)
   | Cond of { cond : expr; then_ : expr; else_ : expr }
@@ -153,9 +152,9 @@ and expr_desc =
       ret : ty option;
       body : block;
     }
-      (** [trailing_call = postfix_expr "(" [ args ] ")" fn_head ":" suite] (SYN-062). [callee(args)]
-          called with one more argument [fn(params) [-> ret]: body]; desugared in HIR. [callee] is
-          the postfix expression before the call's own parentheses. *)
+      (** [trailing_call = postfix_expr "(" [ args ] ")" fn_head ":" suite] (SYN-062).
+          [callee(args)] called with one more argument [fn(params) [-> ret]: body]; desugared in
+          HIR. [callee] is the postfix expression before the call's own parentheses. *)
 
 and map_entry = { key : expr; value : expr; span : span }
 (** [map_entry = expr ":" expr] *)
@@ -185,11 +184,12 @@ and arg_desc =
       (** [arg = [ IDENT ":" ] "&" postfix_expr] (SYN-033). The parser has checked that [value] is a
           place (SYN-012, E0106). *)
   | Arg_using of ident * expr
-      (** [arg = "using" IDENT ":" expr]: an explicit capability, last in the list (CAP-032, SYN-030,
-          E0120). *)
+      (** [arg = "using" IDENT ":" expr]: an explicit capability, last in the list (CAP-032,
+          SYN-030, E0120). *)
 
 and gen_arg =
-  | Ga_expr of expr  (** [gen_arg = expr] (a type written as a path is an expression until resolution) *)
+  | Ga_expr of expr
+      (** [gen_arg = expr] (a type written as a path is an expression until resolution) *)
   | Ga_type_only of ty
       (** [gen_arg = fn_type | "dyn" bound { "+" bound }]: only a [Ty_fn] or a [Ty_dyn] (SYN-042) *)
 
@@ -247,8 +247,8 @@ and pat_desc =
   | Pat_lit of lit_pattern  (** [literal_pattern] *)
   | Pat_range of { lo : lit_pattern; hi : lit_pattern; inclusive : bool }  (** [range_pattern] *)
   | Pat_ctor of { path : path; fields : field_pattern list }
-      (** [path "(" [ field_patterns ] ")"]; the last segment starts with an uppercase letter (E0112)
-      *)
+      (** [path "(" [ field_patterns ] ")"]; the last segment starts with an uppercase letter
+          (E0112) *)
   | Pat_tuple of pattern list  (** ["(" pattern "," [ pattern { "," pattern } ] ")"] *)
   | Pat_list of list_pattern list  (** ["[" [ list_patterns ] "]"] *)
   | Pat_or of pattern list  (** [or_pattern] with at least two alternatives *)
@@ -278,11 +278,11 @@ and ty_desc =
           forms, told apart by resolution (SYN-042, ADR-0014). *)
   | Ty_tuple of ty list
       (** [simple_type = "(" ")" | "(" type "," [ type { "," type } [ "," ] ] ")"]. [[]] is the unit
-          type and a singleton is the one-element tuple type [(T,)]. There is no parenthesised
-          type node: [(T)] is [T] (TYP-006), so a one-element list is never ambiguous. *)
+          type and a singleton is the one-element tuple type [(T,)]. There is no parenthesised type
+          node: [(T)] is [T] (TYP-006), so a one-element list is never ambiguous. *)
   | Ty_fn of { params : ty list; ret : ty option; using : bound list }
-      (** [fn_type = "fn" "(" [ type { "," type } ] ")" [ "->" ret_type ] [ "using" fn_caps ]]. [using]
-          is the [+]-joined list of capability bounds, empty when absent (TYP-006). *)
+      (** [fn_type = "fn" "(" [ type { "," type } ] ")" [ "->" ret_type ] [ "using" fn_caps ]].
+          [using] is the [+]-joined list of capability bounds, empty when absent (TYP-006). *)
   | Ty_dyn of bound list  (** [simple_type = "dyn" bound { "+" bound }] (never empty) *)
   | Ty_self  (** [simple_type = "Self"] *)
   | Ty_optional of ty
@@ -348,7 +348,8 @@ and trait_item = { item : trait_item_desc; span : span }
 and trait_item_desc =
   | Ti_sig of fn_sig  (** [trait_item = fn_sig] (required method) *)
   | Ti_fn of fn_decl  (** [trait_item = fn_decl] (provided method) *)
-  | Ti_type of { name : ident; bound : bound option }  (** [trait_item = "type" IDENT [ ":" bound ]] *)
+  | Ti_type of { name : ident; bound : bound option }
+      (** [trait_item = "type" IDENT [ ":" bound ]] *)
 
 and impl_item = { item : impl_item_desc; span : span }
 
@@ -381,9 +382,9 @@ and decl_desc =
       (** [type_decl = "type" IDENT [ generics ] "=" ( "new" type [ "where" expr ] | type )] *)
   | Const of { name : ident; ty : ty option; value : expr }
       (** [const_decl = "let" IDENT [ ":" type ] "=" ( expr NEWLINE | const_block )] (SYN-003,
-          SYN-015). A top-level constant is implicitly [comptime] (CT-002), so there is no flag.
-          The parser has checked that a block-ended [value] is a [const_block]: never [Unsafe],
-          [Given] or [With] (E0104). *)
+          SYN-015). A top-level constant is implicitly [comptime] (CT-002), so there is no flag. The
+          parser has checked that a block-ended [value] is a [const_block]: never [Unsafe], [Given]
+          or [With] (E0104). *)
 
 and type_def =
   | Alias of ty  (** [type A = T] *)
@@ -409,14 +410,9 @@ and import_form =
   | Alias_as of ident  (** [import a.b as c] (SYN-002: [as] only on a single path) *)
   | Items of import_item list  (** [import a.b.{X, Y as Z}] (never empty) *)
 
-type file = {
-  module_path : path;
-  imports : import list;
-  decls : decl list;
-  span : span;
-}
-(** [file = module_decl NEWLINE { import_decl NEWLINE } { top_decl } EOF]; [module_decl = "module"
-     path] (SYN-001, SYN-002). *)
+type file = { module_path : path; imports : import list; decls : decl list; span : span }
+(** [file = module_decl NEWLINE { import_decl NEWLINE } { top_decl } EOF];
+    [module_decl = "module" path] (SYN-001, SYN-002). *)
 
 (** {1 Equality}
 

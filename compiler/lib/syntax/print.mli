@@ -23,20 +23,21 @@
       [(map (entry K V) …)] [(comp list|set|map|iter ELEM (for P E) (if E) …)]
       [(if C BLOCK (elif C BLOCK) … (else BLOCK))] [(match E (case P (guard E) BLOCK) …)]
       [(unsafe "reason" BLOCK)] [(loop BLOCK)] [(with ITEM … BLOCK)] with [ITEM] = [E] or
-      [(bind x E)]; [(given E … BLOCK)]; [(call F ARG …)] with [ARG] = [E], [(& E)],
-      [(using x E)] or [(label name ARG)]; [(index E GA …)] with [GA] an expression or a type
-      (indexing, slicing and instantiation, SYN-042) [(dot E name)] [(? E)] [(- E)] [(~ E)] [(not E)] [(OP L R)] for binary operators
-      written as in the source ([+], [|>], [and], …), [(cmp A < B <= C)], [(.. LO HI)] /
-      [(..= LO HI)] with [_] for an absent bound, [(cond C THEN ELSE)], [(lambda (params …) E)],
-      [(fn (params …) (-> T) BLOCK)], [(trailing-call CALLEE (args ARG …) (params …) (-> T) BLOCK)], with params
+      [(bind x E)]; [(given E … BLOCK)]; [(call F ARG …)] with [ARG] = [E], [(& E)], [(using x E)]
+      or [(label name ARG)]; [(index E GA …)] with [GA] an expression or a type (indexing, slicing
+      and instantiation, SYN-042) [(dot E name)] [(? E)] [(- E)] [(~ E)] [(not E)] [(OP L R)] for
+      binary operators written as in the source ([+], [|>], [and], …), [(cmp A < B <= C)],
+      [(.. LO HI)] / [(..= LO HI)] with [_] for an absent bound, [(cond C THEN ELSE)],
+      [(lambda (params …) E)], [(fn (params …) (-> T) BLOCK)],
+      [(trailing-call CALLEE (args ARG …) (params …) (-> T) BLOCK)], with params
       [(param [inout|take] x [T])]
     - statements: an expression statement is its expression; [(let P (: T) E (else BLOCK))]
-      [(var x (: T) E)] [(let comptime x (: T) E)] [(= TARGET E)] / [(+= TARGET E)] … ([TARGET] is an expression) [(return [E])]
-      [(break [E])] [(continue)] [(defer E)] [(yield E)] [(for P E BLOCK)] [(while E BLOCK)]
-      [(block S …)]
-    - patterns: [_] [x] [(const Path)] literal, [(- LIT)], [(.. LO HI)] / [(..= LO HI)], [(ctor Path FP …)] with
-      [FP] = [P], [(label x P)] or [..]; [(tuple P …)] [(list LP …)] with [LP] = [P], [..] or
-      [(.. rest)]; [(| P Q …)] [(as P x)]
+      [(var x (: T) E)] [(let comptime x (: T) E)] [(= TARGET E)] / [(+= TARGET E)] … ([TARGET] is
+      an expression) [(return [E])] [(break [E])] [(continue)] [(defer E)] [(yield E)]
+      [(for P E BLOCK)] [(while E BLOCK)] [(block S …)]
+    - patterns: [_] [x] [(const Path)] literal, [(- LIT)], [(.. LO HI)] / [(..= LO HI)],
+      [(ctor Path FP …)] with [FP] = [P], [(label x P)] or [..]; [(tuple P …)] [(list LP …)] with
+      [LP] = [P], [..] or [(.. rest)]; [(| P Q …)] [(as P x)]
     - types: [Name] [(apply Name GA …)] [(tuple-type T …)]
       [(fn-type (params T …) (-> T) (using B …))] [(dyn B …)] [Self] [(? T)], with [B] a bound
       printed like a path type

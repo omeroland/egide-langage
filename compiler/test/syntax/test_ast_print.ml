@@ -40,7 +40,6 @@ let arg ?label ?(inout = false) value : arg =
   { arg = (if inout then Arg_inout { label; value } else Arg_plain { label; value }); span = sp }
 
 let using_arg name value : arg = { arg = Arg_using (id name, value); span = sp }
-
 let call f args = e (Call { callee = f; args })
 let dot target name = e (Field { target; name = id name })
 let pbind n = p (Pat_bind (id n))
@@ -68,9 +67,7 @@ let variant ?(fields = Vf_none) name : variant = { name = id name; fields; span 
 let generic ?(comptime = false) ?(bounds : bound list = []) name : generic =
   { comptime; name = id name; bounds; span = sp }
 
-let file ?(imports = []) m decls : file =
-  { module_path = path m; imports; decls; span = sp }
-
+let file ?(imports = []) m decls : file = { module_path = path m; imports; decls; span = sp }
 let import d : import = { import = d; span = sp }
 let print_decl d = print_endline (Print.decl d)
 let print_expr ex = print_endline (Print.expr ex)
@@ -149,10 +146,7 @@ let%expect_test "struct, enum, trait, impl and type declarations of spec 3.3" =
             supertraits = [];
             items =
               [
-                {
-                  item = Ti_sig (fsig "display" [ self_param By_read ] ~ret:(tn "str"));
-                  span = sp;
-                };
+                { item = Ti_sig (fsig "display" [ self_param By_read ] ~ret:(tn "str")); span = sp };
               ];
           }));
   let display_body =
@@ -196,12 +190,7 @@ let%expect_test "struct, enum, trait, impl and type declarations of spec 3.3" =
           }));
   print_decl
     (decl
-       (Type
-          {
-            name = id "UserId";
-            generics = [];
-            def = Newtype { ty = tn "int"; where_ = None };
-          }));
+       (Type { name = id "UserId"; generics = []; def = Newtype { ty = tn "int"; where_ = None } }));
   let range_check = e (Compare { first = int "1"; rest = [ (Le, e Self); (Le, int "65535") ] }) in
   print_decl
     (decl
@@ -257,8 +246,7 @@ let%expect_test "function declaration with attributes, generics, modes, defaults
        ~attrs:[ attr "test"; attr "derive" ~args:[ x "Eq"; x "Show" ]; attr "acyclic" ~args:[] ]
        (Fn (fn_decl f [ s (Return None) ])));
   print_decl
-    (decl ~vis:Pub_package
-       (Const { name = id "N"; ty = Some (tn "int"); value = int "4" }));
+    (decl ~vis:Pub_package (Const { name = id "N"; ty = Some (tn "int"); value = int "4" }));
   [%expect
     {|
     (fn pub copy_into
@@ -496,9 +484,7 @@ let%expect_test "operators, calls, postfix forms, slices, conditional and pipe" 
              args = [ Ga_expr (e (Range { lo = Some (x "a"); hi = Some (x "b") })) ];
            });
       e (Index { target = x "xs"; args = [ Ga_expr (e (Range_incl { lo = None; hi = x "b" })) ] });
-      e
-        (Index
-           { target = x "xs"; args = [ Ga_expr (e (Range { lo = Some (x "a"); hi = None })) ] });
+      e (Index { target = x "xs"; args = [ Ga_expr (e (Range { lo = Some (x "a"); hi = None })) ] });
       e (Range { lo = None; hi = None });
       bin Pow (x "a") (bin Pow (x "b") (x "c"));
       e (Unary { op = Neg; operand = e (Unary { op = Bit_not; operand = x "a" }) });
@@ -822,7 +808,10 @@ let%expect_test "spans mode on hand-built nodes" =
         Field
           {
             target =
-              { expr = Path { segments = [ ident "t" (at 2 1 2) ]; span = at 2 1 2 }; span = at 2 1 2 };
+              {
+                expr = Path { segments = [ ident "t" (at 2 1 2) ]; span = at 2 1 2 };
+                span = at 2 1 2;
+              };
             name = ident "n" (at 2 3 4);
           };
       span = at 2 1 4;
@@ -864,8 +853,7 @@ let%expect_test "pp_* formatters print the same text as the string functions" =
   Format.printf "%a@." Print.pp_ty (tn "int");
   Format.printf "%a@." Print.pp_stmt (s Continue);
   Format.printf "%a@." Print.pp_block (blk [ s Continue ]);
-  Format.printf "%a@." Print.pp_decl
-    (decl (Const { name = id "A"; ty = None; value = int "1" }));
+  Format.printf "%a@." Print.pp_decl (decl (Const { name = id "A"; ty = None; value = int "1" }));
   Format.printf "%a@." Print.pp_file (file "m" []);
   [%expect
     {|
@@ -930,8 +918,7 @@ let%expect_test "block-ended expressions are expressions wrapped by Expr stateme
       s
         (Expr
            (e
-              (With
-                 { items = [ { name = None; value = x "l"; span = sp } ]; body = one (int "0") })));
+              (With { items = [ { name = None; value = x "l"; span = sp } ]; body = one (int "0") })));
     ];
   [%expect
     {|
@@ -985,19 +972,11 @@ let%expect_test "generic arguments: instantiation, type-only forms, several argu
   in
   List.iter print_expr
     [
-      call
-        (e (Index { target = dot (x "req") "json"; args = [ Ga_expr (x "Tenant") ] }))
-        [];
+      call (e (Index { target = dot (x "req") "json"; args = [ Ga_expr (x "Tenant") ] })) [];
       e (Index { target = x "cache"; args = [ Ga_expr (x "Key"); Ga_type_only fn_ty ] });
+      e (Index { target = x "decode"; args = [ Ga_expr map_str_int ] });
       e
-        (Index
-           {
-             target = x "decode";
-             args = [ Ga_expr map_str_int ];
-           });
-      e
-        (Index
-           { target = x "x"; args = [ Ga_type_only (t (Ty_dyn [ bound "Show"; bound "Eq" ])) ] });
+        (Index { target = x "x"; args = [ Ga_type_only (t (Ty_dyn [ bound "Show"; bound "Eq" ])) ] });
     ];
   [%expect
     {|
@@ -1078,7 +1057,8 @@ let%expect_test "ranges" =
       e (Range_incl { lo = None; hi = x "b" });
       e (Range_incl { lo = Some (x "a"); hi = x "b" });
     ];
-  [%expect {|
+  [%expect
+    {|
     (.. (path a) _)
     (.. _ _)
     (..= _ (path b))

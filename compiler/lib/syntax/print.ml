@@ -393,8 +393,9 @@ let trait_item c (ti : trait_item) =
 let impl_item c (ii : impl_item) =
   match ii.item with
   | Ii_fn { attrs; vis; fn_ } ->
-      fn_node c ~head:"fn" ~flags:(vis_atoms vis) ~da:(List.map (attribute c) attrs) ii.span
-        fn_.sig_ (Some fn_.body)
+      fn_node c ~head:"fn" ~flags:(vis_atoms vis)
+        ~da:(List.map (attribute c) attrs)
+        ii.span fn_.sig_ (Some fn_.body)
   | Ii_type { name; ty = t } -> node c "assoc-type" ii.span [ ident c name; ty c t ]
 
 let decl c (d : decl) =
@@ -421,7 +422,9 @@ let decl c (d : decl) =
         @ List.map (impl_item c) items)
   | Type { name; generics = g; def } ->
       let newtype, t, where_ =
-        match def with Alias t -> (false, t, None) | Newtype { ty = t; where_ } -> (true, t, where_)
+        match def with
+        | Alias t -> (false, t, None)
+        | Newtype { ty = t; where_ } -> (true, t, where_)
       in
       n "type"
         ((pub @ flag newtype "new" @ [ ident c name ])
