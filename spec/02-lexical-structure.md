@@ -145,7 +145,10 @@ fn f(x: int) -> int:          # FN IDENT ( IDENT : IDENT ) -> IDENT :
 - **[LEX-041]** Float literals: `1.5`, `1e9`, `2.5e-3`, `1e+9`, `1_000.25`. A dot MUST be followed by a digit for the
   literal to be a float (`5.s` is not a float, see LEX-042), and a float has digits before the dot (`.5` lexes as `.`
   and `5`, a syntax error). The exponent letter is lowercase `e` (`1E9` is E0031). `_` may separate digits of the
-  fraction and the exponent with the restrictions of LEX-040. Tuples have no `t.0` element access (SYN-038), so a digit
+  fraction and the exponent with the restrictions of LEX-040. The integer part of a float follows the leading-zero
+  rule of LEX-040: `00.5`, `007.25` and `01e3` are E0031 (no octal hint). A trailing dot is not a lexical error: `1.`
+  lexes as `INT` `.` (LEX-042 needs this for `1.max(2)`) and the parser rejects it (E0100); `_1` is an identifier
+  (LEX-020). Tuples have no `t.0` element access (SYN-038), so a digit
   after `.` never needs special lexing.
 - **[LEX-042] Duration literals.** A **decimal** integer literal immediately followed by `.` and one of the unit names
   `ns`, `us`, `ms`, `s`, `min`, `h`, where the unit is not followed by an identifier character, forms a single
@@ -159,18 +162,30 @@ fn f(x: int) -> int:          # FN IDENT ( IDENT : IDENT ) -> IDENT :
   `\u{H…}` (1–6 hex digits, any Unicode scalar value: surrogates and values above `10FFFF` are errors; characters
   forbidden by LEX-003 are allowed here, because the escape makes them visible in the source; the value is then
   subject to LEX-006 in every tool output and to SYN-018 where a tool consumes it). Any other escape is an error (E0041).
-  A raw LF inside `"…"` is an error.
-- **[LEX-051]** Triple-quoted strings `"""…"""` may span lines. The common leading indentation of their content lines
+  A raw LF inside `"…"` is an error (E0040). A `\` directly before a line break is E0041, and the line break
+  then ends the literal (E0040). `\xHH` is not an escape of strings or characters (E0041).
+- **[LEX-051]** Triple-quoted strings `"""…"""` span lines. The opening `"""` MUST be followed immediately by a line
+  break (E0045): no character, not even a space, may stand between them, so `"""abc"""` and `""""""` are E0045. The common leading indentation of their content lines
   is removed, as with Python's `textwrap.dedent`, but on the **raw source lines before escape processing**; whitespace-only
-  lines are ignored for the margin and become empty; the first line break after the opening `"""` is dropped and the
-  line break before the closing `"""` is kept. A tab in the margin is E0005 (LEX-004).
-- **[LEX-052]** Raw strings `r"…"` and `r"""…"""` process no escapes.
+  lines are ignored for the margin and become empty; the line break after the opening `"""` is dropped and the
+  line break before the closing `"""` is kept. A tab in the margin, or on a blank line, is E0005 (LEX-004). After the
+  run of U+0020 at the start of a content line, the next character MUST NOT be a `Zs` character other than U+0020
+  (E0046; write `\u{A0}` if it is wanted). The literal ends at the first closing `"""`; a fourth quote opens a new literal
+  (`"""a""""` is E0040), so a value ending in `"` is written `\"`. **Re-indentation invariance:** adding or removing the
+  same number of leading U+0020 on every content line and on the line of the closing `"""` does not change the value.
+- **[LEX-052]** Raw strings `r"…"` and `r"""…"""` process no escapes; `r"""…"""` is dedented like any triple-quoted string
+  (LEX-051). A raw string ends at the first `"` (`r"C:\dir\"` is valid). There are no `#`-fenced raw strings: an
+  identifier token `r`, `b`, `rb` or `br` immediately followed by `#"` or `##` is E0047, because `#` would otherwise
+  silently start a comment.
 - **[LEX-053]** Byte strings `b"…"` have type `Bytes` and accept printable ASCII (`U+0020`–`U+007E`) and the escapes
-  `\\ \" \n \t \r \0 \xHH`; no `\u{…}` and no other character (E0043). There is no `rb"…"`.
+  `\\ \" \n \t \r \0 \xHH`; no `\u{…}` (E0043) and no other character (E0043); an escape that exists
+  elsewhere but not here (`\{`, `\}`) is E0043, an escape that exists nowhere (`\q`, `\'`) or a malformed `\xHH` is E0041.
+  There is no `b"""…"""` (E0043 on the three quotes) and no raw byte string: `rb"…"` and `br"…"` are E0043, so that the
+  two names stay reserved (LEX-055).
 - **[LEX-054]** Character literals `'a'`, `'\n'`, `'\u{E9}'` have type `char` (a Unicode scalar value). Escapes are those
   of LEX-050 except `\{` and `\}`, plus `\'`. The literal holds exactly one scalar value (`''` and `'ab'` are E0042),
-  and a raw tab is not allowed: write `'\t'`.
-- **[LEX-055] Prefixed templates.** An identifier in `lower_snake_case`, other than `r` and `b` and not a keyword
+  and a raw tab is E0005: write `'\t'`. A literal with a bad escape or no closing quote has one diagnostic.
+- **[LEX-055] Prefixed templates.** An identifier in `lower_snake_case`, other than `r`, `b`, `rb` and `br` and not a keyword
   (`return"x"` is `return` followed by a string), immediately followed by `"` or `"""` forms a `TEMPLATE` token:
   `f"…"`, `sql"…"`, `html"…"`, `cmd"…"`, `url"…"`, `path"…"`, `re"…"`. The lexer splits the literal into **literal
   parts** and **interpolations**:

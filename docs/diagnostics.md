@@ -37,7 +37,10 @@ pull request**. Codes are never reused.
 | E0040 | LEX-050 | unterminated string literal (also unterminated raw, byte, triple-quoted string and character literal; the span is the opening quote or quotes) | allocated |
 | E0041 | LEX-050 | invalid escape sequence `\{c}` | allocated |
 | E0042 | LEX-054 | character literal must contain exactly one character | allocated |
-| E0043 | LEX-053 | byte string accepts only printable ASCII and the escapes `\\ \" \n \t \r \0 \xHH` (also: no `b"""` form) | allocated |
+| E0043 | LEX-053 | byte string accepts only printable ASCII and the escapes `\\ \" \n \t \r \0 \xHH` (also: no `b"""` form, no `rb"` or `br"`) | allocated |
+| E0045 | LEX-051 | the opening `"""` of a triple-quoted string must be followed by a line break; content starts on the next line | proposed (ADR-0020) |
+| E0046 | LEX-051 | a non-ASCII space at the start of a content line of a triple-quoted string; write `\u{A0}` | proposed (ADR-0020) |
+| E0047 | LEX-052 | no `#`-fenced raw strings; use `r"…"` or a triple-quoted string | proposed (ADR-0020) |
 | E0044 | LEX-055 | unterminated or malformed interpolation in template | allocated |
 | E0050 | LEX-061 | `;` is not used in Égide; statements end at line breaks | allocated |
 | E0051 | LEX-060 | unexpected character `{c}` | allocated |

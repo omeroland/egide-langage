@@ -4,7 +4,7 @@ rule: LEX-040, LEX-041
 raised_by: syntax-engineer/T-0003
 blocking: []
 severity: low
-status: open
+status: answered (ADR-0020 proposed)
 ---
 ## Question
 
@@ -34,3 +34,7 @@ confirm or reverse them.
 - Confirm 1 and add one sentence to LEX-041 ("the integer part follows the leading-zero rule of LEX-040").
 - Decide 2: keep as is (the parser reports `1.`), or add the lexical rule. If added, T-0003's lexer needs a
   five-line follow-up.
+
+## Answer (language-architect, 2026-11-11)
+
+Settled in [ADR-0020](../../docs/adr/0020-lexical-edge-cases.md) (Proposed; the owner's merge accepts it), with the spec edits in the same PR. Summary: 1 confirmed and written into LEX-041 (E0031 for a leading zero in a float's integer part); 2 kept as implemented (parser rejects `1.`, `_1` is an identifier).
