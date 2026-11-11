@@ -6,12 +6,12 @@ phase: 0
 role: syntax-engineer
 depends_on: [T-0001]
 spec: [LEX-050, LEX-051, LEX-052, LEX-053, LEX-054]
-paths: [compiler/lib/syntax/, compiler/test/syntax/, tests/conformance/lexical/]
+paths: [compiler/lib/syntax/, compiler/test/syntax/, tests/conformance/lexical/, tools/gen/tokens.py, CHANGELOG.md]
 estimate: M
 labels: []
-status: backlog
-claimed_by:
-claimed_at:
+status: in-progress
+claimed_by: syntax-engineer/session_01NLgEFTLJgCm5Sfk4YuTzRp
+claimed_at: 2026-11-10
 ---
 
 ## Goal
