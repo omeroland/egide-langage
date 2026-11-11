@@ -6,12 +6,12 @@ phase: 0
 role: syntax-engineer
 depends_on: [T-0008]
 spec: []
-paths: [compiler/lib/syntax/ast.ml, compiler/lib/syntax/ast.mli, compiler/lib/syntax/parser.mly, compiler/lib/syntax/print.ml, compiler/test/syntax/]
+paths: [compiler/lib/syntax/node_id.ml, compiler/lib/syntax/node_id.mli, compiler/lib/syntax/ast.ml, compiler/lib/syntax/ast.mli, compiler/lib/syntax/parser.mly, compiler/lib/syntax/parse.ml, compiler/lib/syntax/parse.mli, compiler/lib/syntax/print.ml, compiler/lib/syntax/print.mli, compiler/test/syntax/]
 estimate: M
 labels: []
-status: backlog
-claimed_by:
-claimed_at:
+status: in-progress
+claimed_by: syntax-engineer/session_01NLgEFTLJgCm5Sfk4YuTzRp
+claimed_at: 2026-11-10
 ---
 
 ## Goal
