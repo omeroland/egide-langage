@@ -1,6 +1,7 @@
 # spec: LEX-001
 # expect: lex-pass
-# Boundary values of every well-formed UTF-8 pattern are accepted in comments and strings.
+# Boundary values of every well-formed UTF-8 pattern are accepted in comments and strings. The last code point of the 3- and
+# 4-byte patterns, U+FFFF and U+10FFFF, are noncharacters (LEX-003, ADR-0017): U+FFFD and U+10FFFD stand in here.
 module tests.lexical.bytes_utf8_boundaries_accepted
-#   ߿ ࠀ ퟿  ￿ 𐀀 􏿿
-let s = " ߿ࠀ퟿￿𐀀􏿿"
+#   ߿ ࠀ ퟿  � 𐀀 􏿽
+let s = " ߿ࠀ퟿�𐀀􏿽"

@@ -1,0 +1,66 @@
+# spec: LEX-003
+# expect: lex-fail
+# diagnostic: E0004 at 36:11
+# diagnostic: E0004 at 37:11
+# diagnostic: E0004 at 38:11
+# diagnostic: E0004 at 39:11
+# diagnostic: E0004 at 40:11
+# diagnostic: E0004 at 41:11
+# diagnostic: E0004 at 42:11
+# diagnostic: E0004 at 43:11
+# diagnostic: E0004 at 44:11
+# diagnostic: E0004 at 45:11
+# diagnostic: E0004 at 46:11
+# diagnostic: E0004 at 47:11
+# diagnostic: E0004 at 48:11
+# diagnostic: E0004 at 49:11
+# diagnostic: E0004 at 50:11
+# diagnostic: E0004 at 51:11
+# diagnostic: E0004 at 52:11
+# diagnostic: E0004 at 53:11
+# diagnostic: E0004 at 54:11
+# diagnostic: E0004 at 55:11
+# diagnostic: E0004 at 56:11
+# diagnostic: E0004 at 57:11
+# diagnostic: E0004 at 58:11
+# diagnostic: E0004 at 59:11
+# diagnostic: E0004 at 60:11
+# diagnostic: E0004 at 61:11
+# diagnostic: E0004 at 62:11
+# diagnostic: E0004 at 63:11
+# diagnostic: E0004 at 64:11
+# diagnostic: E0004 at 65:11
+# diagnostic: E0004 at 66:11
+# Property-defined set (ADR-0017): the same code points between tokens; each is E0004 (and no E0051).
+module tests.lexical.forbidden_set_gaps_in_code
+let x00 = ឴1
+let x01 = ឵1
+let x02 = ⁥1
+let x03 = ￰1
+let x04 = ￸1
+let x05 = 󠂀1
+let x06 = 󠃿1
+let x07 = 󠇰1
+let x08 = 󠿿1
+let x09 = 󠀁1
+let x10 = 󠁁1
+let x11 = 󠁿1
+let x12 = ᅟ1
+let x13 = ᅠ1
+let x14 = ㅤ1
+let x15 = ﾠ1
+let x16 = ͏1
+let x17 = ︀1
+let x18 = ️1
+let x19 = 󠄀1
+let x20 = 󠇯1
+let x21 = ­1
+let x22 = ؀1
+let x23 = 𑂽1
+let x24 = 𓐰1
+let x25 = 𝅳1
+let x26 = ﷐1
+let x27 = ﷯1
+let x28 = ￾1
+let x29 = 🿿1
+let x30 = 􏿿1
