@@ -245,9 +245,12 @@ types** and **auditable**.
   1. a call through an interface value or a function value may call anything, unless the value comes from Égide;
   2. `unsafe`, cgo, `//go:linkname`, assembly, `reflect` calls that can reach unexported state, a function without a Go
      body and any `//go:wasmimport` classify as impure;
-  3. writing an exported package-level variable classifies as impure; **reading** an exported package-level variable of
-     the standard library takes the class of its line in the list (`io.ReadFull(rand.Reader, b)` reads `crypto/rand.Reader`,
-     class `rand`; `os.Args` is `env`), and a variable with no line is `go` (GOP-007);
+  3. writing an exported package-level variable classifies as impure. **Every use** of an exported package-level variable
+     of the standard library takes the class of its line in the list (`io.ReadFull(rand.Reader, b)` uses
+     `crypto/rand.Reader`, class `rand`; `os.Args` is `env`), and a variable with no line is `go` (GOP-007). **Taking the
+     address of such a variable (`&rand.Reader`, `&os.Args`) is a use and also counts as a write**, because the pointer
+     allows both reads and writes that the analysis does not see; it is therefore impure. A method value or a
+     slice of the variable counts as a use;
   4. **any function value that is not the callee of a direct call counts as called at the expression where it appears**
      (`return map[string]any{"run": evil.Run}`, an argument, a stored value, a method value, a deferred or `go`
      function, a function placed in a composite), and so does a value converted to an interface type, **implicitly as
@@ -267,11 +270,25 @@ types** and **auditable**.
      analysed per instantiation**: the body is analysed with the type arguments substituted, so a conversion of a value of
      type-parameter type counts the method sets of the actual type argument (`Gen[T any](v T)` calling `fmt.Sprint(v)` is
      pure for `Gen[int]` and impure for `Gen[Evil]`), and the classification and the lock entry are those of the
-     instantiation the program uses, keyed by its type arguments (PKG-040, PKG-043). A standard function that the list marks `pure` can invoke such a method without the
+     instantiation the program uses, keyed by its type arguments (PKG-040, PKG-043). *Spelling of a type argument in the
+     key:* the string of `go/types.TypeString` after resolving aliases to their targets, with every package written by its
+     full import path (never its name), the arguments in parameter order separated by a comma without a space; a type
+     declared inside a function is `<import path>.<function>.<name>#<n>` where `n` counts the local types of that name
+     in the function in source order from 1; an anonymous struct is spelled with its field names, types and tags in
+     declaration order. *Bound:* at most 64 distinct instantiations of one generic function, 4096 in the whole program,
+     and a type argument nested at most 16 deep; beyond that the build fails with E0712 (the analysis and the lock would
+     otherwise grow without limit). *An Égide generic that calls a Go generic* is analysed per instantiation of the Égide
+     function: the Égide type arguments are substituted and mapped to Go types by §11.3, and the Go instantiation is
+     classified as above; a type argument with no Go mapping (a capability, a resource, a trait object) is a compile
+     error at the call. A standard function that the list marks `pure` can invoke such a method without the
      call graph showing it (`fmt.Sprint(T{})` runs `T.String`, `sort.Sort(x)` runs `x.Less`), so the conversion, not the
      callee, is where the method is reached. Conversions in the standard library are covered by the list (GO-041);
      conversions in the user-package closure are analysed. Accepted cost: a user type with an impure method reports it
-     at every conversion to an interface, even to `any`. No override
+     at every conversion to an interface, even to `any`. The same applies to `*os.File`: a conversion of `os.Stdout` to
+     `io.Writer` counts the methods of `os.File`, which are `go`, so Go code that writes to `os.Stdout` directly is `go`
+     and the `os.var.Stdout` line (GOP-007) does not make it `stdout`. The way to write to the standard output with the
+     `Stdout` capability is the writer that Égide passes to the Go function (it comes from Égide, item 1), or `fmt.Print*`,
+     which the list classes `stdout`. No override
      lifts it: a method's findings are those of its body (GO-044.2 discharges only the findings listed there).
   The result is recorded per function in `egide.lock` (PKG-040).
 - **[GO-043] Drift detection.** When a new version of a Go module changes the classification of a function called by

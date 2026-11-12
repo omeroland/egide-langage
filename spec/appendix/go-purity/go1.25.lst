@@ -6,15 +6,19 @@ bufio.* pure
 bytes.* pure
 cmp.* pure
 context.* pure
+context.WithDeadline clock
+context.WithDeadlineCause clock
+context.WithTimeout clock
+context.WithTimeoutCause clock
 crypto/rand.* rand
 crypto/rand.var.Reader rand
 crypto/sha256.* pure
 crypto/sha512.* pure
-crypto/tls.* pure
 crypto/tls.Dial net
 crypto/tls.DialWithDialer net
 crypto/tls.Listen net
 crypto/tls.LoadX509KeyPair fs
+crypto/tls.X509KeyPair pure
 encoding/base64.* pure
 encoding/hex.* pure
 encoding/json.* pure
@@ -48,9 +52,9 @@ net/netip.* pure
 net/url.* pure
 os.* go
 os.var.Args env
-os.var.Stderr stderr
-os.var.Stdin stdin
-os.var.Stdout stdout
+os.var.Stderr go
+os.var.Stdin go
+os.var.Stdout go
 os/exec.* proc
 path.* pure
 path/filepath.* pure
@@ -85,6 +89,7 @@ text/template.Template.ParseFiles fs
 text/template.Template.ParseGlob fs
 time.* pure
 time.After clock
+time.AfterFunc clock
 time.LoadLocation fs   # reads the zoneinfo database
 time.NewTicker clock
 time.NewTimer clock
@@ -92,6 +97,9 @@ time.Now clock
 time.Since clock
 time.Sleep clock
 time.Tick clock
+time.Unix clock
+time.UnixMicro clock
+time.UnixMilli clock
 time.Until clock
 time.var.Local clock
 unicode.* pure

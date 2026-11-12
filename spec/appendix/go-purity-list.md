@@ -55,6 +55,7 @@ os.* go
 | `mime` | mixed: `pure`, except `TypeByExtension` and `ExtensionsByType` `fs` (they read the system mime tables) and `AddExtensionType` `go` (global state) |
 | `bufio`, `io`, `compress/*`, `archive/tar` | `pure` (authority lives in the `Reader`/`Writer` passed in) |
 | `archive/zip` | mixed: `pure`, except `OpenReader` `fs` |
+| `context`, `time` (clock readers) | `context.WithDeadline`, `WithDeadlineCause`, `WithTimeout`, `WithTimeoutCause`, `time.AfterFunc` and `time.Unix`, `UnixMilli`, `UnixMicro` (they return a `Time` in the `Local` zone, read from `$TZ` and `/etc/localtime`) are `clock`; the rest of the package keeps its class |
 | `hash/*`, `crypto/sha256`, `crypto/sha512`, `crypto/sha3`, `crypto/hmac`, `crypto/aes`, `crypto/cipher`, `crypto/hkdf`, `crypto/subtle` | `pure` |
 | `crypto/md5`, `crypto/sha1`, `crypto/des`, `crypto/rc4` | `pure`, plus a deprecation warning |
 | `sync`, `sync/atomic` | `pure` (see GO-032 for sharing) |
@@ -62,7 +63,7 @@ os.* go
 | `path/filepath` | mixed: `Join`, `Clean`, `Base`, `Dir`, `Ext`, `Rel`, `Split`, `Match` `pure`; `Walk`, `WalkDir`, `Glob`, `Abs`, `EvalSymlinks` `fs` |
 | `time` | mixed: `Duration`, `Parse*`, `Date`, `Unix`, formatting `pure`; `Now`, `Since`, `Until`, `Sleep`, `After`, `Tick`, `NewTimer`, `NewTicker` `clock`; `LoadLocation` `fs` |
 | `crypto/ed25519`, `crypto/ecdsa`, `crypto/rsa` | mixed: sign/verify `pure`; `GenerateKey` `rand` |
-| `crypto/tls` | mixed: config types `pure`; `Dial`, `Listen` `net`; `LoadX509KeyPair` `fs` |
+| `crypto/tls` | `go` by default (`Client`, `Server` and `Handshake` read `rand.Reader`, the clock and the system roots); `Dial`, `DialWithDialer`, `Listen` `net`; `LoadX509KeyPair` `fs`; `X509KeyPair` `pure` |
 | `math/rand`, `math/rand/v2` | mixed: `New(src)` and methods on explicit sources `pure`; top-level functions `rand` |
 | `log`, `log/slog` | mixed: `slog.New(handler)` `pure`; default-logger functions `log` |
 | `crypto/rand` | `rand` |
@@ -83,8 +84,8 @@ The authoritative data is `go-purity/go1.25.lst`; task T-0040 generates and revi
   ambient state: the clock, the environment, argv, a random source, the disk, the user or the network database. The
   review of GOP-003 checks it function by function and does not accept a wholesale `pure` for a package whose
   functions can reach such state (this audit is T-0040's; the seed list is known to contain wholesale lines that fail
-  it, corrected in this appendix for `text/template`, `html/template`, `archive/zip`, `crypto/tls`, `mime` and
-  `reflect`).
+  it, corrected in this appendix for `text/template`, `html/template`, `archive/zip`, `crypto/tls`, `mime`, `reflect`
+  and the clock readers of `context` and `time`).
 
 ## A.4 Initialisation lines (GO-045)
 

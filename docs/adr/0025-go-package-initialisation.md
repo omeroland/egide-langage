@@ -118,9 +118,21 @@ Recommended follow-up task text (not created): *T-NNNN, stdlib purity list audit
 for every function and exported variable of the Go standard library in the list, decide the class by reading the code for
 reads of ambient state (clock, `time.Local`, environment, argv, random source, disk, user and network databases, global
 registries) and for calls of functions received as arguments or stored in values (`Funcs`, `Seq`, `sort`, `slices`
-comparators); remove every wholesale `pure` line that fails GOP-008; add the acceptance cases `io.ReadFull(rand.Reader)`,
+comparators); remove every wholesale `pure` line that fails GOP-008; add the acceptance cases `func leak() (*io.Reader, *[]string) { return &rand.Reader, &os.Args }` followed by `io.ReadFull(*pr, b)` and `len(*pa)`, `io.ReadFull(rand.Reader)`,
 `strings.Join(os.Args[1:], " ")`, `fmt.Sprint(Outer{…})`, `json.Marshal`, a `FuncMap` template and `Gen[Evil]` to the
 conformance suite.*
+
+### Ninth-pass review (B-1' reproduced on Go 1.24.7)
+
+| Finding | Resolution |
+|---------|------------|
+| B-1': `func leak() (*io.Reader, *[]string) { return &rand.Reader, &os.Args }` is pure; reads and writes through the pointers are invisible | GO-042 item 3: every use of an exported standard-library variable takes its list class, and taking its address is a use that also counts as a write (impure). Acceptance case added to the T-0040 audit text: `leak()` above, then `io.ReadFull(*pr, b)` and `len(*pa)` |
+| `crypto/tls.* pure` (GOP-008 claimed it corrected): `Client`, `Server`, `Handshake` read `rand.Reader`, the clock and system roots | `crypto/tls` is `go` by default; `Dial*`, `Listen` `net`, `LoadX509KeyPair` `fs`, `X509KeyPair` `pure` |
+| `context.WithTimeout`, `WithDeadline` and `time.AfterFunc` read the clock under pure lines; `time.Unix(...).Format` reads `$TZ` and `/etc/localtime` | the four `context` constructors and `AfterFunc` are `clock`; `time.Unix`, `UnixMilli`, `UnixMicro` are `clock` (the `Local` zone is host state reached through the clock capability). Residual: a `Time` obtained by other means and formatted in `Local` (extrapolated) stays with the T-0040 audit |
+| `fmt.Fprintln(os.Stdout, …)` becomes `go` through the conversion rule, so `os.var.Stdout stdout` is useless | fix the line, not the rule: `os.var.Stdin/Stdout/Stderr` are `go`, and GO-042 item 4 states the supported path (the writer Égide passes, which comes from Égide, or `fmt.Print*` = `stdout`). Alternative: special-case a direct `os.Stdout` conversion to the variable's class. Rejected: the callee may type-assert to `Truncate`, `Fd` or `ReadFrom` |
+| spelling of type arguments in the lock key | `go/types.TypeString` after alias resolution, full import paths, local types `<path>.<func>.<name>#<n>`, anonymous structs with names, types and tags (GO-042 item 4) |
+| instantiation growth unbounded | 64 per generic function, 4096 per program, nesting 16; E0712. The numbers are *extrapolated* defaults |
+| an Égide generic calling a Go generic | analysed per Égide instantiation; the Égide type arguments are mapped by §11.3; a type argument with no mapping is a compile error |
 
 ## Decision
 
