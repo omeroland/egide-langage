@@ -177,6 +177,28 @@ it would make `fmt.Println(list)` impossible, while the closure walk keeps it `s
 The caps are *extrapolated* defaults. Acceptance cases for the `security-reviewer` after acceptance (not added here):
 `Outer{E Evil}`, `[]Evil`, `List[GoRef[Evil]]`, a generic wrapper, `net.Dialer{Control: f}`, `reflect.Value`, each expected `go`.
 
+## Thirteenth-pass review (blocker B-1, reasoned by the reviewer; N-1 closed)
+
+**Executive Summary.** Item 5 classified only the arguments of a call. A reviewed `pure` constructor returns a
+`GoRef[Evil]`; Égide builds `http.Client(Transport: ref)`, a construction and not a call; `c.Do(req)` then runs
+`Evil.RoundTrip` at class `net` with no `go`. The receiver is argument 0 and a Go value built in Égide is classified where
+it is built.
+
+| Point | Resolution |
+|-------|------------|
+| B-1.1 receiver | item 5(f): the receiver of a method call is argument 0, classified by the type closure of its expression's static type |
+| B-1.2 construction | item 5(g): a Go value built in Égide source is classified at the place it is built, by the type closure of its components and the function values among them; the class belongs to the enclosing function |
+| B-1.3 acceptance case | **`Client(Transport: ref)` used as a receiver (`c.Do(req)`), with `ref` a `GoRef` of an unreviewed third-party type whose `RoundTrip` calls `os.Remove`, must be classified `go`.** Expected by 5(f) (the closure of `http.Client` reaches its `Transport` implementers) and by 5(g) (the literal itself). For the `security-reviewer` after acceptance; no test is added here |
+| N-2 one definition of the implementer set | item 4 defines the implementer set once (the Go closure, plus standard implementers at list classes); 5(b) refers to it |
+| N-3 closed list incomplete | 5(a) adds `Result`, enums, `Array`, `Shared`; a type with no Go mapping (`dyn Trait`, capability, resource) passed as an argument is E0713 |
+| N-4 direct callee | 5(c) defines it: function name, method selector or instantiated generic in call position; method values, method expressions `T.M` and stored instantiations are function values |
+| N-5 total cap | at most 8192 overrides per build as well as 1024 per package (E0712) |
+| type closure is a set | stated in item 4: a set indexed by type identity |
+
+Alternative considered for B-1.2: classify only at calls, and make every method of a type reachable from a value that
+could reach a call `go`. Rejected, it needs the call-graph analysis that this ADR demoted. The cost of 5(g) is that
+building a value with an unreviewed implementer is `go` even when no call follows (*extrapolated*, fail-closed).
+
 ## Decision
 
 Apply the spec diff: GO-042 rewritten (baseline, review aid, item 5), GO-044 items 1, 2 and 5 amended (capability
