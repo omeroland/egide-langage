@@ -63,9 +63,15 @@ fn tenant_namespaces(cs: kube.Clientset) -> Result[List[str], GoError] using go:
      becomes `egide_1_a3_b_c`). The mangling is injective and reversible, since each length says where its segment ends, so two
      different items never collide and the compiler can recover the item from the name. After the prefix the identifier
      cannot be a Go keyword, a predeclared identifier or start with `_C` or `_cgo`, so it can neither redefine `error`, `nil`,
-     `len` or `true` for the template nor collide with generated code. The dispatcher decodes its buffer only into plain
-     data: capability and resource types are never decodable from it, so that it cannot forge authority for a sandboxed
-     host. The hash subject is the template, the interface and this mangling rule. With `CGO_ENABLED=1` the compiler compares every list that the Go tool reports for
+     `len` or `true` for the template nor collide with generated code. The dispatcher decodes its buffer only into the
+     **closed list of decodable types**: `bool`, the fixed-width integers, `f32`, `f64`, `str`, `bytes`; `Option[T]`,
+     `List[T]`, `Map[K, V]` and tuples of decodable types; structs and enums, all of whose fields are decodable and that
+     have no `drop` and no private invariant beyond their constructor. A **validated type** (TYP-031) is
+     decoded only through its constructor, so a buffer cannot produce a value that the type would refuse; the constructor's
+     error is returned to the host. Nothing else is decodable: capability types, resource types, `Secret`, sink types,
+     `std.unsafe.Ptr`, `GoRef`, `Shared`, `Chan`, function values, closures and trait objects cannot be built from bytes,
+     so the dispatcher cannot forge authority, a reference or code for a sandboxed host. Length and depth are bounded by
+     the limits of the host call (an oversized or too deep buffer is an error, never a partial value). The hash subject is the template, the interface and this mangling rule. With `CGO_ENABLED=1` the compiler compares every list that the Go tool reports for
      each package of the user-package closure (Go, cgo, ignored Go, C-family, assembly, `.syso` and the rest) with the lists at
      `CGO_ENABLED=0`, and requires the cgo list to be empty: a package with an `import "C"` file in it is E0706 even though
      its list of plain Go files is the same in both modes. The pure-Go-fallback exemption does not exist on the native
@@ -97,14 +103,22 @@ fn tenant_namespaces(cs: kube.Clientset) -> Result[List[str], GoError] using go:
      and `-pgo`;
   4. *Verified bytes.* Go checks `go.sum` when it downloads a module, not each time it reads an extracted cache, and a hash
      checked before a build can be stale when `go` reads the files. The compiler therefore builds an **immutable snapshot**: it
-     copies each module into a compiler-owned tree while hashing it, compares the hash with the `go.sum` lines of the lock
+     copies each module into a compiler-owned tree while hashing it (the archive is treated as hostile, see below), compares the hash with the `go.sum` lines of the lock
      (PKG-041), and runs both the analysis and the build against that snapshot, through the layout that works without `go.sum` entries
      for extracted trees: the generated main module (item 5) names every module of the closure with a directory
      `replace` to its snapshot directory, for which Go does not consult `go.sum` (an extracted-only module cache fails with
      "missing go.sum entry"), so the compiler's own hash comparison is the only verification and cannot be skipped. Read-only permissions do not bind the owning
      user, so the compiler uses a separate user, a read-only bind mount or a private mount namespace where the operating
      system offers one, and in every case re-hashes the snapshot and the `GOROOT` tree after the build and before it accepts
-     any artefact, failing the build on a difference. The bytes analysed, compiled and locked are the same. Trees produced
+     any artefact, failing the build on a difference. The bytes analysed, compiled and locked are the same. **Hostile archives.** Building the
+     snapshot, and extracting any archive of a build (a Go module archive, an Égide package archive, PKG-041, and the
+     toolchain distribution), accepts only regular files and directories. An entry is E0711, and nothing is written, if it
+     is a symbolic link, a hard link, a device, a FIFO or any other non-regular file; if its path is absolute, contains a
+     `..` segment, a NUL byte or a drive or UNC prefix; if it would resolve outside the destination (checked on the
+     resolved path, after the parent directories exist); or if it collides with another entry after case folding or
+     Unicode normalisation of the file system. Extraction never follows a link already present and creates files
+     exclusively (no overwrite). Without this, a path-traversal entry writes outside the snapshot, and a link to a host
+     file lets `//go:embed` copy that file into the artefact. Trees produced
      by `egide vendor` (PKG-052) are verified the same way;
   5. *Module graph.* The main module of the Go build is generated by the compiler from the `[go]` sections and the lock.
      Go already ignores `vendor/`, `replace`, `exclude` and `toolchain` directives of dependencies; the live vectors are the
@@ -208,8 +222,13 @@ types** and **auditable**.
      user-package closure (class-hierarchy or variable-type analysis), and the classes of the resolved targets enter the
      residual; a call through a value whose target is statically known (`w := os.Stdout.Write; w(p)`), through a
      package-level function variable (`hook(p)`) or through an interface with implementations in the closure is therefore
-     not discharged. Only a call whose target set is unbounded because it depends on a value supplied by the Égide caller
-     (a parameter) is discharged. *Item 3:* only writes to exported variables **declared in the overridden function's own
+     not discharged. Only a call whose function value **originates from a parameter of the overridden function itself** is
+     discharged; a function value merely *selected* by a parameter (`handlers[name]()`, a map or slice of functions indexed
+     by a parameter) is not, because its targets are a bounded set the analysis resolves. A mixed target set
+     (`if f == nil { f = hook }; f()`) discharges only the parameter-origin part; the resolved targets stay in the
+     residual. A call the analysis cannot resolve (no targets given by the call-graph builder, a generic body analysed
+     without instantiation) is never discharged: unbounded counts only as positive evidence, and an unresolved call stays in
+     the residual. *Item 3:* only writes to exported variables **declared in the overridden function's own
      module**; a write to a variable of any other package, the standard library included, is residual. The **residual** is
      everything else GO-042 finds below the function: every item 2 finding (`unsafe`, cgo, assembly, `reflect`, a body-less
      function, `go:linkname`), every resolved target of item 1 and every call to a function classified other than `pure`
@@ -229,12 +248,17 @@ types** and **auditable**.
      dependency edge (PKG-030, PKG-031, PKG-032), where `<digest>` is the SHA-256 of the canonical map from every locked
      build tuple to its set of discharged findings (so `x_windows.go` against `x_linux.go` is covered, and `egide lock
      --target` for a new tuple changes the digest). A missing entry, or a digest that differs from the computed one, fails the
-     build (E0701). `egide audit` and `egide lock --confirm` print the sets in full;
+     build (E0701). `egide audit` and `egide lock --confirm` print the sets in full, and `egide lock` writes the readable
+     sets into `egide.lock` (the `allow` entry is a digest, so the lock diff is what a reviewer reads; the lock is committed
+     and reviewed, PKG-040);
   6. **confirmation is a manifest edit.** `egide lock` and `egide update` never modify `allow`. When a dependency update
      changes the discharged sets, the build fails (E0701) until a person runs `egide lock --confirm
      go_override:<import path>.<Func>=<old digest>`, which names the function and the digest it replaces (so a stale script
      cannot confirm a changed set), rewrites that one entry and prints the difference, so the change appears as a manifest
-     diff in review. `--confirm` refuses to run without both. It does not apply to E0702. The checks of items 1 and 2 and the
+     diff in review. The difference starts with the counts of added and removed findings, and every Go identifier in it is
+     printed with the escaping of LEX-006 (Go identifiers may be non-ASCII, so a homoglyph `Wrіte` cannot pass for
+     `Write`). The confirmation is meant for a person, which no tool can enforce: a script that runs `--confirm` after
+     reading the old digest from the manifest is an accepted residual, visible in the manifest and lock diff. `--confirm` refuses to run without both. It does not apply to E0702. The checks of items 1 and 2 and the
      digest are evaluated for every locked build tuple;
   7. `egide audit` lists every override with its reason and its discharged sets, and `egide run` of a script prints the
      `allow` entries the script declares for itself (TOOL-011); `egide.lock` records them (PKG-040).

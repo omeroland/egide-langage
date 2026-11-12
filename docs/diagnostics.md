@@ -87,6 +87,7 @@ pull request**. Codes are never reused.
 | E0708 | GO-046 | build mode `{-race, -msan, -asan, c-shared, plugin}` requires cgo and is unavailable on the Go backend | proposed (ADR-0024) |
 | E0709 | TOOL-010 | the REPL cannot import Go or a package whose closure uses `import go`; use `egide run` | proposed (ADR-0023) |
 | E0710 | GO-046 | the produced binary is not statically linked (dynamic interpreter or library dependency outside the allow-list); checked before the artefact is run | proposed (ADR-0024) |
+| E0711 | GO-046, PKG-041 | archive entry `{path}` is not a regular file or directory, or escapes the destination (`..`, absolute path, link, device, FIFO, name collision); nothing was written | proposed (ADR-0024) |
 | W0001 | LEX-005 | right-to-left text in a string or comment may display the rest of the line in a different order; bind the string with `let` on its own line | allocated |
 | W0002 | LEX-011 | doc comment is not attached to a declaration | allocated |
 

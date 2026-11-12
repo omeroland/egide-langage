@@ -96,6 +96,13 @@ ADR-0022 (PKG-040), stated once in PKG-043. Cross-compiling needs `egide lock --
 | Dispatcher as a forgery oracle if the host is itself sandboxed (reasoned) | the dispatcher never decodes capability or resource types from its buffer |
 | Cost, not a finding: `.h`, `.S`, body-less functions rule out assembly-accelerated libraries unless they offer a `purego` build | accepted and documented here: the tuple tag `purego` is the way in |
 
+### 7. Sixth-pass review (reasoned, not run)
+
+| Finding | Resolution |
+|---------|------------|
+| B-1 (blocking): nothing forbids hostile archive entries when the snapshot is built or extracted (`..`, absolute paths, symlink then `//go:embed` of a host file, hard links, devices, FIFOs) | GO-046.4 gains the hostile-archive rule (regular files and directories only, resolved-path check, exclusive creation, collisions) with a new code E0711; PKG-041 applies it to Égide package archives. Alternative: let the archive library sanitise. Rejected, the property must be in the spec so that every implementation and the conformance test share it |
+| B-2 (blocking): "plain data" undefined; validated types, sink types, `Ptr`, `GoRef`, `Shared`, `Chan`, functions and trait objects could be forged from bytes | GO-046.1 gives a closed list of decodable types; validated types decode through their constructor; everything else is non-decodable. Cost: a host API cannot pass a handle or callback across the boundary. Accepted, it needs a separate ADR |
+
 ## Decision
 
 Apply the spec diff: GO-046, GO-003 (one sentence), PKG-042, PKG-043, diagnostics E0706, E0707, E0708 and E0710 (E07xx; codes are
