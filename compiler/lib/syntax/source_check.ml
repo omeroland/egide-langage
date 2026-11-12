@@ -1,20 +1,22 @@
 module D = Egide_diagnostics.Diagnostic
 module Span = Egide_source.Span
 
-(* LEX-003. CR (LEX-002, E0003) and HT (LEX-004, E0005) are Cc too but have their own rules. *)
+(* LEX-003: the property-defined set of ADR-0017 (Forbidden_set, generated from Unicode 16.0.0). CR (LEX-002, E0003) and
+   HT (LEX-004, E0005) are Cc too but have their own rules; LF is a line break. *)
 let is_forbidden cp =
-  cp = 0x061C || cp = 0x200E || cp = 0x200F
-  || (cp >= 0x202A && cp <= 0x202E)
-  || (cp >= 0x2066 && cp <= 0x2069)
-  || (cp >= 0x200B && cp <= 0x200D)
-  || cp = 0x2060 || cp = 0xFEFF || cp = 0x2028 || cp = 0x2029
-  || (cp < 0x20 && cp <> 0x0A && cp <> 0x09 && cp <> 0x0D)
-  || (cp >= 0x7F && cp <= 0x9F)
+  Egide_diagnostics.Forbidden_set.mem cp && cp <> 0x0A && cp <> 0x09 && cp <> 0x0D
 
-(* Unicode character names of the forbidden format characters; all others are Cc (docs/diagnostics.md E0004). *)
+(* Unicode character names of the best-known forbidden characters (docs/diagnostics.md E0004). Others are named by
+   their class, which is enough: the diagnostic always carries the code point, escaped. *)
 let name cp =
   match cp with
+  | 0x00AD -> "SOFT HYPHEN"
+  | 0x034F -> "COMBINING GRAPHEME JOINER"
   | 0x061C -> "ARABIC LETTER MARK"
+  | 0x115F -> "HANGUL CHOSEONG FILLER"
+  | 0x1160 -> "HANGUL JUNGSEONG FILLER"
+  | 0x17B4 -> "KHMER VOWEL INHERENT AQ"
+  | 0x17B5 -> "KHMER VOWEL INHERENT AA"
   | 0x200B -> "ZERO WIDTH SPACE"
   | 0x200C -> "ZERO WIDTH NON-JOINER"
   | 0x200D -> "ZERO WIDTH JOINER"
@@ -32,8 +34,18 @@ let name cp =
   | 0x2067 -> "RIGHT-TO-LEFT ISOLATE"
   | 0x2068 -> "FIRST STRONG ISOLATE"
   | 0x2069 -> "POP DIRECTIONAL ISOLATE"
+  | 0x3164 -> "HANGUL FILLER"
   | 0xFEFF -> "ZERO WIDTH NO-BREAK SPACE"
-  | _ -> "control character"
+  | 0xFFA0 -> "HALFWIDTH HANGUL FILLER"
+  | _ when cp < 0x20 || (cp >= 0x7F && cp <= 0x9F) -> "control character"
+  | _ when cp >= 0xE0000 && cp <= 0xE007F -> "tag character"
+  | _
+    when (cp >= 0xFE00 && cp <= 0xFE0F)
+         || (cp >= 0xE0100 && cp <= 0xE01EF)
+         || (cp >= 0x180B && cp <= 0x180F && cp <> 0x180E) ->
+      "variation selector"
+  | _ when cp land 0xFFFE = 0xFFFE || (cp >= 0xFDD0 && cp <= 0xFDEF) -> "noncharacter"
+  | _ -> "format or default-ignorable character"
 
 (* LEX-001. Decodes the UTF-8 sequence starting at byte [i] (requires [i < String.length src]).
    Returns [w > 0] with the code point in [cp_out.(0)] for a well-formed sequence of [w] bytes, or [-n] where
