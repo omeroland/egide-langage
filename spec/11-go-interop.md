@@ -159,17 +159,27 @@ fn tenant_namespaces(cs: kube.Clientset) -> Result[List[str], GoError] using go:
   7. *Diagnostic text derived from untrusted data.* Every string that a diagnostic of the override, initialiser and build-environment
      rules (E0701 to E0711) copies from data the user does not control (an archive entry name, a Go identifier, an import
      path, a file name, a module path, a build tag, a registered callback, and any text relayed from a `go`, `git` or C
-     compiler child process) passes through the output escaping of LEX-006, which is the one function; this item adds
-     three cases to it. (a) *Backslash and invalid UTF-8.* `\` is written `\\` (so that a name that contains the
-     characters `\u{E9}` never prints like `é`), every scalar value that is not printable ASCII is written `\u{H…}`, and
-     each byte of an invalid UTF-8 sequence (the E0711 case) is written `\x{HH}`. (b) *Truncation is for humans only.* A
-     diagnostic shown to a person may truncate a derived string to 120 characters followed by `…(N more)`. Output that
-     carries identity (`egide.lock`, the SBOM, `egide audit` listings, `--confirm` and its difference) is never
-     truncated; the same applies to the machine fields below. Where a human line must shorten such a value it prints the
-     length and the first 16 hexadecimal digits of the SHA-256 of the full escaped value, so two long names with a common
-     prefix stay distinct. (c) *Machine formats.* The JSON, SARIF and LSP fields of diagnostics, and CycloneDX, use the
-     format's own escape syntax so that no raw code point of the LEX-006 set appears in the output bytes (as LEX-006
-     already requires), applied to the same strings, and are not truncated.
+     compiler child process) passes through the output escaping of LEX-006 in its **strict mode** (`ascii`). LEX-006 itself
+     leaves printable non-ASCII text alone, because source text is legitimate Unicode; names from outside the
+     user's control are different (a Go identifier may be non-ASCII, so a homoglyph can sit next to the ASCII name), so
+     the strict mode writes every scalar value that is not printable ASCII as `\u{H…}`. Both are the same function with
+     one switch, and the switch is on for every string listed here. (a) *Backslash and invalid UTF-8.* `\` is written `\\`
+     (so a name that contains the characters `\u{E9}` never prints like `é`) and each byte of an invalid UTF-8 sequence
+     (the E0711 case) is written `\x{HH}`. The escaping is applied **exactly once**, at the final rendering of a
+     value; a string already escaped (a component of a message, the output of a child tool relayed after its own
+     escaping) is not escaped again, since a second pass would turn each `\` into `\\` and make two different
+     names print alike. (b) *Truncation is for humans only.* A diagnostic shown to a person may truncate a derived
+     string to 120 characters followed by `…(N more)`. Output that carries identity (`egide.lock`, the SBOM, `egide audit`
+     listings, `--confirm` and its difference) is never truncated, and neither are the machine fields below. Where a human
+     line shortens such a value it also prints its length and the first 16 hexadecimal digits of the SHA-256 of the full
+     escaped value. That digest is **display only**: it is never stored, compared, or used as an identity, and two values
+     are the same only if their full bytes are equal. (c) *Machine formats.* The JSON, SARIF and LSP fields of diagnostics,
+     CycloneDX and the lockfile use the **format's own escape syntax**, such that no raw code point of the LEX-006 set
+     appears in the output bytes, and are not truncated. The lockfile is TOML, which has no `\u{…}` escape: a
+     scalar value that is not printable ASCII is written with the TOML escapes `\uXXXX` or `\UXXXXXXXX`, a backslash as
+     `\\`, and a name that is not valid UTF-8 is stored in a separate key `<key>_hex` as the lower-case hexadecimal of its
+     bytes (TOML strings must be Unicode). The reader decodes these back to the original bytes, so the lock carries the
+     exact identity.
 
 ## 11.2 The security boundary
 
