@@ -143,6 +143,12 @@ ADR-0022 (PKG-040), stated once in PKG-043. Cross-compiling needs `egide lock --
 - `<key>_hex` is dropped: invalid UTF-8 never reaches the lock (E0711 earlier; Go requires valid UTF-8), so it was dead code
   that could also collide with a real key.
 
+### 12. Twelfth pass (non-blocking)
+
+The TOML dialect is pinned to 1.0.0 (GO-046.7), and the readers of the lock and of the manifest reject any escape that
+is not the canonical spelling of its value (E0118), so one identity has one byte sequence. Alternative: accept any valid
+TOML escape and normalise on write. Rejected, a diff of hand-edited and tool-written files would differ for the same value.
+
 ## Decision
 
 Apply the spec diff: GO-046, GO-003 (one sentence), PKG-042, PKG-043, diagnostics E0706, E0707, E0708 and E0710 (E07xx; codes are
