@@ -26,19 +26,22 @@ pull request**. Codes are never reused.
 | E0002 | LEX-001 | byte-order mark is not allowed | allocated |
 | E0003 | LEX-002 | lone carriage return | allocated |
 | E0004 | LEX-003 | forbidden character U+{cp} ({name}) — risk: hidden or reordered source text (Trojan Source). `{name}` is the Unicode name for the best-known characters, else the class: `control character`, `tag character`, `variation selector`, `noncharacter`, `format or default-ignorable character` (the set is defined by property, LEX-003) | allocated |
-| E0005 | LEX-004 | tab character outside a string literal; indent with 4 spaces. Also: a tab in the margin (or on a blank line) of a triple-quoted string (LEX-051), and a raw tab in a character literal (LEX-054) | allocated |
+| E0005 | LEX-004 | tab character outside a string literal; indent with 4 spaces. Also: a tab in the margin (or on a blank line) of a triple-quoted string (LEX-051), a tab as the first character after the spaces of a content line or of the closing-delimiter line of a triple-quoted string (LEX-051), and a raw tab in a character literal (LEX-054) | allocated |
 | E0010 | LEX-020 | non-ASCII character in identifier | allocated |
 | E0020 | LEX-032 | unexpected indentation (the previous line does not end with `:`) | allocated |
 | E0021 | LEX-032 | indentation must increase by exactly 4 spaces | allocated |
 | E0022 | LEX-032 | inconsistent dedent: no enclosing block starts at column {n} | allocated |
 | E0023 | LEX-033 | expected an indented block after `:` | allocated |
 | E0030 | LEX-040 | malformed integer literal | allocated |
-| E0031 | LEX-041 | malformed float literal | allocated |
+| E0031 | LEX-041 | malformed float literal (also: a leading zero in the integer part, `00.5`) | allocated |
 | E0040 | LEX-050 | unterminated string literal (also unterminated raw, byte, triple-quoted string and character literal; the span is the opening quote or quotes) | allocated |
 | E0041 | LEX-050 | invalid escape sequence `\{c}` | allocated |
 | E0042 | LEX-054 | character literal must contain exactly one character | allocated |
-| E0043 | LEX-053 | byte string accepts only printable ASCII and the escapes `\\ \" \n \t \r \0 \xHH` (also: no `b"""` form) | allocated |
+| E0043 | LEX-053 | byte string accepts only printable ASCII and the escapes `\\ \" \n \t \r \0 \xHH` (also: no `b"""` form; `rb"` and `br"` are reserved, there is no raw byte string) | allocated |
 | E0044 | LEX-055 | unterminated or malformed interpolation in template | allocated |
+| E0045 | LEX-051 | the opening `"""` of a triple-quoted string must be followed by a line break; content starts on the next line | proposed (ADR-0020) |
+| E0046 | LEX-051 | a blank-rendering character (`Zs` other than U+0020, or U+2800) at the start of a content line or of the closing-delimiter line of a triple-quoted string; write `\u{A0}` (plain and `f` strings) or move it off the line start (raw strings and other templates) | proposed (ADR-0020) |
+| E0047 | LEX-052 | no `#`-fenced raw strings: an identifier directly followed by `#` (one or more) and `"`; use `r"…"` or a triple-quoted string | proposed (ADR-0020) |
 | E0050 | LEX-061 | `;` is not used in Égide; statements end at line breaks | allocated |
 | E0051 | LEX-060 | unexpected character `{c}` | allocated |
 | E0100 | SYN-* | syntax error: {menhir message} | allocated |
