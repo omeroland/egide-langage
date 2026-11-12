@@ -162,24 +162,29 @@ fn tenant_namespaces(cs: kube.Clientset) -> Result[List[str], GoError] using go:
      compiler child process) passes through the output escaping of LEX-006 in its **strict mode** (`ascii`). LEX-006 itself
      leaves printable non-ASCII text alone, because source text is legitimate Unicode; names from outside the
      user's control are different (a Go identifier may be non-ASCII, so a homoglyph can sit next to the ASCII name), so
-     the strict mode writes every scalar value that is not printable ASCII as `\u{H…}`. Both are the same function with
+     the strict mode writes every scalar value that is not printable ASCII as `\u{H…}` (canonical form: upper-case
+     hexadecimal digits, no leading zeros, at least one digit, no prefix; two spellings of one scalar value never occur). Both are the same function with
      one switch, and the switch is on for every string listed here. (a) *Backslash and invalid UTF-8.* `\` is written `\\`
      (so a name that contains the characters `\u{E9}` never prints like `é`) and each byte of an invalid UTF-8 sequence
      (the E0711 case) is written `\x{HH}`. The escaping is applied **exactly once**, at the final rendering of a
-     value; a string already escaped (a component of a message, the output of a child tool relayed after its own
-     escaping) is not escaped again, since a second pass would turn each `\` into `\\` and make two different
-     names print alike. (b) *Truncation is for humans only.* A diagnostic shown to a person may truncate a derived
+     value. A message is built from typed fragments, `Text` (fixed template text, never escaped) and `Raw` (untrusted
+     bytes, escaped when the message is rendered); the output of a child tool is `Raw` when it is received, so it is
+     escaped there and never again, and a rendered string is not a fragment that can be rendered a second time (a second
+     pass would turn each `\` into `\\` and make two different names print alike). (b) *Truncation is for humans only.* A diagnostic shown to a person may truncate a derived
      string to 120 characters followed by `…(N more)`. Output that carries identity (`egide.lock`, the SBOM, `egide audit`
      listings, `--confirm` and its difference) is never truncated, and neither are the machine fields below. Where a human
      line shortens such a value it also prints its length and the first 16 hexadecimal digits of the SHA-256 of the full
      escaped value. That digest is **display only**: it is never stored, compared, or used as an identity, and two values
      are the same only if their full bytes are equal. (c) *Machine formats.* The JSON, SARIF and LSP fields of diagnostics,
      CycloneDX and the lockfile use the **format's own escape syntax**, such that no raw code point of the LEX-006 set
-     appears in the output bytes, and are not truncated. The lockfile is TOML, which has no `\u{…}` escape: a
-     scalar value that is not printable ASCII is written with the TOML escapes `\uXXXX` or `\UXXXXXXXX`, a backslash as
-     `\\`, and a name that is not valid UTF-8 is stored in a separate key `<key>_hex` as the lower-case hexadecimal of its
-     bytes (TOML strings must be Unicode). The reader decodes these back to the original bytes, so the lock carries the
-     exact identity.
+     appears in the output bytes, and are not truncated. The lockfile, and the `allow` entries that `--confirm` writes into the manifest, are TOML, which has no `\u{…}`
+     escape: a `"` is written `\"`, a backslash `\\`, a control character or DEL with its TOML short escape or `\uXXXX`, and
+     every other scalar value that is not printable ASCII `\uXXXX` (up to U+FFFF) or `\UXXXXXXXX`, with upper-case
+     hexadecimal digits and the full width; surrogate code points do not exist in the input (they are not scalar
+     values). The readers of the lock and of the manifest decode these escapes and reject a raw LEX-003 character, a raw
+     control character and an escape that spells a LEX-003 character differently than above (E0118, as for `reason`).
+     A name that is not valid UTF-8 never reaches the lock: archive entries fail with E0711 first, and Go identifiers
+     and import paths are valid UTF-8 by the Go specification, so no separate byte-string key exists.
 
 ## 11.2 The security boundary
 
