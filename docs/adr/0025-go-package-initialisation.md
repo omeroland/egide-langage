@@ -104,6 +104,24 @@ catalogue (it ended the Markdown table) is removed.
 | R-2: a function value in a `template.FuncMap` is not "passed as an argument"; `text/template` is `pure` in the list and ran it | GO-042 item 4: a function value stored into any composite value that is passed to a standard function counts as called by the storing function. Alternative: reclassify `text/template` and `html/template` Execute functions as impure. Not done in the spec text because the purity list belongs to GOP-xxx review; recommended as an additional list change for the `security-reviewer`, since the rule above does not cover a template parsed from a file that names functions registered elsewhere (extrapolated) |
 | R-3: generics (`Gen[T any](v T)` is pure, `Gen(Evil{})` is not) | GO-042 item 4 and GO-044.2: analysis per instantiation; a new instantiation is a new classification (lock) and may change the override digest or residual |
 
+### Eighth-pass review (B-1 to B-3 reproduced by the reviewer on Go 1.24.7)
+
+| Finding | Resolution |
+|---------|------------|
+| B-1: reads of standard-library variables (`io.ReadFull(rand.Reader, b)`, `strings.Join(os.Args[1:], " ")`) are pure under the amended GO-042 | GO-042 item 3: a read of an exported standard-library variable takes the class of its list line; new GOP-007 (`<import path>.var.<Name> <class>`, default `go`, not covered by `.*`); seed lines added for `crypto/rand`, `os`, `io`, `time.Local` |
+| B-2: `return map[string]any{"run": evil.Run}` stays pure; item 4 named only variables and fields | GO-042 item 4: any function value that is not the callee of a direct call counts as called where it appears; implicit interface conversions (assignment, argument, return, literal, send) are covered. Alternative: keep the conditional rule (composite passed to a standard function). Rejected: the conditional is exactly what the reproduction evades |
+| B-3: generics share the lock key `(tuple, package, function)` | PKG-040, PKG-043 and the digest of GO-044.5 add the type arguments to the key |
+| list reclassification (defined by the `security-reviewer`) | A.3 and `go1.25.lst`: `text/template`, `html/template`: `ParseFiles`, `ParseGlob` (functions and `(*Template)` methods) `fs`, `Execute`, `ExecuteTemplate` `go`, rest `pure`; `archive/zip.OpenReader`, `crypto/tls.LoadX509KeyPair`, `mime.TypeByExtension`, `mime.ExtensionsByType` `fs`; `mime.AddExtensionType` `go`; `reflect.Value.Seq`, `Seq2` `go`. New GOP-008: a wholesale `pure` claims no ambient reads and is reviewed per function |
+| non-blocking: `context` and `time.Local` clock or disk reads | `time.var.Local clock` added; `context.WithDeadline` and `WithTimeout` read the clock but contexts are injected (GO-022): left in the T-0040 audit, not decided here |
+
+Recommended follow-up task text (not created): *T-NNNN, stdlib purity list audit (go-interop-engineer + security-reviewer):
+for every function and exported variable of the Go standard library in the list, decide the class by reading the code for
+reads of ambient state (clock, `time.Local`, environment, argv, random source, disk, user and network databases, global
+registries) and for calls of functions received as arguments or stored in values (`Funcs`, `Seq`, `sort`, `slices`
+comparators); remove every wholesale `pure` line that fails GOP-008; add the acceptance cases `io.ReadFull(rand.Reader)`,
+`strings.Join(os.Args[1:], " ")`, `fmt.Sprint(Outer{…})`, `json.Marshal`, a `FuncMap` template and `Gen[Evil]` to the
+conformance suite.*
+
 ## Decision
 
 Apply the spec diff: GO-045, GO-042 item 4, PKG-030 (`go_init:`), PKG-043 (lock records init classes), GOP-005, GOP-006,

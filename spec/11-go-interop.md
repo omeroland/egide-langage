@@ -235,9 +235,14 @@ types** and **auditable**.
   1. a call through an interface value or a function value may call anything, unless the value comes from Égide;
   2. `unsafe`, cgo, `//go:linkname`, assembly, `reflect` calls that can reach unexported state, a function without a Go
      body and any `//go:wasmimport` classify as impure;
-  3. writing an exported package-level variable classifies as impure;
-  4. a function value that is passed as an argument, stored in a package-level variable or in a field, or started with
-     `go` or `defer`, counts as called by the function that does it (so a callback registered with `image.RegisterFormat`
+  3. writing an exported package-level variable classifies as impure; **reading** an exported package-level variable of
+     the standard library takes the class of its line in the list (`io.ReadFull(rand.Reader, b)` reads `crypto/rand.Reader`,
+     class `rand`; `os.Args` is `env`), and a variable with no line is `go` (GOP-007);
+  4. **any function value that is not the callee of a direct call counts as called at the expression where it appears**
+     (`return map[string]any{"run": evil.Run}`, an argument, a stored value, a method value, a deferred or `go`
+     function, a function placed in a composite), and so does a value converted to an interface type, **implicitly as
+     well as explicitly** (assignment, argument passing, return, composite literal, channel send). It counts as called by
+     the function that does it (so a callback registered with `image.RegisterFormat`
      or `sql.Register` is classified through the registering function, and this applies to the roots of GO-045).
      **A value converted to an interface type counts as calling every method of the method set of its dynamic type**
      (including methods promoted through embedded fields) in the function that converts it, whatever the interface type
@@ -245,14 +250,14 @@ types** and **auditable**.
      fields (exported or not), the element types of arrays, slices, channels and maps (keys and values), the pointees of
      pointers, and, for a field or element of interface type, every type of the user-package closure that implements that
      interface (the dynamic type is not known, so all possible ones count), each with its pointer and value method sets.
-     `fmt.Sprint(Outer{E: Evil{}})` and `json.Marshal(Outer{…})` reach `Evil`'s methods this way. **A function value stored
-     into any composite value** (a struct field, a slice, a map such as a `template.FuncMap`) that is passed to, or
-     converted for, a standard function counts as called by the function that stores it, as if it were passed as an
-     argument; `text/template` and `html/template` run such functions when a template is executed. **Generic functions are
+     `fmt.Sprint(Outer{E: Evil{}})` and `json.Marshal(Outer{…})` reach `Evil`'s methods this way. A function stored into a composite
+     value (a struct field, a slice, a map such as a `template.FuncMap`) is covered by the first sentence of this item,
+     whether or not the composite is later passed to a standard function; `text/template` and `html/template` run such
+     functions when a template is executed. **Generic functions are
      analysed per instantiation**: the body is analysed with the type arguments substituted, so a conversion of a value of
      type-parameter type counts the method sets of the actual type argument (`Gen[T any](v T)` calling `fmt.Sprint(v)` is
      pure for `Gen[int]` and impure for `Gen[Evil]`), and the classification and the lock entry are those of the
-     instantiation the program uses. A standard function that the list marks `pure` can invoke such a method without the
+     instantiation the program uses, keyed by its type arguments (PKG-040, PKG-043). A standard function that the list marks `pure` can invoke such a method without the
      call graph showing it (`fmt.Sprint(T{})` runs `T.String`, `sort.Sort(x)` runs `x.Less`), so the conversion, not the
      callee, is where the method is reached. Conversions in the standard library are covered by the list (GO-041);
      conversions in the user-package closure are analysed. Accepted cost: a user type with an impure method reports it
@@ -306,7 +311,7 @@ types** and **auditable**.
      refactor does not change it and a second write of the same kind to another variable does. Every package that
      transitively contains the override MUST list `"go_override:<import path>.<Func>=<digest>"` in the `allow` entries of the
      dependency edge (PKG-030, PKG-031, PKG-032), where `<digest>` is the SHA-256 of the canonical map from every locked
-     build tuple to its set of discharged findings (so `x_windows.go` against `x_linux.go` is covered, and `egide lock
+     build tuple and instantiation (type arguments) to its set of discharged findings (so `x_windows.go` against `x_linux.go` is covered, and `egide lock
      --target` for a new tuple changes the digest). A missing entry, or a digest that differs from the computed one, fails the
      build (E0701). `egide audit` and `egide lock --confirm` print the sets in full, and `egide lock` writes the readable
      sets into `egide.lock` (the `allow` entry is a digest, so the lock diff is what a reviewer reads; the lock is committed

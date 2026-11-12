@@ -50,8 +50,11 @@ os.* go
 | `strings`, `bytes`, `strconv`, `unicode`, `unicode/utf8`, `unicode/utf16`, `slices`, `maps`, `sort`, `cmp`, `iter`, `errors`, `unique` | `pure` |
 | `math`, `math/big`, `math/bits`, `math/cmplx`, `container/list`, `container/heap`, `container/ring` | `pure` |
 | `encoding/json`, `encoding/xml`, `encoding/csv`, `encoding/base64`, `encoding/base32`, `encoding/hex`, `encoding/binary`, `encoding/pem`, `encoding/asn1` | `pure` |
-| `regexp`, `text/template`, `html/template`, `html`, `text/tabwriter`, `mime`, `net/url`, `net/netip`, `path` | `pure` |
-| `bufio`, `io`, `compress/*`, `archive/tar`, `archive/zip` | `pure` (authority lives in the `Reader`/`Writer` passed in) |
+| `regexp`, `html`, `text/tabwriter`, `net/url`, `net/netip`, `path` | `pure` |
+| `text/template`, `html/template` | mixed: `pure`, except `ParseFiles` and `ParseGlob` (package functions and `(*Template)` methods) `fs`, and `(*Template).Execute` and `ExecuteTemplate` `go` (they run functions registered with `Funcs`; `Funcs` itself stays `pure` because its argument falls under GO-042 item 4) |
+| `mime` | mixed: `pure`, except `TypeByExtension` and `ExtensionsByType` `fs` (they read the system mime tables) and `AddExtensionType` `go` (global state) |
+| `bufio`, `io`, `compress/*`, `archive/tar` | `pure` (authority lives in the `Reader`/`Writer` passed in) |
+| `archive/zip` | mixed: `pure`, except `OpenReader` `fs` |
 | `hash/*`, `crypto/sha256`, `crypto/sha512`, `crypto/sha3`, `crypto/hmac`, `crypto/aes`, `crypto/cipher`, `crypto/hkdf`, `crypto/subtle` | `pure` |
 | `crypto/md5`, `crypto/sha1`, `crypto/des`, `crypto/rc4` | `pure`, plus a deprecation warning |
 | `sync`, `sync/atomic` | `pure` (see GO-032 for sharing) |
@@ -59,7 +62,7 @@ os.* go
 | `path/filepath` | mixed: `Join`, `Clean`, `Base`, `Dir`, `Ext`, `Rel`, `Split`, `Match` `pure`; `Walk`, `WalkDir`, `Glob`, `Abs`, `EvalSymlinks` `fs` |
 | `time` | mixed: `Duration`, `Parse*`, `Date`, `Unix`, formatting `pure`; `Now`, `Since`, `Until`, `Sleep`, `After`, `Tick`, `NewTimer`, `NewTicker` `clock`; `LoadLocation` `fs` |
 | `crypto/ed25519`, `crypto/ecdsa`, `crypto/rsa` | mixed: sign/verify `pure`; `GenerateKey` `rand` |
-| `crypto/tls` | mixed: config types `pure`; `Dial`, `Listen` `net` |
+| `crypto/tls` | mixed: config types `pure`; `Dial`, `Listen` `net`; `LoadX509KeyPair` `fs` |
 | `math/rand`, `math/rand/v2` | mixed: `New(src)` and methods on explicit sources `pure`; top-level functions `rand` |
 | `log`, `log/slog` | mixed: `slog.New(handler)` `pure`; default-logger functions `log` |
 | `crypto/rand` | `rand` |
@@ -68,9 +71,20 @@ os.* go
 | `net`, `net/http`, `net/smtp`, `net/rpc`, `database/sql` | `net` |
 | `context` | `pure`; contexts are injected by the runtime (GO-022) |
 | `syscall`, `unsafe`, `plugin`, `runtime/cgo`, `net/http/pprof`, `expvar` | `forbidden` |
-| `reflect` | `pure`, except `NewAt` and `Value.UnsafePointer` `forbidden`, and `Value.Call`, `Value.CallSlice`, `Value.Method`, `Value.MethodByName` and `Value.Interface` `go` (they invoke code chosen at run time, for example `reflect.ValueOf(os.Stdout).MethodByName("Write").Call(...)` writes to standard output) |
+| `reflect` | `pure`, except `NewAt` and `Value.UnsafePointer` `forbidden`, and `Value.Call`, `Value.CallSlice`, `Value.Seq`, `Value.Seq2` (they call function-kinded values), `Value.Method`, `Value.MethodByName` and `Value.Interface` `go` (they invoke code chosen at run time, for example `reflect.ValueOf(os.Stdout).MethodByName("Write").Call(...)` writes to standard output) |
 
 The authoritative data is `go-purity/go1.25.lst`; task T-0040 generates and reviews the complete file.
+
+- **[GOP-007]** Exported package-level **variables** of the standard library are classified by lines
+  `<import path>.var.<Name> <class>` (for example `crypto/rand.var.Reader rand`, `os.var.Args env`, `io.var.EOF pure`).
+  `<import path>.*` does not cover variables, and a variable with no line is `go`. A read of such a variable in the
+  user-package closure takes that class (GO-042 item 3).
+- **[GOP-008]** A package-level `pure` default (`<import path>.* pure`) is a claim that no function of the package reads
+  ambient state: the clock, the environment, argv, a random source, the disk, the user or the network database. The
+  review of GOP-003 checks it function by function and does not accept a wholesale `pure` for a package whose
+  functions can reach such state (this audit is T-0040's; the seed list is known to contain wholesale lines that fail
+  it, corrected in this appendix for `text/template`, `html/template`, `archive/zip`, `crypto/tls`, `mime` and
+  `reflect`).
 
 ## A.4 Initialisation lines (GO-045)
 
