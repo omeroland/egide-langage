@@ -34,37 +34,44 @@ let flood src =
 (* LEX-003 / ADR-0016: forbidden characters alternating with a valid one, so runs do not collapse. *)
 let%expect_test "E0004 alternating flood" =
   flood ("module m\n\n# " ^ rep n (utf8 0x200B ^ "a") ^ "\n");
-  [%expect {| count=101 first=E0004 3:3 last=E0006 "999900 further diagnostics suppressed (limit 100 per file)" error=true |}]
+  [%expect
+    {| count=101 first=E0004 3:3 last=E0006 "999900 further diagnostics suppressed (limit 100 per file)" error=true |}]
 
 (* LEX-002: lone CR. *)
 let%expect_test "E0003 alternating flood" =
   flood ("module m\n\n# " ^ rep n "a\r" ^ "a\n");
-  [%expect {| count=101 first=E0003 3:4 last=E0006 "999900 further diagnostics suppressed (limit 100 per file)" error=true |}]
+  [%expect
+    {| count=101 first=E0003 3:4 last=E0006 "999900 further diagnostics suppressed (limit 100 per file)" error=true |}]
 
 (* LEX-004: tab outside a string. *)
 let%expect_test "E0005 alternating flood" =
   flood ("module m\n\n" ^ rep n "a\t" ^ "\n");
-  [%expect {| count=101 first=E0005 3:2 last=E0006 "999900 further diagnostics suppressed (limit 100 per file)" error=true |}]
+  [%expect
+    {| count=101 first=E0005 3:2 last=E0006 "999900 further diagnostics suppressed (limit 100 per file)" error=true |}]
 
 (* LEX-050: invalid escape in a plain string. *)
 let%expect_test "E0041 flood" =
   flood ("module m\nlet s = \"" ^ rep n "\\q" ^ "\"\n");
-  [%expect {| count=101 first=E0041 2:10 last=E0006 "999900 further diagnostics suppressed (limit 100 per file)" error=true |}]
+  [%expect
+    {| count=101 first=E0041 2:10 last=E0006 "999900 further diagnostics suppressed (limit 100 per file)" error=true |}]
 
 (* LEX-053: non-ASCII in a byte string. *)
 let%expect_test "E0043 flood" =
   flood ("module m\nlet s = b\"" ^ rep n "\xc3\xa9" ^ "\"\n");
-  [%expect {| count=101 first=E0043 2:11 last=E0006 "999900 further diagnostics suppressed (limit 100 per file)" error=true |}]
+  [%expect
+    {| count=101 first=E0043 2:11 last=E0006 "999900 further diagnostics suppressed (limit 100 per file)" error=true |}]
 
 (* LEX-051: tab in the margin of a triple-quoted string, one per line, so runs do not collapse. *)
 let%expect_test "E0005 triple-quoted margin flood" =
   flood ("module m\nlet s = \"\"\"\n" ^ rep n "    a\n\t\n" ^ "    \"\"\"\n");
-  [%expect {| count=101 first=E0005 4:1 last=E0006 "999900 further diagnostics suppressed (limit 100 per file)" error=true |}]
+  [%expect
+    {| count=101 first=E0005 4:1 last=E0006 "999900 further diagnostics suppressed (limit 100 per file)" error=true |}]
 
 (* LEX-055: a template whose interpolations are all bad. *)
 let%expect_test "E0044 template interpolation flood" =
   flood ("module m\nlet s = f\"" ^ rep 200_000 "{#}" ^ "\"\n");
-  [%expect {| count=101 first=E0044 2:12 last=E0006 "399900 further diagnostics suppressed (limit 100 per file)" error=true |}]
+  [%expect
+    {| count=101 first=E0044 2:12 last=E0006 "399900 further diagnostics suppressed (limit 100 per file)" error=true |}]
 
 (* ADR-0016: consecutive identical forbidden characters / lone CRs collapse to one diagnostic with a count and
    a span over the run; the run does not consume the cap. *)

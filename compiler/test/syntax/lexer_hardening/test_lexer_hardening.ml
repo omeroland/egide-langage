@@ -486,7 +486,8 @@ let property src =
      ||
      (* below the per-file cap (E0006 absent) every character is accounted for; above it, never more than exist *)
      if count "E0006" diags = 0 then
-       count_chars "E0004" diags = count_forbidden src && count_chars "E0003" diags = count_lone_cr src
+       count_chars "E0004" diags = count_forbidden src
+       && count_chars "E0003" diags = count_lone_cr src
      else
        count_chars "E0004" diags <= count_forbidden src
        && count_chars "E0003" diags <= count_lone_cr src

@@ -126,8 +126,8 @@ let check_into sink ~file src =
           add
             (D.error ~rule:"LEX-003" ~code:"E0004" sp
                (Printf.sprintf
-                  "forbidden character U+%04X (%s)%s — risk: hidden or reordered source text (Trojan \
-                   Source)"
+                  "forbidden character U+%04X (%s)%s — risk: hidden or reordered source text \
+                   (Trojan Source)"
                   cp (name cp) times))
   in
   let note_run cp =
