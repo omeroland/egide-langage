@@ -152,15 +152,18 @@ let%expect_test "100 harmless E0004 then U+202E: the summary names it" =
 let%expect_test "150 E0004 then invalid UTF-8: E0001 counted, no tokens" =
   let src = "module m\n" ^ rep 150 ("# a" ^ utf8 0x200B ^ "\n") ^ "let s = \"\xff\"\n" in
   let toks, ds = lex src in
-  Printf.printf "%d %S tokens=%d %b\n" (List.length ds) (last_message ds) (List.length toks) (has_error ds);
-  [%expect {| 101 "51 further diagnostics suppressed (limit 100 per file; E0001: 1; E0004: 50)" tokens=0 true |}]
+  Printf.printf "%d %S tokens=%d %b\n" (List.length ds) (last_message ds) (List.length toks)
+    (has_error ds);
+  [%expect
+    {| 101 "51 further diagnostics suppressed (limit 100 per file; E0001: 1; E0004: 50)" tokens=0 true |}]
 
 (* alt_cr_bidi_flood: lone CRs do not hide the bidi control that follows *)
 let%expect_test "alternating lone CRs then U+202E" =
   let src = "module m\n# " ^ rep 100 "x\ry\r" ^ "\n# " ^ utf8 0x202E ^ "\n" in
   let _, ds = lex src in
   Printf.printf "%d %S %b\n" (List.length ds) (last_message ds) (has_error ds);
-  [%expect {| 101 "100 further diagnostics suppressed (limit 100 per file; E0003: 99; E0004: 1)" true |}]
+  [%expect
+    {| 101 "100 further diagnostics suppressed (limit 100 per file; E0003: 99; E0004: 1)" true |}]
 
 (* exact_limit_100_vs_101: exactly 100 -> no summary; 101 -> singular text *)
 let%expect_test "exactly 100 diagnostics has no summary, 101 has a singular one" =

@@ -97,9 +97,9 @@ module Sink : sig
 
   val to_list : t -> diag list
   (** The kept diagnostics in emission order, then, if any were dropped, one final E0006 error whose
-      span is that of the first dropped diagnostic and whose message states the count, the limit and, for E0001, E0002,
-      E0003 and E0004, how many dropped diagnostics had that code (fixed text, integers only).
-      Deterministic: the same reports give the same list. *)
+      span is that of the first dropped diagnostic and whose message states the count, the limit
+      and, for E0001, E0002, E0003 and E0004, how many dropped diagnostics had that code (fixed
+      text, integers only). Deterministic: the same reports give the same list. *)
 
   val has_errors : t -> bool
   (** True if any error was reported, kept or dropped. O(1). *)

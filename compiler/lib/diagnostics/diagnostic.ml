@@ -342,15 +342,24 @@ module Sink = struct
   let classes = [| "E0001"; "E0002"; "E0003"; "E0004" |]
 
   let class_index code =
-    let rec go i = if i >= Array.length classes then -1 else if classes.(i) = code then i else go (i + 1) in
+    let rec go i =
+      if i >= Array.length classes then -1 else if classes.(i) = code then i else go (i + 1)
+    in
     go 0
 
   let default_limit = 100
 
   let create ?(limit = max_int) () =
     if limit < 1 then invalid_arg "Diagnostic.Sink.create: limit must be at least 1";
-    { limit; kept = 0; rev = []; suppressed = 0; first_suppressed = None;
-      errors = false; by_class = Array.make (Array.length classes) 0 }
+    {
+      limit;
+      kept = 0;
+      rev = [];
+      suppressed = 0;
+      first_suppressed = None;
+      errors = false;
+      by_class = Array.make (Array.length classes) 0;
+    }
 
   let report s d =
     if d.severity = Error then s.errors <- true;
