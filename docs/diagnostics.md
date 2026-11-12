@@ -48,7 +48,7 @@ pull request**. Codes are never reused.
 | E0101 | SYN-001 | missing `module` declaration | allocated |
 | E0102 | SYN-031 | boolean argument must be named: `{param}: {value}` | allocated |
 | E0103 | SYN-101 | mixing bitwise and comparison operators requires parentheses | allocated |
-| E0104 | SYN-015 | this block-ended expression must stand alone; bind it with `let` first | allocated |
+| E0104 | SYN-015 | this block-ended expression must stand alone; bind it with `let` first (also: `unsafe`, `given` or `with` as a top-level `let` initialiser; bind it inside a function) | allocated |
 | E0105 | TYP-006 | parenthesise a function type used as a return type | allocated |
 | E0106 | SYN-012, SYN-033 | cannot assign to this expression / cannot take `&` of this expression (not a place) | allocated |
 | E0107 | SYN-065 | invalid lambda parameter / type annotation outside a lambda parameter list | allocated |
@@ -66,6 +66,7 @@ pull request**. Codes are never reused.
 | E0119 | SYN-006 | nesting too deep (limit 256) | allocated |
 | E0120 | SYN-030 | misplaced or unbound `using` argument: `{name}` | allocated |
 | E0121 | SYN-053 | `{name}` is a binding, not the variant `{Variant}`; write `{Variant}` or `_` | allocated |
+| E0122 | SYN-023 | attribute `@{name}`: missing, extra, repeated, unlabelled or unknown-label argument; expected `{signature}` | proposed (ADR-0021) |
 | E0301 | MEM-021 | `{place}` is passed as inout and also used by another argument of the same call | allocated |
 | E0302 | MEM-023 | use of `{name}` after it was moved by `take` | allocated |
 | E0303 | ERR-032 | resource `{name}` may leak: close it with `with` or move it with `take` | allocated |
