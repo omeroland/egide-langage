@@ -226,7 +226,18 @@ types** and **auditable**.
      or `sql.Register` is classified through the registering function, and this applies to the roots of GO-045).
      **A value converted to an interface type counts as calling every method of the method set of its dynamic type**
      (including methods promoted through embedded fields) in the function that converts it, whatever the interface type
-     is and whatever the callee is. A standard function that the list marks `pure` can invoke such a method without the
+     is and whatever the callee is, **and of every type in the type closure of that dynamic type**: the types of its
+     fields (exported or not), the element types of arrays, slices, channels and maps (keys and values), the pointees of
+     pointers, and, for a field or element of interface type, every type of the user-package closure that implements that
+     interface (the dynamic type is not known, so all possible ones count), each with its pointer and value method sets.
+     `fmt.Sprint(Outer{E: Evil{}})` and `json.Marshal(Outer{…})` reach `Evil`'s methods this way. **A function value stored
+     into any composite value** (a struct field, a slice, a map such as a `template.FuncMap`) that is passed to, or
+     converted for, a standard function counts as called by the function that stores it, as if it were passed as an
+     argument; `text/template` and `html/template` run such functions when a template is executed. **Generic functions are
+     analysed per instantiation**: the body is analysed with the type arguments substituted, so a conversion of a value of
+     type-parameter type counts the method sets of the actual type argument (`Gen[T any](v T)` calling `fmt.Sprint(v)` is
+     pure for `Gen[int]` and impure for `Gen[Evil]`), and the classification and the lock entry are those of the
+     instantiation the program uses. A standard function that the list marks `pure` can invoke such a method without the
      call graph showing it (`fmt.Sprint(T{})` runs `T.String`, `sort.Sort(x)` runs `x.Less`), so the conversion, not the
      callee, is where the method is reached. Conversions in the standard library are covered by the list (GO-041);
      conversions in the user-package closure are analysed. Accepted cost: a user type with an impure method reports it
@@ -250,7 +261,9 @@ types** and **auditable**.
      library, to a nested or other module, or to `init` or a variable initialiser, is E0702;
   2. **what an override discharges.** It discharges only findings of GO-042 item 1 (a call through a function or interface
      value) and item 3 (a write to an exported package-level variable) in the call graph reachable from the function, and only
-     as follows. *Item 1:* before a finding is discharged, the possible targets of the call are resolved inside the
+     as follows. *Per instantiation:* all of the following is evaluated for each instantiation of a generic function that the program
+     uses, with the type arguments substituted; a new instantiation is a new classification and, if it adds a discharged
+     finding, a new digest (E0701) or a non-empty residual (E0702). *Item 1:* before a finding is discharged, the possible targets of the call are resolved inside the
      user-package closure (class-hierarchy or variable-type analysis), and the classes of the resolved targets enter the
      residual; a call through a value whose target is statically known (`w := os.Stdout.Write; w(p)`), through a
      package-level function variable (`hook(p)`) or through an interface with implementations in the closure is therefore

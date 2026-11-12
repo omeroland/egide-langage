@@ -96,6 +96,14 @@ catalogue (it ended the Markdown table) is removed.
   class, now fails E0704 and needs `--confirm`: otherwise a later version re-adding the class would pass unconfirmed.
   Cost: one confirmation when an init set shrinks.
 
+### Seventh-pass review (R-1 to R-3, reproduced by the reviewer)
+
+| Finding | Resolution |
+|---------|------------|
+| R-1: methods reached through fields and elements (`fmt.Sprint(Outer{E: Evil{}})`, `json.Marshal`) | GO-042 item 4: the rule extends to the type closure (fields, array/slice/chan/map elements, keys, pointees, interface-typed fields as every implementing type of the user-package closure). Cost: a larger over-approximation, bounded by the closure of user types; acceptance cases `fmt.Sprint(Outer{…})` and `json.Marshal(Outer{…})` for T-0040/T-0083 |
+| R-2: a function value in a `template.FuncMap` is not "passed as an argument"; `text/template` is `pure` in the list and ran it | GO-042 item 4: a function value stored into any composite value that is passed to a standard function counts as called by the storing function. Alternative: reclassify `text/template` and `html/template` Execute functions as impure. Not done in the spec text because the purity list belongs to GOP-xxx review; recommended as an additional list change for the `security-reviewer`, since the rule above does not cover a template parsed from a file that names functions registered elsewhere (extrapolated) |
+| R-3: generics (`Gen[T any](v T)` is pure, `Gen(Evil{})` is not) | GO-042 item 4 and GO-044.2: analysis per instantiation; a new instantiation is a new classification (lock) and may change the override digest or residual |
+
 ## Decision
 
 Apply the spec diff: GO-045, GO-042 item 4, PKG-030 (`go_init:`), PKG-043 (lock records init classes), GOP-005, GOP-006,
