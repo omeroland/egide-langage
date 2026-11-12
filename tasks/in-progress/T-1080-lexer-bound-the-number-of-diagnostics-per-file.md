@@ -9,9 +9,9 @@ spec: [LEX-002, LEX-003, LEX-050, LEX-051, LEX-053, LEX-054]
 paths: [compiler/lib/syntax/, compiler/test/syntax/, tests/conformance/lexical/, docs/diagnostics.md]
 estimate: S
 labels: [security, perf]
-status: backlog
-claimed_by:
-claimed_at:
+status: in-progress
+claimed_by: syntax-engineer/session_01NLgEFTLJgCm5Sfk4YuTzRp
+claimed_at: 2026-11-12
 ---
 
 ## Goal
