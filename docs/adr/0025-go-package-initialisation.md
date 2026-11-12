@@ -80,6 +80,22 @@ write `allow`; `egide lock --confirm go_init:<module>=<old classes>` does, and p
 removed class need not. The stack is now consistent with ADR-0022. The blank line between the E0611 and E0701 rows of the
 catalogue (it ended the Markdown table) is removed.
 
+### Sixth-pass review (blocker N2/R-1, reproduced by the reviewer on Go 1.24.7)
+
+- *Hole in GO-042.* A user type with methods, converted to an interface and passed to a standard function the list marks
+  `pure`, is invisible to the analysis: acceptance cases (go-interop-engineer, T-0040/T-0083): (a) `fmt.Sprint(T{})` where
+  `T.String` writes a file; (b) `sort.Sort(x)` where `x.Less` writes a file. GO-044's residual inherits the gap and needs no
+  override to exploit it.
+- *Resolution.* GO-042 item 4: a value converted to an interface type counts as calling every method of the method set of
+  its dynamic type, at the conversion. Alternative: mark the dispatcher functions (`fmt.Sprint*`, `sort.Sort`, ...) in the
+  purity list as `dispatches`/impure. Rejected as the primary fix: the list would need every standard function that takes
+  an interface and calls its methods, it would not cover user-package code that does the same, and it would mislabel
+  the callee, not the conversion. Cost: a user type with an impure method is reported at every conversion to an interface
+  (over-approximation; the fix is a pure method, no override applies).
+- *`go_init:` re-confirmation (non-blocking).* Any difference between computed classes and entry, including a removed
+  class, now fails E0704 and needs `--confirm`: otherwise a later version re-adding the class would pass unconfirmed.
+  Cost: one confirmation when an init set shrinks.
+
 ## Decision
 
 Apply the spec diff: GO-045, GO-042 item 4, PKG-030 (`go_init:`), PKG-043 (lock records init classes), GOP-005, GOP-006,

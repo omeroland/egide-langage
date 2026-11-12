@@ -200,6 +200,14 @@ types** and **auditable**.
   4. a function value that is passed as an argument, stored in a package-level variable or in a field, or started with
      `go` or `defer`, counts as called by the function that does it (so a callback registered with `image.RegisterFormat`
      or `sql.Register` is classified through the registering function, and this applies to the roots of GO-045).
+     **A value converted to an interface type counts as calling every method of the method set of its dynamic type**
+     (including methods promoted through embedded fields) in the function that converts it, whatever the interface type
+     is and whatever the callee is. A standard function that the list marks `pure` can invoke such a method without the
+     call graph showing it (`fmt.Sprint(T{})` runs `T.String`, `sort.Sort(x)` runs `x.Less`), so the conversion, not the
+     callee, is where the method is reached. Conversions in the standard library are covered by the list (GO-041);
+     conversions in the user-package closure are analysed. Accepted cost: a user type with an impure method reports it
+     at every conversion to an interface, even to `any`. No override
+     lifts it: a method's findings are those of its body (GO-044.2 discharges only the findings listed there).
   The result is recorded per function in `egide.lock` (PKG-040).
 - **[GO-043] Drift detection.** When a new version of a Go module changes the classification of a function called by
   the Égide program, `egide lock` fails and prints the per-function capability diff.
@@ -284,7 +292,8 @@ types** and **auditable**.
      **because GO-046 rejects them (E0706) and requires a static binary (E0710)**; GO-045 is sound only together with
      GO-046 and MUST NOT be applied without it;
   4. drift detection (GO-043), the lock (PKG-043) and `egide audit` cover init sets. Drift compares the **capability set**,
-     not "impure": a module approved for `env` whose update adds `net` fails the build (E0704): an added class always fails, a removed class need not. `egide lock` and `egide update` never
+     not "impure": a module approved for `env` whose update adds `net` fails the build (E0704): any difference between the computed set and the entry fails (E0704), an added class and a removed one alike: a removed class
+     that a later version re-adds would otherwise need no confirmation, since the entry still names it. `egide lock` and `egide update` never
      modify `allow`; only `egide lock --confirm go_init:<module>=<old classes>` rewrites that entry, prints the difference and
      refuses to run without the module and the classes it replaces, so the change appears as a manifest diff in review and a bot
      cannot clear it. No capability can mediate an
