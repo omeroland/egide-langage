@@ -184,6 +184,11 @@ fn tenant_namespaces(cs: kube.Clientset) -> Result[List[str], GoError] using go:
      hexadecimal digits and the full width; surrogate code points do not exist in the input (they are not scalar
      values). The readers of the lock and of the manifest decode these escapes and reject a raw LEX-003 character, a raw
      control character and an escape that spells a LEX-003 character differently than above (E0118, as for `reason`).
+     The dialect is **TOML 1.0.0**. A reader also rejects (E0118) any escape that is not the canonical spelling of its
+     value: an escape of a printable ASCII character other than `\"` and `\\`, lower-case hexadecimal digits, the
+     eight-digit form for a value up to U+FFFF, or a four-digit form where the short escape exists, so that two byte
+     sequences never denote one identity and a lock diff is deterministic. (Hand-written `allow` entries use the canonical
+     spelling.)
      A name that is not valid UTF-8 never reaches the lock: archive entries fail with E0711 first, and Go identifiers
      and import paths are valid UTF-8 by the Go specification, so no separate byte-string key exists.
 
@@ -309,7 +314,9 @@ types** and **auditable**.
      and a function literal appends `.func<k>`, where `k` is its ordinal among the literals directly inside the owner in
      source order (nested literals append again, `func1.func2`); `n` counts the local types of that name in the innermost
      owner in source order from 1. The ordinals depend on source order only, not on line numbers, so they do not change
-     under an unrelated edit. *Bounds:* at most 64 distinct instantiations of one generic function or of the methods of one
+     under an unrelated edit. *Aggregate bounds:* the Go closure holds at most 512 modules and 8192 packages, a build locks at most 16 tuples, and a
+     package declares at most 1024 overrides; beyond that the build fails with E0712, so that the digest and the
+     classification bookkeeping stay bounded. *Bounds:* at most 64 distinct instantiations of one generic function or of the methods of one
      generic type, 4096 in the whole program, and a type argument nested at most 16 deep. The **length of the spelling**
      is at most 1024 bytes, and the total of all lock keys at most 4 MiB. Because the spelling of a nested instantiation
      repeats its arguments, its length can be exponential in the depth, so it is computed bottom-up on the type graph with
@@ -335,24 +342,44 @@ types** and **auditable**.
      item 4 is normative for it. A call from Égide to **any** Go function whose own class is below `go`, that is a standard
      function of any class (`fmt.Printf` is `stdout`, and still dispatches to `String`) and a third-party function with a
      reviewed entry (a reviewed `Render(v any)` that calls `fmt.Sprint(v)`), takes, in addition to its own class, the union
-     of the following for each argument: (a) if the static type of the argument is a Go type with methods, the class of
-     every method of its method set and of the method sets of every type in its type closure; (b) if the static type is an
-     interface type, the same for every type of the Go closure that implements it, with standard types at their list
-     classes, and `go` when the implementers cannot be enumerated (`GoAny`, `any`); (c) if the argument is a Go function
-     value (a reference to `os.Remove` passed as a `func(string) error`), the class of its target, counted as called at the
-     call site, and `go` when the target is not statically known; an Égide lambda keeps the rule of §11.3 (it runs with the
-     capabilities it captured). A method of a non-standard type is `go` unless it has a reviewed entry, so `fmt.Sprint(x)`
-     and `Render(x)` with `x` a `GoRef` of a third-party type that has a `String` method are `go`.
+     over its arguments of the following. The **static type** of an argument is the type of the argument *expression*
+     (`Int`, `str`, `GoRef[Evil]`), not the type of the parameter, mapped to its Go type by §11.3; a variadic call is
+     classified element by element, and a spread `*xs` by the element type of `xs`. So `fmt.Printf("%d", n)` with `n: Int`
+     stays `stdout`, while a real `GoAny` or `any` element is `go` (accepted, fail-closed cost).
+     (a) *Type closure, with or without methods.* The Go type of the argument is walked through the type closure of item 4
+     **whether or not the type has methods itself**: slices, maps (keys and values), arrays, channels, pointers, structs
+     with or without methods, and the Égide composites `List`, `Map`, `Option`, tuples and structs through the Go mapping
+     of each component (`List[GoRef[Evil]]` is `[]*Evil`). The class of every method of the method set of every type
+     reached counts;
+     (b) *Go interface types.* If the expression's static type is a **Go interface type** (a value that comes from Go),
+     every type of the Go closure that implements it counts, with standard types at their list classes, and the result is
+     `go` when the implementers cannot be enumerated (`GoAny`, `any`). It does not apply to an Égide nominal type that
+     implements a Go interface, such as the writer that Égide passes to a Go function (that one comes from Égide and its
+     methods are Égide code under its own capabilities). `GoError` wraps `error`, so `errors.Is` and `errors.As` on a
+     `GoError` are `go` once an unreviewed third-party error type is in the closure (accepted cost);
+     (c) *Function values.* A Go function value or method value that is **not the callee of a direct call** counts as
+     called at the expression where it appears, **in Égide source as well as in Go bodies (item 4)**, wherever it ends up:
+     an argument, a field (`net.Dialer{Control: f}`), a `List`, a `Map`, a `Chan`, a spawned function, a stored value.
+     It takes the class of its target, and `go` when the target is not statically known. An Égide lambda keeps the
+     rule of §11.3 (it runs with the capabilities it captured);
+     (d) *Opaque types.* `reflect.Value`, `unsafe.Pointer`, `atomic.Value`, `sync.Map` and any type whose closure ends in
+     `any`, in a non-enumerable interface or in a type parameter hide their dynamic type, and count as `go`;
+     (e) *Per instantiation.* The rule is evaluated for each instantiation of an Égide generic with its type arguments
+     substituted (`show[T](x: T)` calling `fmt.Println(x)` is `stdout` for `Int` and `go` for `GoRef[Evil]`); a type
+     parameter that is not instantiated counts as `go`.
+     A method of a non-standard type is `go` unless it has a reviewed entry, so `fmt.Sprint(x)`, `fmt.Println(outer)` and
+     `Render(x)` with `x` a `GoRef` of a third-party type that has a `String` method, or `outer` a methodless struct
+     holding one, are `go`.
   The review aid and the reviewed entries are recorded per function in `egide.lock` (PKG-040).
 - **[GO-043] Drift detection.** When a new version of a Go module changes the classification of a function called by
   the Égide program, `egide lock` fails and prints the per-function capability diff of the review aid and the lock diff
   of the reviewed entries. The class of a function changes only through its reviewed entry (GO-044); the failure is
   closed, not a classification.
-- **[GO-044] Overrides.** A package declares the reviewed classification of a Go function of one of its own modules
-  (GO-042) with
+- **[GO-044] Overrides.** A package declares the reviewed classification of a Go function of a non-standard module of the
+  Go closure of its own `[go]` section (GO-042, a module of `[go]` or a transitive one, item 1) with
   `[go.overrides] "<import path>.Func" = { class = "pure", reason = "…" }` (`class` is `pure` or one capability class,
   item 1) (a method is keyed
-  `"<import path>.<Type>.<Method>"`; the import path is the longest prefix that is a package of a module of `[go]`, and an
+  `"<import path>.<Type>.<Method>"`; the import path is the longest prefix that is a package of such a module, and an
   ambiguous key is E0702). Like `@go_threadsafe` (GO-032) an override asserts a property the compiler cannot check, and is
   gated like it:
   1. `class` is `pure` or one capability class of GO-040 (`clock`, `rand`, `stdout`, `stderr`, `stdin`, `fs`, `env`,
