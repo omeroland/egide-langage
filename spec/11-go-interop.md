@@ -184,13 +184,19 @@ types** and **auditable**.
      type, to a package-level variable of function type, to a method of an interface type (also one promoted from an
      embedded local interface or reached through a type parameter), to a function without a Go body, to the standard
      library, to a nested or other module, or to `init` or a variable initialiser, is E0702;
-  2. **what an override discharges.** It discharges only the findings of GO-042 items 1 (a call through a function or
-     interface value) and 3 (a write to an exported package-level variable) in the call graph reachable from the function. The
-     **residual** is everything else that GO-042 finds below the function: every item 2 finding (`unsafe`, cgo, assembly,
-     `reflect`, a body-less function, `go:linkname`) and every call to a function classified other than `pure`
-     (`os.WriteFile` is `Dir`). The residual MUST be `pure`, that is empty; otherwise E0702, which prints it. So a wrapper
-     around an assembly stub or around a classified standard function cannot be overridden, and a version of the function
-     that starts to reach one is rejected, not masked;
+  2. **what an override discharges.** It discharges only findings of GO-042 item 1 (a call through a function or interface
+     value) and item 3 (a write to an exported package-level variable) in the call graph reachable from the function, and only
+     as follows. *Item 1:* before a finding is discharged, the possible targets of the call are resolved inside the
+     user-package closure (class-hierarchy or variable-type analysis), and the classes of the resolved targets enter the
+     residual; a call through a value whose target is statically known (`w := os.Stdout.Write; w(p)`), through a
+     package-level function variable (`hook(p)`) or through an interface with implementations in the closure is therefore
+     not discharged. Only a call whose target set is unbounded because it depends on a value supplied by the Égide caller
+     (a parameter) is discharged. *Item 3:* only writes to exported variables **declared in the overridden function's own
+     module**; a write to a variable of any other package, the standard library included, is residual. The **residual** is
+     everything else GO-042 finds below the function: every item 2 finding (`unsafe`, cgo, assembly, `reflect`, a body-less
+     function, `go:linkname`), every resolved target of item 1 and every call to a function classified other than `pure`
+     (`os.WriteFile` is `Dir`); a callee that is classified `Go` only because of a discharged item 1 finding does not count.
+     The residual MUST be empty, otherwise E0702, which prints it. **`--confirm` can never lift E0702**;
   3. **the override applies only to the edge from Égide source of the declaring Égide package to that exact function.**
      Inside the Go call graph the function keeps the class computed by GO-042, so Go callers of it, and Go functions that
      reach it, are classified as if there were no override. An override is never a pure leaf of the analysis;
@@ -198,19 +204,22 @@ types** and **auditable**.
      reader applies the constraints of SYN-018 itself (single line, 1 to 200 scalar values, no LEX-003 character, no
      `Zs` other than U+0020; E0118), and every tool that prints it (audit, lock, SBOM) passes it through the output
      escaping of LEX-006;
-  5. **the grant names what it grants.** Every package that transitively contains the override MUST list
-     `"go_override:<import path>.<Func>=<digest>"` in the `allow` entries of the dependency edge (PKG-030, PKG-031,
-     PKG-032), where `<digest>` is the SHA-256 of the canonical set of discharged findings (function reached, finding kind,
-     for each instantiation used by Égide source) as computed for each locked build tuple. A missing entry, or a digest that
-     differs from the computed one, fails the build (E0701). The set is printed in full by `egide audit` and by the diff of
-     `egide lock --confirm go_override:<import path>.<Func>`;
+  5. **the grant names what it grants.** The identity of a discharged finding is (enclosing function, kind, the callee's
+     static type or the variable object as package path and name, multiplicity), with no source position, so that a
+     refactor does not change it and a second write of the same kind to another variable does. Every package that
+     transitively contains the override MUST list `"go_override:<import path>.<Func>=<digest>"` in the `allow` entries of the
+     dependency edge (PKG-030, PKG-031, PKG-032), where `<digest>` is the SHA-256 of the canonical map from every locked
+     build tuple to its set of discharged findings (so `x_windows.go` against `x_linux.go` is covered, and `egide lock
+     --target` for a new tuple changes the digest). A missing entry, or a digest that differs from the computed one, fails the
+     build (E0701). `egide audit` and `egide lock --confirm` print the sets in full;
   6. **confirmation is a manifest edit.** `egide lock` and `egide update` never modify `allow`. When a dependency update
-     changes the discharged set (a new dynamic call, a new instantiation) or makes the residual non-empty, the build fails
-     until a person runs `egide lock --confirm` naming the function, which rewrites that one `allow` entry and prints the
-     set difference, so the change appears as a manifest diff in review. `--confirm` refuses to run without naming the
-     function, in any mode. The check of item 2 and the digest are evaluated for every locked build tuple, and
-     `egide lock --target` re-checks them;
-  7. `egide audit` lists every override with its reason and its discharged set; `egide.lock` records them (PKG-040).
+     changes the discharged sets, the build fails (E0701) until a person runs `egide lock --confirm
+     go_override:<import path>.<Func>=<old digest>`, which names the function and the digest it replaces (so a stale script
+     cannot confirm a changed set), rewrites that one entry and prints the difference, so the change appears as a manifest
+     diff in review. `--confirm` refuses to run without both. It does not apply to E0702. The checks of items 1 and 2 and the
+     digest are evaluated for every locked build tuple;
+  7. `egide audit` lists every override with its reason and its discharged sets, and `egide run` of a script prints the
+     `allow` entries the script declares for itself (TOOL-011); `egide.lock` records them (PKG-040).
 
 ## 11.5 Calling Égide from Go
 
