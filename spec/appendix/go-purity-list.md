@@ -91,3 +91,23 @@ The authoritative data is `go-purity/go1.25.lst`; task T-0040 generates and revi
   functions can reach such state (this audit is T-0040's; the seed list is known to contain wholesale lines that fail
   it, corrected in this appendix for `text/template`, `html/template`, `archive/zip`, `crypto/tls`, `mime`, `reflect`
   and the clock readers of `context` and `time`).
+
+## A.4 Initialisation lines (GO-045)
+
+- **[GOP-005]** For every standard package the list holds a line `<import path>.init <class>` giving the class of the
+  package's initialisers and of those of the standard packages it imports. `<import path>.*` does not cover `init`.
+  Only `pure` makes the package importable (E0705 otherwise). A `forbidden` package of A.3 has the init class `forbidden`
+  unless a line says otherwise (`syscall`, `unsafe` and the runtime-bound packages of A.5 are the expected exceptions).
+  The lines are reviewed under GOP-003, and the review decides explicitly, for each of them, packages whose
+  initialisation reads the environment or registers state (`net/http`, `crypto/*`, `database/sql`, `os`).
+
+## A.5 Runtime-bound packages
+
+- **[GOP-006]** The packages linked by the Égide runtime (`runtime/go/rt`) are exempt from the init rules of GO-045 because
+  every program of the Go backend links them anyway (on the native backend only programs with Go interop do, and the
+  exemption then only skips a check on packages that are linked anyway): the standard packages imported by `runtime/go/rt` (today `context`, `errors`,
+  `fmt`, `io`, `os`, `sync`, `time`) and their transitive standard imports, listed in the file `go1.25.runtime-bound`
+  next to the list. The file is generated from the runtime's import graph and versioned with the list. A CI check fails if
+  the committed file differs from the one generated from `runtime/go/rt`, so that a change of the runtime's imports cannot
+  widen the exemption unreviewed; every change of the file is reviewed under GOP-003. A package that is not in it is never
+  exempt.

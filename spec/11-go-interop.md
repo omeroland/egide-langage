@@ -478,6 +478,56 @@ types** and **auditable**.
   7. `egide audit` lists every override with its reason and its discharged sets, and `egide run` of a script prints the
      `allow` entries the script declares for itself (TOOL-011); `egide.lock` records them (PKG-040).
 
+- **[GO-045] Package initialisation.** Go runs the `init` functions and package-level variable initialisers of every Go
+  package linked into the program (the transitive import closure of the packages named by `import go`) before `main`,
+  with ambient authority and before any capability value exists. Blank imports (`import _ "net/http/pprof"`) run them
+  without any call, so GO-010 to GO-012 never apply. The **init set** of a package is its `init` functions and its
+  variable initialisers; it is classified per package:
+  1. *Standard library.* A package is **standard** when its import path resolves to a directory of the pinned `GOROOT`
+     `src` tree, its `vendor` directory included (`go list` reports `Standard`); nothing else is, whatever its path looks
+     like. The init-class test applies to **every standard package in the closure, for every locked build tuple** (the
+     imports of a file selected by one tuple only count for that tuple), including those reached
+     only through a third-party package (a third party's `import _ "plugin"` is as much an error as an Égide
+     `import go "plugin"`). The purity list (GO-041, appendix A.4) holds one line `<import path>.init <class>` per package;
+     it covers the package's own initialisers and those of the standard packages it imports. A package without a line has
+     the class `forbidden` if A.3 lists it as `forbidden`, otherwise `go`. Only `pure` is accepted: any other class is
+     E0705, and no `allow` entry lifts it. The packages the Égide runtime links (A.5) are exempt;
+  2. *Third-party packages.* This item covers **every non-standard package of the Go closure** (GO-046): the packages of
+     the modules of `[go]` and every non-standard package they import, so a transitive module is included, and the
+     standard-library check of item 1 applies to what each of them imports. The init set of such a package is **trivial**
+     when all of the following hold: the package has no `init` function; every package-level variable initialiser is a
+     constant expression or a composite literal of constant expressions (no call, no function value, no explicit
+     conversion to an interface type; an implicit conversion runs nothing); and the package uses none of `//go:linkname`
+     (a linknamed variable overwrites a symbol of another package with no call), an import of `unsafe` (blank imports
+     included), an assembly file, an import of `embed` or a `//go:embed` directive, or cgo. That is a syntactic test on
+     the files, evaluated **for every locked build tuple** (a file selected by one tuple only counts for that tuple, and
+     the package is trivial only if it is trivial under all of them), not an analysis. A trivial init set needs no entry.
+     Any other init set is `go` and requires
+     `"go_init:<module>@<version>=<classes>"` in `allow` (E0704), where `<classes>` is the sorted, comma-separated set of
+     capability classes that a person assigned to it, or `pure` (for example `go_init:example.com/m@v1.2.3=env,net`). The
+     entry is a reviewed assertion, like `unsafe`: no analysis lowers, raises or checks it, and a static analysis, where
+     one exists, is only a review aid that `egide audit` prints (the init functions, the variable initialisers and the
+     callbacks they register). It is a key distinct from `go:<module>` so that approving the calls of a module does not
+     approve initialisers it gains later, and it names the version, so that a new version needs a new decision. The entry
+     grants exactly the **set of capability classes** it names, and that grant holds wherever the callbacks the init set
+     registers are reachable, including through dispatchers the list classifies pure (`image.Decode`, `crypto.Hash.New`,
+     `sql.Open` with a registered driver), not only at start-up. A package that imports, by name or blank, a standard
+     package of class `forbidden` such as `net/http/pprof` or `expvar` fails item 1 (E0705);
+  3. cgo, `.syso` objects, `//go:cgo_*` directives and any file the build does not compile are not part of the init set
+     **because GO-046 rejects them (E0706) and requires a static binary (E0710)**; GO-045 is sound only together with
+     GO-046 and MUST NOT be applied without it;
+  4. drift detection (GO-043), the lock (PKG-043) and `egide audit` cover init sets. For a package that has an entry or
+     is not trivial, a change of the module version, or of the set of init functions and variable initialisers that the
+     lock records for the package (a package that was trivial and no longer is, or that gains a function), fails the
+     build (E0704) until a person confirms it, whatever the classes: an entry never carries over to a version nobody
+     read. A package that is trivial before and after a version bump needs nothing. The first entry of a package that
+     has just stopped being trivial is written by hand in the manifest (`--confirm` replaces an existing entry and cannot
+     create one). `egide lock` and `egide update` never modify `allow`;
+     only `egide lock --confirm go_init:<module>@<old version>=<old classes>` rewrites that entry, prints the difference
+     and refuses to run without the module, the version and the classes it replaces, so the change appears as a manifest
+     diff in review and a bot cannot clear it. No capability can mediate an initialiser; the OS sandbox (GO-013) is the
+     only barrier left after these gates.
+
 ## 11.5 Calling Égide from Go
 
 - **[GO-050]** `egide build --go-package <dir>` generates an idiomatic Go package for the `pub` API of an Égide package:
