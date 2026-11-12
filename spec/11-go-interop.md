@@ -168,8 +168,8 @@ fn tenant_namespaces(cs: kube.Clientset) -> Result[List[str], GoError] using go:
      (so a name that contains the characters `\u{E9}` never prints like `é`) and each byte of an invalid UTF-8 sequence
      (the E0711 case) is written `\x{HH}`. The escaping is applied **exactly once**, at the final rendering of a
      value. A message is built from typed fragments, `Text` (fixed template text, never escaped) and `Raw` (untrusted
-     bytes, escaped when the message is rendered); the output of a child tool is `Raw` when it is received, so it is
-     escaped there and never again, and a rendered string is not a fragment that can be rendered a second time (a second
+     bytes, escaped when the message is rendered); the output of a child tool is `Raw` too: its bytes are never trusted
+     to be escaped, whatever the tool did, and are escaped once by this compiler when the message is rendered, and a rendered string is not a fragment that can be rendered a second time (a second
      pass would turn each `\` into `\\` and make two different names print alike). (b) *Truncation is for humans only.* A diagnostic shown to a person may truncate a derived
      string to 120 characters followed by `…(N more)`. Output that carries identity (`egide.lock`, the SBOM, `egide audit`
      listings, `--confirm` and its difference) is never truncated, and neither are the machine fields below. Where a human
@@ -178,7 +178,8 @@ fn tenant_namespaces(cs: kube.Clientset) -> Result[List[str], GoError] using go:
      are the same only if their full bytes are equal. (c) *Machine formats.* The JSON, SARIF and LSP fields of diagnostics,
      CycloneDX and the lockfile use the **format's own escape syntax**, such that no raw code point of the LEX-006 set
      appears in the output bytes, and are not truncated. The lockfile, and the `allow` entries that `--confirm` writes into the manifest, are TOML, which has no `\u{…}`
-     escape: a `"` is written `\"`, a backslash `\\`, a control character or DEL with its TOML short escape or `\uXXXX`, and
+     escape: a `"` is written `\"`, a backslash `\\`, a backspace, tab, line feed, form feed and carriage return with `\b`, `\t`, `\n`, `\f`, `\r`, every other control
+     character and DEL with `\u00XX` (one spelling per value), and
      every other scalar value that is not printable ASCII `\uXXXX` (up to U+FFFF) or `\UXXXXXXXX`, with upper-case
      hexadecimal digits and the full width; surrogate code points do not exist in the input (they are not scalar
      values). The readers of the lock and of the manifest decode these escapes and reject a raw LEX-003 character, a raw
