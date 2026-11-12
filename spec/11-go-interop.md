@@ -149,7 +149,7 @@ fn tenant_namespaces(cs: kube.Clientset) -> Result[List[str], GoError] using go:
      and are unavailable on the Go backend: E0708. The lock records the classification per (tuple, Go package, function)
      (PKG-043). A build under a tuple that has no classification in the lock is E0707 until `egide lock --target` has analysed
      it and the drift check (GO-043) has passed, so cross-compiling needs `egide lock --target` for each target;
-  7. *Diagnostic text derived from untrusted data.* Every string that a diagnostic of GO-044, GO-045 or GO-046 (E0701 to
+  7. *Diagnostic text derived from untrusted data.* Every string that a diagnostic of the override, initialiser and build-environment rules (E0701 to
      E0711) copies from data the user does not control (an archive entry name, a Go identifier, an import path, a file name,
      a module path, a build tag, a registered callback) is printed through one function, `diag_escape`: each scalar value
      that is not printable ASCII is written as `\u{HEX}` (the escaping of LEX-006 extended to all non-ASCII scalars, so
