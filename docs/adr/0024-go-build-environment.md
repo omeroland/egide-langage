@@ -103,6 +103,20 @@ ADR-0022 (PKG-040), stated once in PKG-043. Cross-compiling needs `egide lock --
 | B-1 (blocking): nothing forbids hostile archive entries when the snapshot is built or extracted (`..`, absolute paths, symlink then `//go:embed` of a host file, hard links, devices, FIFOs) | GO-046.4 gains the hostile-archive rule (regular files and directories only, resolved-path check, exclusive creation, collisions) with a new code E0711; PKG-041 applies it to Égide package archives. Alternative: let the archive library sanitise. Rejected, the property must be in the spec so that every implementation and the conformance test share it |
 | B-2 (blocking): "plain data" undefined; validated types, sink types, `Ptr`, `GoRef`, `Shared`, `Chan`, functions and trait objects could be forged from bytes | GO-046.1 gives a closed list of decodable types; validated types decode through their constructor; everything else is non-decodable. Cost: a host API cannot pass a handle or callback across the boundary. Accepted, it needs a separate ADR |
 
+### 8. Seventh-pass review
+
+| Finding | Resolution |
+|---------|------------|
+| B-1: E0711 prints an attacker-controlled entry name; LEX-006 covers source text only (terminal escapes, RTL overrides) | new GO-046.7: one function `diag_escape` (non-printable-ASCII scalars as `\u{HEX}`, truncation to 120 characters) for every derived string of E0701 to E0711, audit, lock, SBOM, `--confirm` |
+| B-2: no extraction bounds (zip bombs, sparse tar, entry counts, deep paths; Go caps module zips at 500 MiB) | GO-046.4(b): fixed limits (500 MiB total, 100 MiB per file, 100 000 entries, depth 32, 255 B segment, 4096 B path, ratio 100:1; toolchain 2 GiB and 200 000 entries), declared and actual sizes. The numbers are *extrapolated* defaults for the owner; the toolchain row is unverified |
+| collision rule depended on the host | NFC plus full case folding on every host |
+| portable names | no backslash, `:`, trailing dot or space, Windows device names (as `x/mod` rejects them) |
+| "nothing was written" cannot hold for a stream | private staging directory on the same file system, moved after checks and hash; reworded |
+| archive metadata | discarded (fixed modes, no owners, xattrs, setuid) |
+| "private invariant" undecidable | decodable structs and enums: no `Drop`; invariants only as validated-type fields |
+| Go toolchain tarball must itself pass | stated as an assumption in GO-046.2, to verify in T-0100 (the installed GOROOT was clean, the archive could not be downloaded) |
+| #36 E0006 row will be stale by one code after merge | noted, no action: this PR does not touch that row |
+
 ## Decision
 
 Apply the spec diff: GO-046, GO-003 (one sentence), PKG-042, PKG-043, diagnostics E0706, E0707, E0708 and E0710 (E07xx; codes are
