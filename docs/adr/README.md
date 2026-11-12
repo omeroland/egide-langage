@@ -38,3 +38,4 @@ requires an accepted ADR.**
 | [0019](0019-toolchain-parity.md) | Toolchain parity with the Go toolchain | Proposed |
 | [0020](0020-lexical-edge-cases.md) | Lexical edge cases of numeric, string and prefix literals | Proposed |
 | [0022](0022-go-overrides-init-comptime-and-unsafe-path.md) | Gate for Go overrides, own-breach declarations, `unsafe` module path | Proposed |
+| [0023](0023-no-go-at-compile-time.md) | No Go code at compile time | Proposed |
