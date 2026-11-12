@@ -122,6 +122,17 @@ function that calls `reflect.ValueOf(os.Stdout).MethodByName("Write").Call(...)`
 overridable (E0702), and a `test-engineer` conformance case that a `reflect.Value.Call` in a compile-time context is E0611
 once ADR-0023 is accepted.
 
+### Sixth-pass findings (security review: APPROVE with wording)
+
+- *Depends on a parameter.* GO-044.2 item 1 now reads: the function value must **originate** from a parameter of the
+  overridden function; a value selected by a parameter (`table[name]()`) stays in the residual; a mixed set discharges only
+  its parameter-origin part; an unresolvable call is residual, never discharged (positive evidence of unboundedness only).
+  Alternative considered: discharge any parameter-dependent call. Rejected, it discharges dispatch tables.
+- *`--confirm` hygiene.* Counts first, LEX-006 escaping of every Go identifier, readable sets written to `egide.lock`
+  (committed, reviewed). Accepted residual: a bot can run `--confirm`; "a person" is not enforceable.
+- *Churn.* One digest changes with each added platform file: a fatigue risk, not a hole. The per-tuple entry stays an owner
+  option (unchanged).
+
 ### Merge order
 
 Recommended: **#32, #33, #34, #35**, as a stack (each PR's base is the previous branch; GitHub retargets to `main` as they

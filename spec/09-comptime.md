@@ -31,7 +31,7 @@ macros. Compile-time code receives no capability, so no build can touch the netw
   values that may appear at compile time. An exact Go constant converts to an Égide `int` or `f64` as an Égide literal
   of the same value would: an integer that does not fit is a compile-time error, a float is rounded once to nearest. Go
   constants may depend on the build tuple (`runtime.GOOS`, `math.MaxInt`, `unsafe.Sizeof`), so compile-time results and
-  any cache of them are keyed by it. A construct that matches both CT-002 (E0610) and this rule is reported as E0611.
+  any cache of them are keyed by it. The Go package that declares a constant is loaded and type-checked only inside the confined Go build environment of chapter 11 (ADR-0024), never with the ambient toolchain. A construct that matches both CT-002 (E0610) and this rule is reported as E0611.
 
 ## 9.2 Comptime parameters and types as values
 
