@@ -63,9 +63,15 @@ fn tenant_namespaces(cs: kube.Clientset) -> Result[List[str], GoError] using go:
      becomes `egide_1_a3_b_c`). The mangling is injective and reversible, since each length says where its segment ends, so two
      different items never collide and the compiler can recover the item from the name. After the prefix the identifier
      cannot be a Go keyword, a predeclared identifier or start with `_C` or `_cgo`, so it can neither redefine `error`, `nil`,
-     `len` or `true` for the template nor collide with generated code. The dispatcher decodes its buffer only into plain
-     data: capability and resource types are never decodable from it, so that it cannot forge authority for a sandboxed
-     host. The hash subject is the template, the interface and this mangling rule. With `CGO_ENABLED=1` the compiler compares every list that the Go tool reports for
+     `len` or `true` for the template nor collide with generated code. The dispatcher decodes its buffer only into the
+     **closed list of decodable types**: `bool`, the fixed-width integers, `f32`, `f64`, `str`, `bytes`; `Option[T]`,
+     `List[T]`, `Map[K, V]` and tuples of decodable types; structs and enums, all of whose fields are decodable and that
+     have no `drop` and no private invariant beyond their constructor. A **validated type** (TYP-031) is
+     decoded only through its constructor, so a buffer cannot produce a value that the type would refuse; the constructor's
+     error is returned to the host. Nothing else is decodable: capability types, resource types, `Secret`, sink types,
+     `std.unsafe.Ptr`, `GoRef`, `Shared`, `Chan`, function values, closures and trait objects cannot be built from bytes,
+     so the dispatcher cannot forge authority, a reference or code for a sandboxed host. Length and depth are bounded by
+     the limits of the host call (an oversized or too deep buffer is an error, never a partial value). The hash subject is the template, the interface and this mangling rule. With `CGO_ENABLED=1` the compiler compares every list that the Go tool reports for
      each package of the user-package closure (Go, cgo, ignored Go, C-family, assembly, `.syso` and the rest) with the lists at
      `CGO_ENABLED=0`, and requires the cgo list to be empty: a package with an `import "C"` file in it is E0706 even though
      its list of plain Go files is the same in both modes. The pure-Go-fallback exemption does not exist on the native
@@ -97,14 +103,22 @@ fn tenant_namespaces(cs: kube.Clientset) -> Result[List[str], GoError] using go:
      and `-pgo`;
   4. *Verified bytes.* Go checks `go.sum` when it downloads a module, not each time it reads an extracted cache, and a hash
      checked before a build can be stale when `go` reads the files. The compiler therefore builds an **immutable snapshot**: it
-     copies each module into a compiler-owned tree while hashing it, compares the hash with the `go.sum` lines of the lock
+     copies each module into a compiler-owned tree while hashing it (the archive is treated as hostile, see below), compares the hash with the `go.sum` lines of the lock
      (PKG-041), and runs both the analysis and the build against that snapshot, through the layout that works without `go.sum` entries
      for extracted trees: the generated main module (item 5) names every module of the closure with a directory
      `replace` to its snapshot directory, for which Go does not consult `go.sum` (an extracted-only module cache fails with
      "missing go.sum entry"), so the compiler's own hash comparison is the only verification and cannot be skipped. Read-only permissions do not bind the owning
      user, so the compiler uses a separate user, a read-only bind mount or a private mount namespace where the operating
      system offers one, and in every case re-hashes the snapshot and the `GOROOT` tree after the build and before it accepts
-     any artefact, failing the build on a difference. The bytes analysed, compiled and locked are the same. Trees produced
+     any artefact, failing the build on a difference. The bytes analysed, compiled and locked are the same. **Hostile archives.** Building the
+     snapshot, and extracting any archive of a build (a Go module archive, an Égide package archive, PKG-041, and the
+     toolchain distribution), accepts only regular files and directories. An entry is E0711, and nothing is written, if it
+     is a symbolic link, a hard link, a device, a FIFO or any other non-regular file; if its path is absolute, contains a
+     `..` segment, a NUL byte or a drive or UNC prefix; if it would resolve outside the destination (checked on the
+     resolved path, after the parent directories exist); or if it collides with another entry after case folding or
+     Unicode normalisation of the file system. Extraction never follows a link already present and creates files
+     exclusively (no overwrite). Without this, a path-traversal entry writes outside the snapshot, and a link to a host
+     file lets `//go:embed` copy that file into the artefact. Trees produced
      by `egide vendor` (PKG-052) are verified the same way;
   5. *Module graph.* The main module of the Go build is generated by the compiler from the `[go]` sections and the lock.
      Go already ignores `vendor/`, `replace`, `exclude` and `toolchain` directives of dependencies; the live vectors are the
