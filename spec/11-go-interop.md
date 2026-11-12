@@ -434,10 +434,17 @@ types** and **auditable**.
      it covers the package's own initialisers and those of the standard packages it imports. A package without a line has
      the class `forbidden` if A.3 lists it as `forbidden`, otherwise `go`. Only `pure` is accepted: any other class is
      E0705, and no `allow` entry lifts it. The packages the Égide runtime links (A.5) are exempt;
-  2. *Third-party modules.* The init set of a package of a module of `[go]` is **trivial** when the package has no `init`
-     function and every package-level variable initialiser is a constant expression or a composite literal of constant
-     expressions (no call, no function value, no conversion to an interface type). That is a syntactic test on the files
-     of the build tuple, not an analysis, and a trivial init set needs no entry. Any other init set is `go` and requires
+  2. *Third-party packages.* This item covers **every non-standard package of the Go closure** (GO-046): the packages of
+     the modules of `[go]` and every non-standard package they import, so a transitive module is included, and the
+     standard-library check of item 1 applies to what each of them imports. The init set of such a package is **trivial**
+     when all of the following hold: the package has no `init` function; every package-level variable initialiser is a
+     constant expression or a composite literal of constant expressions (no call, no function value, no explicit
+     conversion to an interface type; an implicit conversion runs nothing); and the package uses none of `//go:linkname`
+     (a linknamed variable overwrites a symbol of another package with no call), an import of `unsafe` (blank imports
+     included), an assembly file, an import of `embed` or a `//go:embed` directive, or cgo. That is a syntactic test on
+     the files, evaluated **for every locked build tuple** (a file selected by one tuple only counts for that tuple, and
+     the package is trivial only if it is trivial under all of them), not an analysis. A trivial init set needs no entry.
+     Any other init set is `go` and requires
      `"go_init:<module>@<version>=<classes>"` in `allow` (E0704), where `<classes>` is the sorted, comma-separated set of
      capability classes that a person assigned to it, or `pure` (for example `go_init:example.com/m@v1.2.3=env,net`). The
      entry is a reviewed assertion, like `unsafe`: no analysis lowers, raises or checks it, and a static analysis, where
@@ -451,10 +458,13 @@ types** and **auditable**.
   3. cgo, `.syso` objects, `//go:cgo_*` directives and any file the build does not compile are not part of the init set
      **because GO-046 rejects them (E0706) and requires a static binary (E0710)**; GO-045 is sound only together with
      GO-046 and MUST NOT be applied without it;
-  4. drift detection (GO-043), the lock (PKG-043) and `egide audit` cover init sets. A change of the module version, or of
-     the set of init functions and variable initialisers that the lock records for the package (a package that was
-     trivial and no longer is, or that gains a function), fails the build (E0704) until a person confirms it, whatever the
-     classes: an entry never carries over to a version nobody read. `egide lock` and `egide update` never modify `allow`;
+  4. drift detection (GO-043), the lock (PKG-043) and `egide audit` cover init sets. For a package that has an entry or
+     is not trivial, a change of the module version, or of the set of init functions and variable initialisers that the
+     lock records for the package (a package that was trivial and no longer is, or that gains a function), fails the
+     build (E0704) until a person confirms it, whatever the classes: an entry never carries over to a version nobody
+     read. A package that is trivial before and after a version bump needs nothing. The first entry of a package that
+     has just stopped being trivial is written by hand in the manifest (`--confirm` replaces an existing entry and cannot
+     create one). `egide lock` and `egide update` never modify `allow`;
      only `egide lock --confirm go_init:<module>@<old version>=<old classes>` rewrites that entry, prints the difference
      and refuses to run without the module, the version and the classes it replaces, so the change appears as a manifest
      diff in review and a bot cannot clear it. No capability can mediate an initialiser; the OS sandbox (GO-013) is the

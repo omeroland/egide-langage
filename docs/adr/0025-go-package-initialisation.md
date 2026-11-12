@@ -95,6 +95,14 @@ resolutions, to ADR-0026, which also makes the baseline conservative. This ADR n
   review needs no entry and the rest is `go` by default.
 - The acceptance cases of the sixth pass (`fmt.Sprint(T{})`, `sort.Sort`) are in ADR-0026.
 
+### Eleventh pass (blockers B-1, B-2)
+
+| Finding | Resolution |
+|---------|------------|
+| B-1: GO-045.2 was narrowed to modules of `[go]`; a transitive module's `init()` passed with no entry and no E0704 | item 2 covers every non-standard package of the Go closure, and says the standard-library check of item 1 applies to what each imports (so `import _ "net/http/pprof"` from a transitive module is E0705) |
+| B-2 (verified): "trivial" admits `//go:linkname`: a package with only `import _ "unsafe"` and a linknamed `var flag = true` overwrote `os.checkWrapErr` with no call | a trivial package may not use `//go:linkname`, `unsafe`, assembly, `embed` or cgo, and the test is evaluated for every locked tuple |
+| non-blocking: item 4 wording; the first entry by hand; explicit against implicit conversion | item 4 applies to packages with an entry or non-trivial; the first entry is written by hand; only an explicit conversion to an interface disqualifies |
+
 ## Decision
 
 Apply the spec diff: GO-045, PKG-030 (`go_init:<module>@<version>=<classes>`), PKG-043 (lock records init functions and
