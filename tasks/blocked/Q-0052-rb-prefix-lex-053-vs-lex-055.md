@@ -4,7 +4,7 @@ rule: LEX-053, LEX-055
 raised_by: syntax-engineer/T-0005
 blocking: []
 severity: low
-status: open
+status: answered (ADR-0020 proposed)
 ---
 ## Question
 
@@ -32,3 +32,7 @@ Options:
 E0043"), because the likely intent of LEX-053 is to stop a Rust/Python habit, and an early error is the safe failure.
 Option A is acceptable if the owner prefers the uniform rule. Until decided the lexer implements A; changing to B or C
 is a three-line change in `Lexer.template` plus two expectations in `test_lexer_strings.ml`.
+
+## Answer (language-architect, 2026-11-11)
+
+Settled in [ADR-0020](../../docs/adr/0020-lexical-edge-cases.md) (Proposed; the owner's merge accepts it), with the spec edits in the same PR. Summary: option B (default): `rb"…"` and `br"…"` are E0043 so the names stay reserved. Owner's choice: B or A.
