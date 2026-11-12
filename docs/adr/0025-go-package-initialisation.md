@@ -103,6 +103,13 @@ resolutions, to ADR-0026, which also makes the baseline conservative. This ADR n
 | B-2 (verified): "trivial" admits `//go:linkname`: a package with only `import _ "unsafe"` and a linknamed `var flag = true` overwrote `os.checkWrapErr` with no call | a trivial package may not use `//go:linkname`, `unsafe`, assembly, `embed` or cgo, and the test is evaluated for every locked tuple |
 | non-blocking: item 4 wording; the first entry by hand; explicit against implicit conversion | item 4 applies to packages with an entry or non-trivial; the first entry is written by hand; only an explicit conversion to an interface disqualifies |
 
+### Twelfth pass (APPROVE; non-blocking)
+
+Item 1 now defines a standard package by membership of the pinned `GOROOT` `src` tree (vendor included) and runs its
+check for every locked tuple, since a file selected by one tuple only can import a `forbidden` package. Alternative:
+define it by import path shape (no dot in the first element). Rejected, a third-party path without a dot is legal in a
+`replace` directory and the shape test would then misclassify it.
+
 ## Decision
 
 Apply the spec diff: GO-045, PKG-030 (`go_init:<module>@<version>=<classes>`), PKG-043 (lock records init functions and

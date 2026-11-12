@@ -455,7 +455,10 @@ types** and **auditable**.
   with ambient authority and before any capability value exists. Blank imports (`import _ "net/http/pprof"`) run them
   without any call, so GO-010 to GO-012 never apply. The **init set** of a package is its `init` functions and its
   variable initialisers; it is classified per package:
-  1. *Standard library.* The init-class test applies to **every standard package in the closure**, including those reached
+  1. *Standard library.* A package is **standard** when its import path resolves to a directory of the pinned `GOROOT`
+     `src` tree, its `vendor` directory included (`go list` reports `Standard`); nothing else is, whatever its path looks
+     like. The init-class test applies to **every standard package in the closure, for every locked build tuple** (the
+     imports of a file selected by one tuple only count for that tuple), including those reached
      only through a third-party package (a third party's `import _ "plugin"` is as much an error as an Égide
      `import go "plugin"`). The purity list (GO-041, appendix A.4) holds one line `<import path>.init <class>` per package;
      it covers the package's own initialisers and those of the standard packages it imports. A package without a line has
