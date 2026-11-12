@@ -5,11 +5,11 @@
 - Deciders: owner
 - Decided by: proposed by the `language-architect`; **not accepted**. Needs the `security-reviewer` (ch. 9 is touched).
 - Spec chapters affected: 4 (TYP-031), 9 (CT-001, CT-005, new CT-006), 13 (TOOL-010), `docs/diagnostics.md`
-- Independent of ADR-0022 and ADR-0025. The allowance for Go constants depends on ADR-0024 (GO-046): reading a Go
-  constant means loading and type-checking a Go package (`go list`, type information), and only GO-046 confines that
+- Independent of ADR-0022 and ADR-0025. The allowance for Go constants depends on ADR-0024 (its build environment): reading a Go
+  constant means loading and type-checking a Go package (`go list`, type information), and only the ADR-0024 build environment confines that
   pipeline (cgo tool, C compiler, toolchain download, `git` under `-buildvcs`). CT-006 forbids *running* Go code; it does not
   by itself stop the Go toolchain from running during type-checking. The constant allowance MUST therefore be applied
-  together with GO-046 (as the stack does), or constants evaluated only after the GO-046 environment is in force. Merged
+  together with the ADR-0024 build environment (as the stack does), or constants evaluated only after the ADR-0024 build environment environment is in force. Merged
   alone, ADR-0023 gives the engine-level ban but leaves the toolchain exposure of the existing build.
 
 ## Executive Summary
