@@ -41,3 +41,4 @@ requires an accepted ADR.**
 | [0023](0023-no-go-at-compile-time.md) | No Go code at compile time | Proposed |
 | [0024](0024-go-build-environment.md) | Go build environment: no dependency code runs during compilation | Proposed |
 | [0025](0025-go-package-initialisation.md) | Classification of Go package initialisation (`init`) | Proposed (depends on 0024) |
+| [0026](0026-go-third-party-reviewed-baseline.md) | Third-party Go modules: reviewed baseline, the analysis as a review aid | Proposed |
