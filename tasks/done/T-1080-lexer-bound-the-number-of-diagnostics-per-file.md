@@ -6,7 +6,7 @@ phase: 0
 role: syntax-engineer
 depends_on: [T-0006]
 spec: [LEX-002, LEX-003, LEX-050, LEX-051, LEX-053, LEX-054]
-paths: [compiler/lib/syntax/, compiler/test/syntax/, tests/conformance/lexical/, docs/diagnostics.md]
+paths: [compiler/lib/syntax/, compiler/test/syntax/, compiler/lib/diagnostics/, compiler/test/diagnostics/, tests/conformance/lexical/, docs/diagnostics.md]
 estimate: S
 labels: [security, perf]
 status: done
@@ -115,8 +115,10 @@ Decisions (all *established* by the tests listed in the Outcome unless marked ot
    E0422-E0424/E0610, #33 E0611/E0707, #34 E0705-E0710, #35 E0703-E0704.
 5. **Language server stability.** The kept list is a prefix of the unbounded list, so the first 100 diagnostics of a
    file do not change when more errors are appended later in the file; only the count in the summary does (test
-   "prefix stable and deterministic"). A client that diffs diagnostics by (code, span, message) therefore sees at most
-   the summary change. *Extrapolated:* nothing in the repository's LSP exists yet to confirm client behaviour.
+   "prefix stable and deterministic"). Softened after review: this holds for a fixed file whose later text does not
+   touch earlier lines; text appended on the same line can extend a run and so change the message or span of a kept
+   diagnostic, and the E0006 count (and its span, if the new text precedes the first dropped diagnostic) changes.
+   *Extrapolated:* no LSP exists yet in the repository to confirm client behaviour.
 6. **Run collapsing (ADR-0016).** Adjacent identical forbidden characters (E0004) and adjacent lone CRs (E0003) on a
    line are one diagnostic with a span over the run and `repeated N times` appended to the character description.
    A single character keeps its exact old text (the conformance expectations only pin code and position). The E0005
@@ -147,9 +149,44 @@ Existing tests whose expectation changed (rule 4: justified, property unchanged)
    unchanged (all tests pass), peak RSS fell to 13 MB. Alternative rejected: a one-character-per-iteration loop
    (slower per comment byte, no benefit over 256).
 
+Review round (security review of PR #36 and code review, same head e8f263d):
+
+10. **`paths` amended** to add `compiler/lib/diagnostics/` and `compiler/test/diagnostics/`: same role owns them
+    (agents/ownership.md) and the cap must live in `Diagnostic.Sink`, which is where every pass reports; two existing
+    tests in `compiler/test/diagnostics/test_forbidden_set.ml` had to change (entry above). agents/protocol.md l.38
+    asks for a follow-up task for out-of-paths work; this was inseparable from the sink change, hence the amendment.
+11. **Catalogue corrected.** The E0006 row claimed layout was covered and that E0006 is always last. False:
+    `Parse.tokens` does `d1 @ d2`, so layout diagnostics follow E0006 and are not in its count (reproduced by the
+    reviewers: 50,000 E0020 after the summary). The row now says so and points at T-1160. The list of codes reserved
+    by other open PRs was removed from the catalogue row (it goes stale on merge). Collision check, recorded here
+    instead, re-run after the latest pushes of #29-#35: no patch of any of them contains `E0006`; E0006 is also
+    absent from main, spec/ and docs/adr/ (*established*).
+12. **Hardening: per-class counts in E0006 (decision of the coordinator).** Capping could hide a Trojan Source
+    diagnostic from a reader of the first 100 lines (100 harmless E0004 then a U+202E; or 100 lone CRs, whose first
+    dropped span is not the bidi character). The compile still fails; this is about what the reviewer sees. The
+    summary now ends `(limit L per file; E0001: a; E0002: b; E0003: c; E0004: d)` with only the non-zero classes, in
+    that fixed order, integers only (no source echo). Alternatives: (a) reserve a small budget (say 10 slots) for
+    E0001/E0002/E0004: the reader would see the actual characters, which is better evidence, but it breaks the
+    emission-order guarantee (a reserved diagnostic would be printed out of source order or the list reordered), makes
+    the kept list depend on class mix, and needs a second counter per class; (b) per-class counts (chosen): O(1)
+    state (a 4-int array), keeps the kept list a plain prefix, fixed text. Cost: the reader learns that forbidden
+    characters were dropped and how many, not where (the E0006 span is only the first dropped diagnostic). E0003 was
+    added to the three requested codes because a lone CR is a line-break ambiguity attack of the same family.
+    Tests: `test_diag_cap.ml` (hide_bidi_behind_100, hide_e0001_behind_100, alt_cr_bidi_flood,
+    exact_limit_100_vs_101, chunk_boundary_rlo) and `test_sink_limit.ml` ("summary text"). In alt_cr_bidi_flood the
+    last CR before the LF is part of a CR LF, hence 99 and not 100 dropped lone CRs: the arithmetic is as intended.
+    Existing expectations of my own flood tests gained the `; E0004: n` / `; E0003: n` suffix.
+13. **Singular text**: `1 further diagnostic suppressed`.
+14. **Severity of E0006**: it is an Error even if only warnings were dropped. Harmless today (no lexer warning
+    exists; `D.warning` is not used under compiler/lib); latent: once warnings exist, a warning flood would turn into
+    a failure. Fix then: make it an Error only if a dropped diagnostic was an Error (the sink already tracks
+    `errors`), and test that case; noted in T-1160.
+15. **QCheck property** made robust to an E0001 dropped after the cap: invalid input requires an E0001 or an E0006
+    (a deterministic test, hide_e0001_behind_100, pins the exact case: E0001 counted in the summary, no tokens).
+
 ## Outcome
 
-Implemented: a bounded `Diagnostic.Sink` (limit 100, O(1) per dropped report, `has_errors` flag), E0006 summary
+Implemented (see Log items 10-15 for the review round): a bounded `Diagnostic.Sink` (limit 100, O(1) per dropped report, `has_errors` flag), E0006 summary
 (docs/diagnostics.md), one shared sink for `Source_check.check_into` and the lexer, run collapsing for E0003/E0004,
 comment lexemes chunked at 256 code points. Design and alternatives: Log above.
 

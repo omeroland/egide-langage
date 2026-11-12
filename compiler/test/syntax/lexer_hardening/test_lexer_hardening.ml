@@ -481,7 +481,8 @@ let property src =
   let toks, diags = lex src in
   let valid = String.is_valid_utf_8 src in
   List.for_all well_formed_span diags
-  && count "E0001" diags > 0 = not valid
+  (* an E0001 that arrives after the cap is dropped, but then the E0006 summary says so (and counts it) *)
+  && (if valid then count "E0001" diags = 0 else count "E0001" diags > 0 || count "E0006" diags > 0)
   && ((not valid)
      ||
      (* below the per-file cap (E0006 absent) every character is accounted for; above it, never more than exist *)

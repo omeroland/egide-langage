@@ -35,13 +35,13 @@ let flood src =
 let%expect_test "E0004 alternating flood" =
   flood ("module m\n\n# " ^ rep n (utf8 0x200B ^ "a") ^ "\n");
   [%expect
-    {| count=101 first=E0004 3:3 last=E0006 "999900 further diagnostics suppressed (limit 100 per file)" error=true |}]
+    {| count=101 first=E0004 3:3 last=E0006 "999900 further diagnostics suppressed (limit 100 per file; E0004: 999900)" error=true |}]
 
 (* LEX-002: lone CR. *)
 let%expect_test "E0003 alternating flood" =
   flood ("module m\n\n# " ^ rep n "a\r" ^ "a\n");
   [%expect
-    {| count=101 first=E0003 3:4 last=E0006 "999900 further diagnostics suppressed (limit 100 per file)" error=true |}]
+    {| count=101 first=E0003 3:4 last=E0006 "999900 further diagnostics suppressed (limit 100 per file; E0003: 999900)" error=true |}]
 
 (* LEX-004: tab outside a string. *)
 let%expect_test "E0005 alternating flood" =
@@ -136,3 +136,56 @@ let%expect_test "Parse.tokens flood" =
   let _, ds = Parse.tokens ~file:"t.egd" ("module m\n\n# " ^ rep n (utf8 0x200B ^ "a") ^ "\n") in
   Printf.printf "%d %b\n" (List.length ds) (has_error ds);
   [%expect {| 101 true |}]
+
+(* Security review of PR #36: the cap must not let 100 harmless diagnostics hide a Trojan Source one. The E0006
+   summary counts the dropped E0001/E0002/E0003/E0004 (integers, fixed text) and the file still fails. *)
+let last_message ds = (List.nth ds (List.length ds - 1)).D.message
+
+(* hide_bidi_behind_100 *)
+let%expect_test "100 harmless E0004 then U+202E: the summary names it" =
+  let src = "module m\n" ^ rep 100 ("# a" ^ utf8 0x200B ^ "b\n") ^ "# " ^ utf8 0x202E ^ "\n" in
+  let _, ds = lex src in
+  Printf.printf "%d %S %b\n" (List.length ds) (last_message ds) (has_error ds);
+  [%expect {| 101 "1 further diagnostic suppressed (limit 100 per file; E0004: 1)" true |}]
+
+(* hide_e0001_behind_100: lexing stops at E0001 even if its diagnostic was dropped *)
+let%expect_test "150 E0004 then invalid UTF-8: E0001 counted, no tokens" =
+  let src = "module m\n" ^ rep 150 ("# a" ^ utf8 0x200B ^ "\n") ^ "let s = \"\xff\"\n" in
+  let toks, ds = lex src in
+  Printf.printf "%d %S tokens=%d %b\n" (List.length ds) (last_message ds) (List.length toks) (has_error ds);
+  [%expect {| 101 "51 further diagnostics suppressed (limit 100 per file; E0001: 1; E0004: 50)" tokens=0 true |}]
+
+(* alt_cr_bidi_flood: lone CRs do not hide the bidi control that follows *)
+let%expect_test "alternating lone CRs then U+202E" =
+  let src = "module m\n# " ^ rep 100 "x\ry\r" ^ "\n# " ^ utf8 0x202E ^ "\n" in
+  let _, ds = lex src in
+  Printf.printf "%d %S %b\n" (List.length ds) (last_message ds) (has_error ds);
+  [%expect {| 101 "100 further diagnostics suppressed (limit 100 per file; E0003: 99; E0004: 1)" true |}]
+
+(* exact_limit_100_vs_101: exactly 100 -> no summary; 101 -> singular text *)
+let%expect_test "exactly 100 diagnostics has no summary, 101 has a singular one" =
+  let run k =
+    let _, ds = lex ("module m\n" ^ rep k ("# a" ^ utf8 0x200B ^ "\n")) in
+    Printf.printf "%d: %d %S\n" k (List.length ds) (last_message ds)
+  in
+  run 100;
+  run 101;
+  [%expect
+    {|
+    100: 100 "forbidden character U+200B (ZERO WIDTH SPACE) \226\128\148 risk: hidden or reordered source text (Trojan Source)"
+    101: 101 "1 further diagnostic suppressed (limit 100 per file; E0004: 1)"
+    |}]
+
+(* chunk_boundary_rlo: a comment is lexed in chunks of 256 code points; a bidi control at any offset around a
+   chunk boundary is still reported once, at its column. *)
+let%expect_test "U+202E around the comment chunk boundary" =
+  let bad = ref [] in
+  List.iter
+    (fun len ->
+      let _, ds = lex ("module m\n# " ^ rep len "a" ^ utf8 0x202E ^ rep 3 "b" ^ "\n") in
+      match ds with
+      | [ d ] when d.code = "E0004" && d.span.start.col = 3 + len -> ()
+      | _ -> bad := len :: !bad)
+    (List.init 15 (fun i -> 250 + i) @ [ 510; 511; 512; 513; 514 ]);
+  Printf.printf "%d mismatches\n" (List.length !bad);
+  [%expect {| 0 mismatches |}]

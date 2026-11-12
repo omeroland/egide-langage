@@ -334,13 +334,23 @@ module Sink = struct
     mutable suppressed : int;
     mutable first_suppressed : Span.t option;
     mutable errors : bool;
+    by_class : int array;  (** dropped diagnostics per security-relevant code, see [classes] *)
   }
+
+  (* T-1080 (security review of PR #36): codes whose suppression a reader of the output must be able to see,
+     because they carry the Trojan Source / encoding attacks of ch. 2. Fixed order = fixed text. *)
+  let classes = [| "E0001"; "E0002"; "E0003"; "E0004" |]
+
+  let class_index code =
+    let rec go i = if i >= Array.length classes then -1 else if classes.(i) = code then i else go (i + 1) in
+    go 0
 
   let default_limit = 100
 
   let create ?(limit = max_int) () =
     if limit < 1 then invalid_arg "Diagnostic.Sink.create: limit must be at least 1";
-    { limit; kept = 0; rev = []; suppressed = 0; first_suppressed = None; errors = false }
+    { limit; kept = 0; rev = []; suppressed = 0; first_suppressed = None;
+      errors = false; by_class = Array.make (Array.length classes) 0 }
 
   let report s d =
     if d.severity = Error then s.errors <- true;
@@ -350,21 +360,32 @@ module Sink = struct
     end
     else begin
       s.suppressed <- s.suppressed + 1;
+      let k = class_index d.code in
+      if k >= 0 then s.by_class.(k) <- s.by_class.(k) + 1;
       if s.first_suppressed = None then s.first_suppressed <- Some d.span
     end
 
   let suppressed s = s.suppressed
   let has_errors s = s.errors
 
-  (* E0006 (docs/diagnostics.md): fixed text, counts only, no source echo. *)
+  (* E0006 (docs/diagnostics.md): fixed text, integers only, no source echo. The per-class counts name the
+     security-relevant codes among the dropped ones, e.g. "(limit 100 per file; E0004: 3)". *)
   let summary s =
     match s.first_suppressed with
     | None -> []
     | Some span ->
+        let per_class =
+          Array.to_list classes
+          |> List.mapi (fun i c -> (c, s.by_class.(i)))
+          |> List.filter (fun (_, k) -> k > 0)
+          |> List.map (fun (c, k) -> Printf.sprintf "; %s: %d" c k)
+          |> String.concat ""
+        in
         [
           error ~rule:"TOOL-040" ~code:"E0006" span
-            (Printf.sprintf "%d further diagnostics suppressed (limit %d per file)" s.suppressed
-               s.limit);
+            (Printf.sprintf "%d further %s suppressed (limit %d per file%s)" s.suppressed
+               (if s.suppressed = 1 then "diagnostic" else "diagnostics")
+               s.limit per_class);
         ]
 
   let to_list s = List.rev_append s.rev (summary s)

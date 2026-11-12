@@ -30,6 +30,14 @@ one per pass), so that the E0006 summary stays the single last diagnostic of the
 layout diagnostics. `Parse.tokens` must not append anything after the summary. The same applies to the parser's
 syntax errors once error recovery (several E0100 per file) exists.
 
+Also decide here (from the reviews of PR #36):
+- E0006 is a cross-pass summary that sits in the lexical range E0001-E0099. Keep the code (codes are never reused) and
+  state in `docs/diagnostics.md` that it is emitted by whichever pass exhausts the shared budget, or raise a
+  `spec-question` on the range convention before a parser-level suppression exists.
+- E0006 is an Error even when only warnings were dropped; make it an Error only if a dropped diagnostic was an Error
+  and test it, before any lexer or layout warning exists.
+- The catalogue row currently says layout diagnostics follow E0006 and are not counted; update it when this lands.
+
 ## Acceptance criteria
 
 - [ ] The reproducer above ends with exactly 100 kept diagnostics plus one E0006, in under 1 s and 100 MB.

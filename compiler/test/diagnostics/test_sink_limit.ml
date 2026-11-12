@@ -29,7 +29,7 @@ let%expect_test "limit, summary, order, has_errors" =
     E0004 1 x
     E0004 2 x
     E0004 3 x
-    E0006 4 7 further diagnostics suppressed (limit 3 per file)
+    E0006 4 7 further diagnostics suppressed (limit 3 per file; E0004: 7)
     7 true
     |}]
 
@@ -50,3 +50,18 @@ let%expect_test "accumulator memory is bounded" =
   done;
   Printf.printf "%b\n" (Obj.reachable_words (Obj.repr s) < 10_000);
   [%expect {| true |}]
+
+(* Per-class counts of the security-relevant codes, singular text, other codes uncounted. *)
+let%expect_test "summary text" =
+  let s = D.Sink.create ~limit:1 () in
+  D.Sink.report s (err 1);
+  D.Sink.report s (D.error ~rule:"LEX-004" ~code:"E0005" (sp 2) "t");
+  Printf.printf "%s\n" (List.nth (D.Sink.to_list s) 1).message;
+  D.Sink.report s (D.error ~rule:"LEX-001" ~code:"E0001" (sp 3) "u");
+  D.Sink.report s (err 4);
+  Printf.printf "%s\n" (List.nth (D.Sink.to_list s) 1).message;
+  [%expect
+    {|
+    1 further diagnostic suppressed (limit 1 per file)
+    3 further diagnostics suppressed (limit 1 per file; E0001: 1; E0004: 1)
+    |}]
