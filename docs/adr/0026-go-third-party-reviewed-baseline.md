@@ -30,7 +30,7 @@ Labels: *established* = spec text or a reproduction in the reviews; *emerging* =
 |-------------------------------|------------------|
 | a third-party function is `pure` when the analysis finds nothing | it is `go` unless a reviewed entry (a GO-044 override) names it |
 | an evasion of the analysis grants a class (authority) | an evasion of the analysis hides a finding from the reviewer; no class changes |
-| overrides discharge false positives, class `pure` only | an override is the reviewed classification: class `pure` or one capability class, bound to the module version through the digest |
+| overrides discharge false positives, class `pure` only | an override is the reviewed classification: class `pure` or one capability class, bound by the digest to the versions and hashes of every module of the function's import closure |
 | GO-042 is normative | GO-042 items 1 to 5: items 1 to 4 are the review aid (kept in full), item 5 is a call-site rule |
 
 *Established* (the reviews): the analysis was evaded by `fmt.Sprint(T{})`, `fmt.Sprint(Outer{…})`, a `FuncMap`, `Gen[Evil]`,
@@ -40,14 +40,14 @@ language (reflection, aliasing, generics, linkname) is richer than any finite ru
 ### 2. What the baseline costs and what it keeps
 
 - Cost: a person confirms a reviewed entry for each third-party Go function that Égide calls, and again after each
-  version change of its module (the digest includes the module version). Functions the Égide program does not call
+  version change of any module in its import closure (the digest covers them all). Functions the Égide program does not call
   directly need no entry, because the entry asserts the whole call graph below the function (GO-044.3 keeps the class of
   the function inside Go unchanged).
 - Kept: GO-043 drift detection, GO-044 gates (digest in `allow`, `--confirm` by a person, residual rule), the lock
   keys with type arguments and their caps (E0712, E0713), the standard-library list requirements (GOP-007, GOP-008, the
   reclassifications) and GO-025.
-- New: GO-042 item 5, a rule about a call from Égide to a standard function: the arguments' method sets and type closure
-  count, a method of a third-party type is `go` unless reviewed. It is decided from types the Égide compiler already
+- New: GO-042 item 5, a rule about a call from Égide to any Go function whose own class is below `go`: the arguments'
+  method sets and type closure count, a method of a non-standard type is `go` unless reviewed. It is decided from types the Égide compiler already
   holds and does not use the call-graph analysis, so it closes the path "Égide passes a third-party Go value to
   `fmt.Sprint`" that the baseline alone would leave open (*extrapolated*).
 
@@ -141,10 +141,20 @@ dependency version (drift detection GO-043 already forces a diff); the gain is t
 analysis grants authority, because the gate no longer relies on its completeness. That ADR would carry the rules above
 as the reviewer's checklist, not as normative proof. This was the owner's decision; ADR-0026 proposes it (ADR-0025 as it stood kept the analysis as the gate).
 
+## Eleventh-pass review (blockers B-1 to B-3, reproduced or reasoned by the reviewer)
+
+| Finding | Resolution |
+|---------|------------|
+| B-1: item 5 covered only std functions listed `pure`; `fmt.Printf("%v", Evil{})` (`stdout`) runs `String`; a reviewed-`pure` `Render(v any)` dispatches to an unreviewed `Evil.String`; interface-typed arguments have no implementers; a function value passed from Égide is not counted | item 5 applies to any Go callee whose class is below `go` (std of any class, reviewed third-party), over arguments of (a) types with methods, (b) interface types (every implementer in the Go closure, else `go`), (c) function values (counted as called at the call site, else `go`); item 4's closure definition is declared normative for it |
+| B-2: the digest holds only the declaring module's version, but an entry asserts a graph that spans other modules | the preimage covers path, version and directory hash of every module in the transitive import closure of the function's package, and the `GOROOT` hash. Alternative: only modules the aid finds reachable. Rejected, the aid has holes |
+| B-3: the baseline named only modules of `[go]` | the baseline is every non-standard package of the Go closure; entries for transitive modules are keyed by the import path of the declaring package, with module path and version recorded in the lock (GO-044.1) |
+| E0712 and GO-043 still act as gates | the sentence now lists them: they fail closed and grant nothing; GO-043 prints the aid diff and the entry diff, and the class changes only through entries |
+| stale E0701/E0702 rows, "classified other than `pure`", `--confirm` output, class names | rows updated; GO-044.2 says "by the aid"; `--confirm` prints old and new class and every changed module version; GO-040 gets `Stderr` and a mapping of class names to capabilities |
+
 ## Decision
 
 Apply the spec diff: GO-042 rewritten (baseline, review aid, item 5), GO-044 items 1, 2 and 5 amended (capability
-classes, residual rule for them, module version in the digest), GO-025, GOP-007, GOP-008, the A.3 reclassifications,
+classes, residual rule for them, the closure's module versions and hashes in the digest, entries for transitive modules), GO-025, GOP-007, GOP-008, the A.3 reclassifications,
 `go1.25.lst`, PKG-040 and PKG-043 keys with type arguments, diagnostics E0712 and E0713.
 
 ## Consequences

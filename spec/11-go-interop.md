@@ -241,19 +241,24 @@ types** and **auditable**.
 ## 11.4 Purity classification of Go functions
 
 - **[GO-040]** Every Go function callable from Égide is classified as **pure**, **requires C** for a capability `C`
-  (`Clock`, `Rand`, `Stdout`, `Stdin`, `Dir`, `Env`, `Proc`, `Net`, `Log`) or **impure** (requires `Go`).
+  (`Clock`, `Rand`, `Stdout`, `Stderr`, `Stdin`, `Dir`, `Env`, `Proc`, `Net`, `Log`) or **impure** (requires `Go`). The
+  class names of the list and of overrides are, in this order, `clock`, `rand`, `stdout`, `stderr`, `stdin`, `fs`
+  (capability `Dir`), `env`, `proc`, `net`, `log`.
 - **[GO-041] Standard library.** Functions of the Go standard library are classified by the official, versioned
   **Go purity list** ([appendix](appendix/go-purity-list.md)), one file per Go minor version, reviewed by humans.
   A standard-library function absent from the list is **impure**.
-- **[GO-042] Third-party modules.** *Baseline.* A function of a module declared in `[go]` (the standard library excepted,
-  GO-041) is **impure**, class `go`, whatever its body. It leaves that class only through a **reviewed entry**, which is
+- **[GO-042] Third-party modules.** *Baseline.* A function or method of any non-standard package of the Go closure (GO-046:
+  the packages of the modules of `[go]` and every non-standard package they import, so transitive modules are included)
+  is **impure**, class `go`, whatever its body. "Third-party" in this chapter means exactly this; the standard library is
+  classified by GO-041. It leaves that class only through a **reviewed entry**, which is
   a Go override of GO-044 naming the function (and the module version, GO-044.5): the class of a third-party function that
   Égide calls is the class of its reviewed entry, and `go` when there is none. No analysis result changes a class.
   *Review aid.* The static call-graph analysis (in the spirit of Google's capslock) computes, for each function, the
   classification that a reviewer should consider: the union of the classifications of everything it may call, bottoming
   out at standard-library functions classified by GO-041. `egide audit`, `egide lock --confirm` and the override
-  review print its findings. They are advice and the seed of a reviewed entry; the only place where they restrict is the
-  residual rule of GO-044.2, which can only refuse an entry. An evasion of the analysis can therefore hide a finding
+  review print its findings. They are advice and the seed of a reviewed entry; they restrict only by failing closed: the
+  residual rule of GO-044.2 refuses an entry, the caps of E0712 and E0713 refuse a build whose bookkeeping would grow
+  without limit, and GO-043 reports a changed classification. None of them grants a class. An evasion of the analysis can therefore hide a finding
   from a reviewer but cannot grant a class, because the class of an unreviewed function is `go` regardless. The analysis
   is conservative:
   1. a call through an interface value or a function value may call anything, unless the value comes from Égide;
@@ -325,15 +330,24 @@ types** and **auditable**.
      `Stdout` capability is the writer that Égide passes to the Go function (it comes from Égide, item 1), or `fmt.Print*`,
      which the list classes `stdout`. No override
      lifts it: a method's findings are those of its body (GO-044.2 discharges only the findings listed there).
-  5. *Dispatch through standard functions at a call site from Égide.* A call from Égide to a standard function that the
-     list marks `pure` takes, in addition to its list class, the class of every method of every Go-typed argument
-     (the method set of the argument's type and of every type in its type closure, items 4 above); a method of a type
-     declared in a third-party module is `go` unless it has a reviewed entry, so `fmt.Sprint(x)` with `x` a `GoRef` of
-     a third-party type that has a `String` method is `go`, not `pure`. This item is a rule about the call, decided from
-     types the Égide compiler already knows; it does not rely on the call-graph analysis.
+  5. *Arguments at a call site from Égide.* This item is **normative** (it is a rule about the call, decided from types
+     the Égide compiler already holds, and does not use the call-graph analysis); the definition of the type closure in
+     item 4 is normative for it. A call from Égide to **any** Go function whose own class is below `go`, that is a standard
+     function of any class (`fmt.Printf` is `stdout`, and still dispatches to `String`) and a third-party function with a
+     reviewed entry (a reviewed `Render(v any)` that calls `fmt.Sprint(v)`), takes, in addition to its own class, the union
+     of the following for each argument: (a) if the static type of the argument is a Go type with methods, the class of
+     every method of its method set and of the method sets of every type in its type closure; (b) if the static type is an
+     interface type, the same for every type of the Go closure that implements it, with standard types at their list
+     classes, and `go` when the implementers cannot be enumerated (`GoAny`, `any`); (c) if the argument is a Go function
+     value (a reference to `os.Remove` passed as a `func(string) error`), the class of its target, counted as called at the
+     call site, and `go` when the target is not statically known; an Égide lambda keeps the rule of §11.3 (it runs with the
+     capabilities it captured). A method of a non-standard type is `go` unless it has a reviewed entry, so `fmt.Sprint(x)`
+     and `Render(x)` with `x` a `GoRef` of a third-party type that has a `String` method are `go`.
   The review aid and the reviewed entries are recorded per function in `egide.lock` (PKG-040).
 - **[GO-043] Drift detection.** When a new version of a Go module changes the classification of a function called by
-  the Égide program, `egide lock` fails and prints the per-function capability diff.
+  the Égide program, `egide lock` fails and prints the per-function capability diff of the review aid and the lock diff
+  of the reviewed entries. The class of a function changes only through its reviewed entry (GO-044); the failure is
+  closed, not a classification.
 - **[GO-044] Overrides.** A package declares the reviewed classification of a Go function of one of its own modules
   (GO-042) with
   `[go.overrides] "<import path>.Func" = { class = "pure", reason = "…" }` (`class` is `pure` or one capability class,
@@ -343,13 +357,16 @@ types** and **auditable**.
   gated like it:
   1. `class` is `pure` or one capability class of GO-040 (`clock`, `rand`, `stdout`, `stderr`, `stdin`, `fs`, `env`,
      `proc`, `net`, `log`); `go` and `forbidden` are not classes of an entry. The key MUST resolve to an exported function or method **declared** in a package of a
-     module that is exactly a module of the `[go]` section of the same package, and the function MUST have a Go body.
+     non-standard module of the Go closure of the `[go]` section of the same package (a module of `[go]` or a module that
+     closure imports, so the methods of a type reached through a `GoRef` from a transitive module can have an entry), and
+     the function MUST have a Go body. The entry is keyed by the import path of the declaring package, and the lock records
+     the module path and version that declare it.
      Ownership is decided by the package that declares the resolved object (the Go type checker's `Func.Pkg()` after alias
      resolution, `Func.Origin()` for a generic function), not by the package named in the key and not by string prefix. A
      key that resolves to a method promoted through an embedded field, to a method or function of a type alias of a foreign
      type, to a package-level variable of function type, to a method of an interface type (also one promoted from an
      embedded local interface or reached through a type parameter), to a function without a Go body, to the standard
-     library, to a nested or other module, or to `init` or a variable initialiser, is E0702;
+     library, to a module outside that closure, to a nested module, or to `init` or a variable initialiser, is E0702;
   2. **what an override discharges.** It discharges only findings of GO-042 item 1 (a call through a function or interface
      value) and item 3 (a write to an exported package-level variable) in the call graph reachable from the function, and only
      as follows. *Per instantiation:* all of the following is evaluated for each instantiation of a generic function that the program
@@ -367,7 +384,7 @@ types** and **auditable**.
      the residual. *Item 3:* only writes to exported variables **declared in the overridden function's own
      module**; a write to a variable of any other package, the standard library included, is residual. The **residual** is
      everything else GO-042 finds below the function: every item 2 finding (`unsafe`, cgo, assembly, `reflect`, a body-less
-     function, `go:linkname`), every resolved target of item 1 and every call to a function classified other than `pure`
+     function, `go:linkname`), every resolved target of item 1 and every call to a function whose classification by the aid (not by the baseline) is other than `pure`
      (`os.WriteFile` is `Dir`); a callee that is classified `Go` only because of a discharged item 1 finding does not count.
      The residual MUST be empty for `class = "pure"`, and for a capability class `C` MUST contain only classes `pure` and `C`;
      otherwise E0702, which prints it. **`--confirm` can never lift E0702**;
@@ -382,12 +399,16 @@ types** and **auditable**.
      static type or the variable object as package path and name, multiplicity), with no source position, so that a
      refactor does not change it and a second write of the same kind to another variable does. Every package that
      transitively contains the override MUST list `"go_override:<import path>.<Func>=<digest>"` in the `allow` entries of the
-     dependency edge (PKG-030, PKG-031, PKG-032), where `<digest>` is the SHA-256 of the **module version** and the canonical map from every locked
-     build tuple and instantiation (type arguments) to its set of discharged findings and the class (a new version of
-     the module therefore changes the digest, even when no finding exists, and the function is `go` again until the entry
-     is confirmed, so a reviewed class never carries over to code nobody has read) (so `x_windows.go` against `x_linux.go` is covered, and `egide lock
+     dependency edge (PKG-030, PKG-031, PKG-032), where `<digest>` is the SHA-256 of (i) the **path, version and directory hash (GO-046.4) of every module that contains a
+     package of the transitive import closure of the function's package**, and the hash of the `GOROOT` tree (GO-046.2);
+     and (ii) the canonical map from every locked build tuple and instantiation (type arguments) to its set of discharged
+     findings and the class. An entry asserts the whole call graph below the function, and that graph spans other modules,
+     so a bump of a callee module under a fixed declaring module also changes the digest, even when no finding changes;
+     the function is `go` again until the entry is confirmed, so a reviewed class never carries over to code nobody has
+     read (so `x_windows.go` against `x_linux.go` is covered, and `egide lock
      --target` for a new tuple changes the digest). A missing entry, or a digest that differs from the computed one, fails the
-     build (E0701). `egide audit` and `egide lock --confirm` print the sets in full, and `egide lock` writes the readable
+     build (E0701). `egide audit` and `egide lock --confirm` print the sets in full, the old and the new class, and every module path and
+     version of the preimage that changed, and `egide lock` writes the readable
      sets into `egide.lock` (the `allow` entry is a digest, so the lock diff is what a reviewer reads; the lock is committed
      and reviewed, PKG-040);
   6. **confirmation is a manifest edit.** `egide lock` and `egide update` never modify `allow`. When a dependency update
