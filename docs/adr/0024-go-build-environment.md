@@ -135,6 +135,14 @@ ADR-0022 (PKG-040), stated once in PKG-043. Cross-compiling needs `egide lock --
 | "the one function" escapes `é`, LEX-006 does not | GO-046.7 now defines a strict mode (`ascii`) of the same function, on for untrusted names; LEX-006 is unchanged. Alternative: change LEX-006 to escape all non-ASCII. Rejected, it would escape legitimate source text such as comments and string values in Unicode |
 | TOML has no `\u{…}` | the lock uses TOML's `\uXXXX`/`\UXXXXXXXX`; non-UTF-8 names go to a `<key>_hex` key |
 
+### 11. Tenth-pass review (APPROVE; optional points folded in)
+
+- typed fragments (`Text`, `Raw`) make "exactly once" checkable; the canonical form of `\u{H…}` is fixed;
+- TOML: `"`, hex case and width stated; surrogates cannot occur in valid UTF-8; the encoding also covers the manifest
+  `allow` entries written by `--confirm`, and both readers reject raw LEX-003 characters (E0118);
+- `<key>_hex` is dropped: invalid UTF-8 never reaches the lock (E0711 earlier; Go requires valid UTF-8), so it was dead code
+  that could also collide with a real key.
+
 ## Decision
 
 Apply the spec diff: GO-046, GO-003 (one sentence), PKG-042, PKG-043, diagnostics E0706, E0707, E0708 and E0710 (E07xx; codes are
