@@ -184,6 +184,11 @@ fn tenant_namespaces(cs: kube.Clientset) -> Result[List[str], GoError] using go:
      hexadecimal digits and the full width; surrogate code points do not exist in the input (they are not scalar
      values). The readers of the lock and of the manifest decode these escapes and reject a raw LEX-003 character, a raw
      control character and an escape that spells a LEX-003 character differently than above (E0118, as for `reason`).
+     The dialect is **TOML 1.0.0**. A reader also rejects (E0118) any escape that is not the canonical spelling of its
+     value: an escape of a printable ASCII character other than `\"` and `\\`, lower-case hexadecimal digits, the
+     eight-digit form for a value up to U+FFFF, or a four-digit form where the short escape exists, so that two byte
+     sequences never denote one identity and a lock diff is deterministic. (Hand-written `allow` entries use the canonical
+     spelling.)
      A name that is not valid UTF-8 never reaches the lock: archive entries fail with E0711 first, and Go identifiers
      and import paths are valid UTF-8 by the Go specification, so no separate byte-string key exists.
 
