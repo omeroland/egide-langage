@@ -98,6 +98,30 @@ as a union over the graph (the variant that would let a dependency satisfy its d
 | Non-blocking 5, 6: "allocated in merge order" is inexact; "GO 046"/"PKG 043" typos in normative text | reworded ("allocated so that the catalogue stays sorted"); the spec text no longer cites ADR or sibling rule ids |
 | Non-blocking 7: with #29 merged first, `docs/adr/README.md` conflicts on the last row | trivial, keep both rows |
 
+### Fifth-pass findings (security review of head 20fc1fbf; P1 to P4 reasoned, P3 and the reflect case verified by the reviewer)
+
+| Finding | Resolution |
+|---------|------------|
+| P1: `Log` calls a package-level function variable `hook(p)`; an update swaps `hook`'s initialiser for an `os.WriteFile` closure; the finding (function, kind) and the digest are unchanged. Same for a Go-internal interface implementation swapped between versions (P4) | before an item 1 finding is discharged its possible targets are resolved inside the user-package closure (class-hierarchy or variable-type analysis; `golang.org/x/tools/go/callgraph/vta` is the usual tool, recalled) and their classes enter the **residual**. Only a call whose target set is unbounded because it depends on a parameter supplied by the Égide caller is discharged. A changed initialiser therefore makes the residual non-empty (E0702) |
+| P2: `Bump` writes the module's own exported variable; an update adds `http.DefaultTransport = evil` in the same function; two writes of the same kind collapsed to one set element | item 3 discharges only writes to exported variables declared in the overridden function's own module; a write elsewhere is residual. The finding identity is (enclosing function, kind, callee type or variable object by package path and name, multiplicity), no positions: stable under refactoring (positions would train `--confirm` into a reflex), fine enough to see a second write |
+| P3 (verified): `w := os.Stdout.Write; w(p)` writes to fd 1 but is an item 1 finding although its target is statically known, so the one-line indirection made it override-eligible | covered by the same resolution step: a statically known target is resolved and counted in the residual |
+| GO-044.6 against GO-044.2 contradicted: a non-empty residual is E0702, yet `--confirm` was said to lift it | stated: `--confirm` never lifts E0702 |
+| A single digest cannot equal the computed value for every locked tuple when sets differ (`x_windows.go` against `x_linux.go`) | the digest covers the map from every locked tuple to its set; adding a tuple with `egide lock --target` changes it and needs a confirmation. The alternative is one entry per tuple (`=<tuple>:<digest>`); owner's choice, default one digest |
+| Non-blocking: define the residual over findings, not over the class of callees | stated: a callee that is `Go` only because of a discharged item 1 finding does not count |
+| Non-blocking: `--confirm` should take the old digest | `egide lock --confirm go_override:<path>.<Func>=<old digest>`; refuses without both |
+| Non-blocking hygiene: a script's self-declared `allow` includes override digests, so the gate does not protect `egide run untrusted.egd` | accepted in this ADR (A5); `egide run` of a script prints the `allow` entries it declares for itself |
+
+**Out of scope of this ADR but recorded, reproduced by the reviewer on Go 1.24.7 (established).** The purity list classes
+`reflect` as `pure`, yet `reflect.ValueOf(os.Stdout).MethodByName("Write").Call(...)` writes to fd 1 with no `unsafe` and no
+function value (GO-042 item 4 of ADR-0025 would catch only the variant that passes `os.WriteFile` as a value). The appendix row
+for `reflect` is amended in this PR (one row): `Value.Call`, `CallSlice`, `Method`, `MethodByName` and `Interface` are `go`.
+Follow-ups for the owner and the orchestrator, not done here: a `go-interop-engineer` task to carry the amended row into
+`go1.25.lst` (T-0040) and a call-graph rule so that GO-042 item 2 treats `reflect` method invocation as impure; a
+`tests/security/` case (the `security-reviewer` writes it, append-only; the reviewer has said they will file it): a module
+function that calls `reflect.ValueOf(os.Stdout).MethodByName("Write").Call(...)` must be classed `go` and must not be
+overridable (E0702), and a `test-engineer` conformance case that a `reflect.Value.Call` in a compile-time context is E0611
+once ADR-0023 is accepted.
+
 ### Merge order
 
 Recommended: **#32, #33, #34, #35**, as a stack (each PR's base is the previous branch; GitHub retargets to `main` as they
