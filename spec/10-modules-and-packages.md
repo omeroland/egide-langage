@@ -51,7 +51,7 @@ Thanks to capabilities (chapter 6), a dependency can only do what the code passe
 I/O permissions. It controls only the ways around the model.
 
 - **[PKG-030]** A dependency whose code (transitively) contains `unsafe`, C FFI, impure Go calls or `@go_threadsafe` MUST be listed with
-  the matching `allow` entries: `"unsafe"`, `"ffi:<library>"`, `"go:<module>"`, `"go_init:<module>=<classes>"` (GO-045), `"go_threadsafe:<go module>"` (GO-032), `"go_override:<import path>.<Func>=<digest>"` (GO-044), `"test-capabilities"`.
+  the matching `allow` entries: `"unsafe"`, `"ffi:<library>"`, `"go:<module>"`, `"go_init:<module>@<version>=<classes>"` (GO-045), `"go_threadsafe:<go module>"` (GO-032), `"go_override:<import path>.<Func>=<digest>"` (GO-044), `"test-capabilities"`.
   A dependency update that introduces a new breach fails the build until the manifest is updated.
 - **[PKG-031]** `allow` entries are not transitive: every package that (transitively) depends on a breaching package
   declares it, so the breach is visible at every level. An `allow` list is read only from the manifest of the package that
@@ -68,9 +68,8 @@ I/O permissions. It controls only the ways around the model.
 - **[PKG-040]** `egide.lock` records, for every package: exact version, SHA-256 of the source archive, the publisher's
   Sigstore signature bundle, the `allow` breaches found, and for Go modules the `go.sum` lines, the per-function
   capability classification (GO-042) and the overrides (GO-044) with, for each, the set of discharged findings per
-  build tuple and the digest of that map. A classification is keyed by (build tuple, Go package, function, type arguments of the instantiation, empty for a
-  non-generic function), so `Gen[int]` and `Gen[Evil]` have separate entries (GO-042 item 4); an override by (build tuple, Égide package that
-  declares it, Go package, function, type arguments), so that package B never reads the override of package A, even when both depend on the
+  build tuple and the digest of that map. A classification is keyed by (build tuple, Go package, function); an override by (build tuple, Égide package that
+  declares it, Go package, function), so that package B never reads the override of package A, even when both depend on the
   same Go module. The build tuple is the set of settings that select Go files (`GOOS`, `GOARCH`, tags and the rest of the Go
   build), so a result computed for one tuple is not reused for another.
 - **[PKG-041]** Builds verify every hash and signature. A mismatch is a fatal error; there is no flag to skip it. Archives of packages are extracted under the hostile-archive rule of GO-046.4 (regular
@@ -80,8 +79,8 @@ I/O permissions. It controls only the ways around the model.
   and build run under GO-046 (no cgo, no toolchain download, no `go generate`, no inherited environment).
 - **[PKG-043]** For the Go closure `egide.lock` also records the Go toolchain version, the SHA-256 of its distribution
   archive and of the installed `GOROOT` tree, for the native backend the hash of the C toolchain tree (GO-046.1), the SHA-256
-  of every module directory used (GO-046.4), the classification of each package's initialisation (GO-045) and the
-  per-function classification, under the keys of PKG-040 ((build tuple, Go package, function, type arguments); overrides add the declaring
+  of every module directory used (GO-046.4), the init functions and variable initialisers of each package of a module
+  (GO-045) and the per-function classification, under the keys of PKG-040 ((build tuple, Go package, function); overrides add the declaring
   Égide package).
 
 ## 10.6 Reproducibility and provenance
