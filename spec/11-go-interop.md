@@ -66,7 +66,7 @@ fn tenant_namespaces(cs: kube.Clientset) -> Result[List[str], GoError] using go:
      `len` or `true` for the template nor collide with generated code. The dispatcher decodes its buffer only into the
      **closed list of decodable types**: `bool`, the fixed-width integers, `f32`, `f64`, `str`, `bytes`; `Option[T]`,
      `List[T]`, `Map[K, V]` and tuples of decodable types; structs and enums, all of whose fields are decodable and that
-     have no `drop` and no private invariant beyond their constructor. A **validated type** (TYP-031) is
+     do not implement `Drop`; an invariant they rely on is expressed as a validated-type field (TYP-031), not as a hidden rule of the type. A **validated type** (TYP-031) is
      decoded only through its constructor, so a buffer cannot produce a value that the type would refuse; the constructor's
      error is returned to the host. Nothing else is decodable: capability types, resource types, `Secret`, sink types,
      `std.unsafe.Ptr`, `GoRef`, `Shared`, `Chan`, function values, closures and trait objects cannot be built from bytes,
@@ -82,7 +82,9 @@ fn tenant_namespaces(cs: kube.Clientset) -> Result[List[str], GoError] using go:
      as the hash of its whole tree (the compiler driver executes `cc1`, `as` and the linker, and reads headers and runtime
      objects). The C toolchain is part of the trusted computing base. Phase 7 (T-0100) confirms this mechanism or replaces it
      with a separate process;
-  2. *Toolchain.* `GOTOOLCHAIN=local`: the pinned toolchain is the only one that runs and none is downloaded. The compiler
+  2. *Toolchain.* `GOTOOLCHAIN=local`: the pinned toolchain is the only one that runs and none is downloaded. *Assumption to verify in T-0100:* the official Go distribution archive contains only regular files and
+     directories within the limits of item 4; if it does not, the limits or the entry kinds for that one archive are changed in an
+     ADR, never relaxed silently. The compiler
      extracts the verified distribution into its own read-only directory and, before **every** `go` start, recomputes the hash
      of the installed `GOROOT` tree and compares it with the lock. The tree hash is canonical: sorted relative names, file
      modes, symlink targets and contents, and no extra file. The lock holds the version, the hash of the archive and the hash
@@ -112,12 +114,28 @@ fn tenant_namespaces(cs: kube.Clientset) -> Result[List[str], GoError] using go:
      system offers one, and in every case re-hashes the snapshot and the `GOROOT` tree after the build and before it accepts
      any artefact, failing the build on a difference. The bytes analysed, compiled and locked are the same. **Hostile archives.** Building the
      snapshot, and extracting any archive of a build (a Go module archive, an Égide package archive, PKG-041, and the
-     toolchain distribution), accepts only regular files and directories. An entry is E0711, and nothing is written, if it
-     is a symbolic link, a hard link, a device, a FIFO or any other non-regular file; if its path is absolute, contains a
-     `..` segment, a NUL byte or a drive or UNC prefix; if it would resolve outside the destination (checked on the
-     resolved path, after the parent directories exist); or if it collides with another entry after case folding or
-     Unicode normalisation of the file system. Extraction never follows a link already present and creates files
-     exclusively (no overwrite). Without this, a path-traversal entry writes outside the snapshot, and a link to a host
+     toolchain distribution), accepts only regular files and directories, and is bounded.
+     (a) *Entry kinds and names.* An entry is E0711 if it is a symbolic link, a hard link, a device, a FIFO, a sparse entry or
+     any other non-regular file; if its path is absolute, contains a `..` or `.` segment, a NUL or other control
+     character, invalid UTF-8, or a drive or UNC prefix; if it would resolve outside the destination (checked on the
+     resolved path, after the parent directories exist); or if it breaks the **portable-name rules**, applied on every
+     host so that the result does not depend on it: no backslash and no `:` in a name, no segment ending in a dot or a space,
+     no segment that is a Windows device name (`CON`, `PRN`, `AUX`, `NUL`, `COM1` to `COM9`, `LPT1` to `LPT9`, with or
+     without an extension, in any case). Two entries **collide** if their paths are equal after Unicode NFC normalisation
+     and full case folding, whatever the host file system does.
+     (b) *Bounds, checked before the first write.* The compiler constants are, for a module or package archive: at most
+     500 MiB uncompressed in total (the cap Go applies to module zips), 100 MiB per file, 100 000 entries, a path depth of
+     32, 255 bytes per segment, 4096 bytes per path, and a compression ratio of at most 100 to 1 per entry; for the
+     toolchain distribution: 2 GiB, 200 000 entries, the same depth and name limits. Sizes declared by the archive are
+     checked first (zip central directory); the bytes actually produced are counted while extracting and the same limits
+     apply to them, since a declared size can lie. A violation is E0711.
+     (c) *Staging.* A streamed archive (tar) cannot be checked before it is read, so extraction goes to a private staging
+     directory on the same file system, with exclusive creation and no following of existing links; only after every check
+     and the hash comparison succeeded is the tree moved into place. On any failure the staging directory is deleted and
+     nothing reaches the snapshot.
+     (d) *Metadata.* Modes, owners, timestamps, extended attributes and ACLs of the archive are discarded: files get a fixed
+     mode (0644, 0755 where the archive marks them executable), directories 0755, no setuid, setgid or sticky bit.
+     Without this, a path-traversal entry writes outside the snapshot, and a link to a host
      file lets `//go:embed` copy that file into the artefact. Trees produced
      by `egide vendor` (PKG-052) are verified the same way;
   5. *Module graph.* The main module of the Go build is generated by the compiler from the `[go]` sections and the lock.
@@ -130,7 +148,13 @@ fn tenant_namespaces(cs: kube.Clientset) -> Result[List[str], GoError] using go:
      `egide test` change the tuple. The build modes `-race`, `-msan`, `-asan`, `-buildmode=c-shared` and `plugin` require cgo
      and are unavailable on the Go backend: E0708. The lock records the classification per (tuple, Go package, function)
      (PKG-043). A build under a tuple that has no classification in the lock is E0707 until `egide lock --target` has analysed
-     it and the drift check (GO-043) has passed, so cross-compiling needs `egide lock --target` for each target.
+     it and the drift check (GO-043) has passed, so cross-compiling needs `egide lock --target` for each target;
+  7. *Diagnostic text derived from untrusted data.* Every string that a diagnostic of the override, initialiser and build-environment rules (E0701 to
+     E0711) copies from data the user does not control (an archive entry name, a Go identifier, an import path, a file name,
+     a module path, a build tag, a registered callback) is printed through one function, `diag_escape`: each scalar value
+     that is not printable ASCII is written as `\u{HEX}` (the escaping of LEX-006 extended to all non-ASCII scalars, so
+     terminal control sequences, bidirectional overrides and homoglyphs are visible), and the result is truncated to 120
+     characters followed by `…(N more)`. The same function is used by `egide audit`, the lock, the SBOM and `--confirm`.
 
 ## 11.2 The security boundary
 
