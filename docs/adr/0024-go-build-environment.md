@@ -125,6 +125,16 @@ ADR-0022 (PKG-040), stated once in PKG-043. Cross-compiling needs `egide lock --
 | B-2: "invariant is a validated-type field" is a convention; a generated dispatcher can build fields one by one | decidable test: a decodable struct has only `pub` fields and no `Drop`; otherwise not decodable. **Gap flagged:** chapters 4 and 10 do not say that PKG-003 governs fields or that a field can be `pub` individually; the rule relies on that reading. Recommended spec-question (not created): "field-level visibility" |
 | non-blocking: simple lowercase of `İ`, Windows `COM¹`, `CONIN$`, 8.3 names | added to the portable-name rules, marked recalled, not verified, conformance-test items |
 
+### 10. Ninth-pass review (non-blocking, all folded in)
+
+| Finding | Resolution |
+|---------|------------|
+| field-visibility gap | `tasks/blocked/Q-0054-field-level-visibility-pkg-003.md` created |
+| escape applied exactly once | stated in GO-046.7(a) |
+| the 16-hex SHA-256 | display only, never stored or compared (GO-046.7(b)) |
+| "the one function" escapes `é`, LEX-006 does not | GO-046.7 now defines a strict mode (`ascii`) of the same function, on for untrusted names; LEX-006 is unchanged. Alternative: change LEX-006 to escape all non-ASCII. Rejected, it would escape legitimate source text such as comments and string values in Unicode |
+| TOML has no `\u{…}` | the lock uses TOML's `\uXXXX`/`\UXXXXXXXX`; non-UTF-8 names go to a `<key>_hex` key |
+
 ## Decision
 
 Apply the spec diff: GO-046, GO-003 (one sentence), PKG-042, PKG-043, diagnostics E0706, E0707, E0708 and E0710 (E07xx; codes are
