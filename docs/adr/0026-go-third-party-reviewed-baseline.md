@@ -199,6 +199,24 @@ Alternative considered for B-1.2: classify only at calls, and make every method 
 could reach a call `go`. Rejected, it needs the call-graph analysis that this ADR demoted. The cost of 5(g) is that
 building a value with an unreviewed implementer is `go` even when no call follows (*extrapolated*, fail-closed).
 
+## Fourteenth-pass review (blocker B-2, Go behaviour verified by the reviewer on Go 1.24.7)
+
+**Executive Summary.** `json.Marshal([]Evil{…})` and `json.Marshal(&Outer{E: Evil{}})` call the pointer-receiver
+`(*Evil).MarshalJSON` and `(*Evil).String`, but the type walk counted the value method set of each type reached (and both
+sets only for implementers). A type with pointer-only methods in a `List[Evil]` left `json.Marshal` at class `pure`.
+
+| Point | Resolution |
+|-------|------------|
+| B-2.1 both method sets for every type reached | item 5(a): the methods of `T` and `*T` count for every type of the closure walk |
+| B-2.2 the same in (g) | item 5(g): the constructed type is classified with both sets |
+| B-2.3 acceptance case | **`json.Marshal(List[Evil])`, where `Evil` is an unreviewed third-party type that has only pointer-receiver `MarshalJSON` and `String` methods and whose methods call `os.Remove`, must be classified `go`.** For the `security-reviewer` after acceptance; no test is added here |
+| top-level `let`, `comptime` argument, default value | no Go value can be built there: CT-006 makes it E0611 (and E0610 where CT-002 applies); 5(g) says so, so it never classifies those expressions |
+| generic Go implementers | they count once per instantiation the program uses (5(b) and item 4) |
+
+Alternative considered: count the pointer set only for addressable values. Rejected, `json.Marshal` and `fmt` take the
+address themselves, so addressability of the source expression is not the criterion (*established* by the reviewer's
+reproduction). Cost: a type with pointer-only methods is as visible as one with value methods, nothing more.
+
 ## Decision
 
 Apply the spec diff: GO-042 rewritten (baseline, review aid, item 5), GO-044 items 1, 2 and 5 amended (capability
