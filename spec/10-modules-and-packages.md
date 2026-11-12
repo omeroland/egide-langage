@@ -67,8 +67,8 @@ I/O permissions. It controls only the ways around the model.
 
 - **[PKG-040]** `egide.lock` records, for every package: exact version, SHA-256 of the source archive, the publisher's
   Sigstore signature bundle, the `allow` breaches found, and for Go modules the `go.sum` lines, the per-function
-  capability classification (GO-042) and the overrides (GO-044) with, for each, the set of discharged findings and its
-  digest. A classification is keyed by (build tuple, Go package, function); an override by (build tuple, Égide package that
+  capability classification (GO-042) and the overrides (GO-044) with, for each, the set of discharged findings per
+  build tuple and the digest of that map. A classification is keyed by (build tuple, Go package, function); an override by (build tuple, Égide package that
   declares it, Go package, function), so that package B never reads the override of package A, even when both depend on the
   same Go module. The build tuple is the set of settings that select Go files (`GOOS`, `GOARCH`, tags and the rest of the Go
   build), so a result computed for one tuple is not reused for another.
