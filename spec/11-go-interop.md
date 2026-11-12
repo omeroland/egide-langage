@@ -190,7 +190,9 @@ fn tenant_namespaces(cs: kube.Clientset) -> Result[List[str], GoError] using go:
      sequences never denote one identity and a lock diff is deterministic. In an **identity-bearing field** (a name, a
      key, an import path, an `allow` entry; not free text such as `reason`) the reader accepts only a basic string `"…"`
      with those canonical escapes: a TOML literal string `'…'`, the multi-line forms `'''…'''` and `"""…"""`, and a raw
-     non-ASCII scalar are rejected (E0118), so `é` written raw and `\u00E9` cannot both denote one identity. The goal is
+     non-ASCII scalar are rejected (E0118), so `é` written raw and `\u00E9` cannot both denote one identity. A **bare** TOML key in a
+     name position (`foo = …` where the key is a name) is E0118 too: a bare key and a quoted key `"foo"` are two
+     spellings of one key, and only the quoted form is accepted. The goal is
      one spelling per decoded value in these fields; free text keeps TOML's own rules and the checks of SYN-018. A BOM
      (U+FEFF, category Cf) and a carriage return (Cc) are already in the LEX-003 set and are rejected by it, so the
      reader has no separate rule for them. (Hand-written `allow` entries use the canonical spelling.)
