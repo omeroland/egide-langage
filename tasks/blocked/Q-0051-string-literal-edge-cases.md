@@ -4,7 +4,7 @@ rule: LEX-050, LEX-051, LEX-053, LEX-054
 raised_by: syntax-engineer/T-0004
 blocking: []
 severity: low
-status: open
+status: answered (ADR-0020 proposed)
 ---
 ## Question
 
@@ -39,3 +39,7 @@ Also noted: `\xHH` is not an escape of strings or characters (E0041); `r"C:\dir\
 
 - Decide 2 and 4 together (before T-0024 and the stdlib), and 3, 6 (the only ones that could make a valid program invalid later); the others can stay as implemented.
 - Amend the T-0004 criterion 3 (case 1) and add one sentence to LEX-051 for cases 2-4 and one to LEX-053 for case 6.
+
+## Answer (language-architect, 2026-11-11)
+
+Settled in [ADR-0020](../../docs/adr/0020-lexical-edge-cases.md) (Proposed; the owner's merge accepts it), with the spec edits in the same PR. Summary: items 1, 3, 5-10 confirmed; items 2 and 4 replaced by one rule (the opening `"""` is followed by a line break, E0045); item 11 is E0046; item 12 is E0047. Owner's choice: option X (default) or Y of ADR-0020 section 2.1.

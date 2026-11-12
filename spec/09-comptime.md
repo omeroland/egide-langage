@@ -53,7 +53,7 @@ let b: Buffer[4096] = Buffer()
   prefix `p` with the literal parts as written (raw, LEX-055; as `comptime List[str]`) and the interpolated expressions (as run-time arguments).
   The function returns an expression of the template's result type. Registration uses `@template("p")` on a comptime
   function; a package may register prefixes only for its own module tree unless it is `std`. The standard prefixes
-  (CT-041) are reserved: `@template` of one of them outside `std` is E0602. The expansion is type-checked as if
+  (CT-041) are reserved: `@template` of one of them outside `std` is E0602, and so is `@template` of a prefix that LEX-055 excludes (`r`, `b`, `rb`, `br`). The expansion is type-checked as if
   written by hand and has no extra privilege: SEC-017 binds template functions too.
 - **[CT-041]** Standard prefixes: `f` (formatted `str`, format specifiers checked at compile time), `sql` (`Sql`),
   `html` (`Html`, context-aware escaping), `cmd` (`Cmd`), `url` (`Url`), `path` (`Path`), `re` (`Regex`, compiled and
