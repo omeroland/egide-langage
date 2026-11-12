@@ -62,8 +62,8 @@ pull request**. Codes are never reused.
 | E0118 | SYN-018 | string argument consumed by a tool is not a single line of 1–200 printable characters | allocated |
 | E0119 | SYN-006 | nesting too deep (limit 256) | allocated |
 | E0120 | SYN-030 | misplaced or unbound `using` argument: `{name}` | allocated |
-| E0122 | SYN-023 | attribute `@{name}`: missing, extra, repeated, unlabelled or unknown-label argument; expected `{signature}` | proposed (ADR-0021) |
 | E0121 | SYN-053 | `{name}` is a binding, not the variant `{Variant}`; write `{Variant}` or `_` | allocated |
+| E0122 | SYN-023 | attribute `@{name}`: missing, extra, repeated, unlabelled or unknown-label argument; expected `{signature}` | proposed (ADR-0021) |
 | E0301 | MEM-021 | `{place}` is passed as inout and also used by another argument of the same call | allocated |
 | E0302 | MEM-023 | use of `{name}` after it was moved by `take` | allocated |
 | E0303 | ERR-032 | resource `{name}` may leak: close it with `with` or move it with `take` | allocated |

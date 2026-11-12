@@ -75,7 +75,9 @@ checks this; anything else is E0106 "cannot assign to this expression". Positive
   trailing-block call, but never `unsafe`, `given` or `with`. The grammar reads any block-ended expression there
   (a COVER production, SYN-005) and a post-parse check reports `unsafe`, `given` and `with` as E0104 with the hint
   "bind it inside a function"; this is a check, not a Menhir error state, so the message does not depend on automaton
-  states. The initialiser is also evaluated under CAP-040 (CT-002). For a two-way value inside an expression use `a if c else b` (SYN-035).
+  states. That check belongs to the parser's cover pass: a tree that fails it is never handed to name resolution, CT-002
+  evaluation, `fmt` or the language server. CT-002 (E0610) remains the second line of defence, not the first. The
+  initialiser is also evaluated under CAP-040 (CT-002). For a two-way value inside an expression use `a if c else b` (SYN-035).
 
   ```egide fragment
   let n = match c:          # OK: whole right-hand side of let
@@ -132,6 +134,11 @@ checks this; anything else is E0106 "cannot assign to this expression". Positive
   for the rows that list one. Positive: `@go_threadsafe(reason: "documented as safe for concurrent use")`. Negative:
   `@go_threadsafe("x")` (unlabelled), `@go_threadsafe(reason: "a", reason: "b")` and `@derive(Eq, reason: "x")` are
   E0122. A parenthesised item is still an `expr`, so the cover check of `@derive((a: int))` (E0107) is unchanged.
+  Attribute arguments are syntax only: they are never resolved, type-checked or evaluated as expressions. The E0122
+  and E0117 checks of the table run in the parser's cover pass, before name resolution and before any CT-* evaluation,
+  so an argument such as `@derive(f(x))` or `@template(g())` is rejected without `f` or `g` being looked up or run.
+  The only argument shapes accepted are those of the table: for `@derive`, bare names (a single identifier or a
+  dotted path); for `@template`, exactly one string literal; for `@go_threadsafe`, the label `reason` and one string literal.
 - **[SYN-024] Declaration forms.** `struct Name` (no fields) and `impl Trait for Type` (no items) may omit the `:` and
   the body; empty `enum`, `trait` and inherent `impl` bodies are errors. `where` is allowed only after `new`
   (TYP-031): `type A = int where self > 0` is a syntax error. Variant and constant names MUST start with an uppercase
@@ -217,8 +224,11 @@ match shape:
   struct or constant and MUST resolve (an unknown name is an error, never a binding). A lone identifier that starts
   with an uppercase letter (`None`, `Available`, `MAX`) denotes a variant or constant and MUST resolve. A lone
   identifier that does not start with an uppercase letter (`x`, `_x`, `_X`) denotes a binding, except that the exact
-  name `_` is the wildcard (LEX-020). A binding whose name starts with `_` is never E0121 and is exempt from any
-  unused-binding diagnostic; it may be read (ERR-002 counts a never-read `_x` `Result` binding as a discard). A dotted or constructor
+  name `_` is the wildcard (LEX-020). A binding whose name starts with `_` is never E0121 and is exempt from the unused-variable lint only. It
+  is exempt from nothing else: ERR-002 (a never-read `_x` `Result` binding is a discard, E0304), every must-consume or
+  linearity rule for resources, and the handling rules for `Secret` and `Untrusted` apply to it as to any binding. `_`
+  drops the matched value at once; `_x` is an ordinary binding that lives, and is dropped, at the end of its scope (a
+  guard bound to `_x` stays held to scope end, one matched with `_` is released immediately). It may be read. A dotted or constructor
   pattern whose last segment starts with a lowercase letter is E0112. Positive: `case None:` never
   binds, and `case State.Available:` matches that variant. Negative: `case State.available:` is E0112. "Resolve" means: to a variant, a unit struct or a top-level constant, never to a
   local binding, a type or a function. A lone lowercase binding whose name equals, ignoring case, a variant or constant

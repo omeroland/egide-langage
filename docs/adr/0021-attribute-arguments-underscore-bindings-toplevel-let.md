@@ -9,7 +9,10 @@
 - Answers: Q-0022 (attribute arguments; the ADR-0017 re-review file, formerly a second Q-0022 and renamed Q-0053 in this PR: item 1 and the first row of
   item 2), Q-0023, Q-0024
 - Consistency with ADR-0018 (braces, Proposed): the three productions below do not mention blocks except through the
-  existing `block_expr` nonterminal, which ADR-0018 redefines; they carry over unchanged. Examples use the braces form.
+  existing `block_expr` nonterminal, which ADR-0018 redefines; they carry over unchanged. Examples use the braces form. Until T-1101/T-1102
+  migrate the spec, the normative text is the indentation-based `spec/03-syntax.md` of this tree; the Menhir check
+  below was run on the ADR-0018 braces attachment, so it shows shape-compatibility, not conformance of this tree's
+  grammar (the real `parser.mly` was not checked).
 
 ## Executive Summary
 
@@ -56,8 +59,10 @@ decidable without name resolution).
 | **B (recommended)** = A plus exemption from unused-binding diagnostics | The usual convention; costs one sentence. No unused-binding warning exists in the catalogue yet, so the exemption is stated as "never E0121 and exempt from any unused-binding diagnostic". E0121 compares names ignoring case with variants and `_discontinued` is not equal to `Discontinued`, so it is exempt already (*established* by the E0121 text). |
 | C `_x` forbidden in patterns | Contradicts ERR-002 and breaks a common idiom. |
 
-Hazard considered (*extrapolated*): `_x` hides an unused binding from review. Mitigation: ERR-002 still treats an unread
-`_`-named `Result` as a discard (E0304), so the exemption cannot hide a dropped error.
+Hazard considered (*extrapolated*): `_x` hides an unused binding from review. Mitigation: SYN-053 now limits the exemption to
+the unused-variable lint. ERR-002 still treats an unread `_`-named `Result` as a discard (E0304); must-consume and
+linearity rules for resources and the `Secret`/`Untrusted` handling rules apply unchanged; `_` drops at once and `_x`
+at scope end, so a lock or zeroizing guard is not released early by renaming.
 
 ### 3. Q-0024: `let X = unsafe(…) {…}` at top level
 
@@ -114,5 +119,5 @@ In the three tables above.
 
 1. Owner: merge to accept. All three choices are mechanical; the one to look at is 3 (A2 vs plain E0100 B).
 2. Q-0023, Q-0024 and Q-0022 are marked answered in this PR. Q-0053 (the re-review file, renamed here from its
-   duplicate id Q-0022; no `T-` file referenced it by file name) keeps items 2 (other rows) and 3 to 9 open.
+   duplicate id Q-0022; `tasks/done/T-1038-...` referred to it by id and is corrected in this PR) keeps items 2 (other rows) and 3 to 9 open.
 3. Not verified: behaviour with the real lexer; E0122 wording.
