@@ -187,8 +187,13 @@ fn tenant_namespaces(cs: kube.Clientset) -> Result[List[str], GoError] using go:
      The dialect is **TOML 1.0.0**. A reader also rejects (E0118) any escape that is not the canonical spelling of its
      value: an escape of a printable ASCII character other than `\"` and `\\`, lower-case hexadecimal digits, the
      eight-digit form for a value up to U+FFFF, or a four-digit form where the short escape exists, so that two byte
-     sequences never denote one identity and a lock diff is deterministic. (Hand-written `allow` entries use the canonical
-     spelling.)
+     sequences never denote one identity and a lock diff is deterministic. In an **identity-bearing field** (a name, a
+     key, an import path, an `allow` entry; not free text such as `reason`) the reader accepts only a basic string `"…"`
+     with those canonical escapes: a TOML literal string `'…'`, the multi-line forms `'''…'''` and `"""…"""`, and a raw
+     non-ASCII scalar are rejected (E0118), so `é` written raw and `\u00E9` cannot both denote one identity. The goal is
+     one spelling per decoded value in these fields; free text keeps TOML's own rules and the checks of SYN-018. A BOM
+     (U+FEFF, category Cf) and a carriage return (Cc) are already in the LEX-003 set and are rejected by it, so the
+     reader has no separate rule for them. (Hand-written `allow` entries use the canonical spelling.)
      A name that is not valid UTF-8 never reaches the lock: archive entries fail with E0711 first, and Go identifiers
      and import paths are valid UTF-8 by the Go specification, so no separate byte-string key exists.
 
@@ -295,8 +300,12 @@ types** and **auditable**.
      (including methods promoted through embedded fields) in the function that converts it, whatever the interface type
      is and whatever the callee is, **and of every type in the type closure of that dynamic type**: the types of its
      fields (exported or not), the element types of arrays, slices, channels and maps (keys and values), the pointees of
-     pointers, and, for a field or element of interface type, every type of the user-package closure that implements that
+     pointers, and, for a field or element of interface type, every **implementer** of that
      interface (the dynamic type is not known, so all possible ones count), each with its pointer and value method sets.
+     The **implementer set** of an interface is defined once, here and for item 5: every type of the Go closure (every
+     non-standard package of GO-046's closure) that implements it, together with the standard types of the pinned
+     `GOROOT` that implement it, at their classes in the list. The type closure is a **set indexed by type identity**:
+     each type is visited once, so recursive types terminate and two spellings of one type are one element.
      `fmt.Sprint(Outer{E: Evil{}})` and `json.Marshal(Outer{…})` reach `Evil`'s methods this way. A function stored into a composite
      value (a struct field, a slice, a map such as a `template.FuncMap`) is covered by the first sentence of this item,
      whether or not the composite is later passed to a standard function; `text/template` and `html/template` run such
@@ -314,8 +323,8 @@ types** and **auditable**.
      and a function literal appends `.func<k>`, where `k` is its ordinal among the literals directly inside the owner in
      source order (nested literals append again, `func1.func2`); `n` counts the local types of that name in the innermost
      owner in source order from 1. The ordinals depend on source order only, not on line numbers, so they do not change
-     under an unrelated edit. *Aggregate bounds:* the Go closure holds at most 512 modules and 8192 packages, a build locks at most 16 tuples, and a
-     package declares at most 1024 overrides; beyond that the build fails with E0712, so that the digest and the
+     under an unrelated edit. *Aggregate bounds:* the Go closure holds at most 512 modules and 8192 packages, a build locks at most 16 tuples, a
+     package declares at most 1024 overrides, and a build holds at most 8192 overrides in all; beyond that the build fails with E0712, so that the digest and the
      classification bookkeeping stay bounded. *Bounds:* at most 64 distinct instantiations of one generic function or of the methods of one
      generic type, 4096 in the whole program, and a type argument nested at most 16 deep. The **length of the spelling**
      is at most 1024 bytes, and the total of all lock keys at most 4 MiB. Because the spelling of a nested instantiation
@@ -349,10 +358,11 @@ types** and **auditable**.
      (a) *Type closure, with or without methods.* The Go type of the argument is walked through the type closure of item 4
      **whether or not the type has methods itself**: slices, maps (keys and values), arrays, channels, pointers, structs
      with or without methods, and the Égide composites `List`, `Map`, `Option`, tuples and structs through the Go mapping
-     of each component (`List[GoRef[Evil]]` is `[]*Evil`). The class of every method of the method set of every type
-     reached counts;
+     of each component (`List[GoRef[Evil]]` is `[]*Evil`), and likewise `Result`, enums (every payload), `Array` and
+     `Shared[T]` (through `T`). A type with no Go mapping (a capability, a resource, a trait object `dyn Trait`) passed as
+     an argument is E0713. The class of every method of the method set of every type reached counts;
      (b) *Go interface types.* If the expression's static type is a **Go interface type** (a value that comes from Go),
-     every type of the Go closure that implements it counts, with standard types at their list classes, and the result is
+     every member of its implementer set (item 4) counts, and the result is
      `go` when the implementers cannot be enumerated (`GoAny`, `any`). It does not apply to an Égide nominal type that
      implements a Go interface, such as the writer that Égide passes to a Go function (that one comes from Égide and its
      methods are Égide code under its own capabilities). `GoError` wraps `error`, so `errors.Is` and `errors.As` on a
@@ -360,13 +370,22 @@ types** and **auditable**.
      (c) *Function values.* A Go function value or method value that is **not the callee of a direct call** counts as
      called at the expression where it appears, **in Égide source as well as in Go bodies (item 4)**, wherever it ends up:
      an argument, a field (`net.Dialer{Control: f}`), a `List`, a `Map`, a `Chan`, a spawned function, a stored value.
-     It takes the class of its target, and `go` when the target is not statically known. An Égide lambda keeps the
+     A **direct callee** is the function position of a call expression `f(…)`, where `f` is a function name, a method
+     selector `x.M` or an instantiated generic `f[T]`; a method value `x.M` and a method expression `T.M` that are not in
+     that position, and an instantiated generic stored as a value, are function values. It takes the class of its target, and `go` when the target is not statically known. An Égide lambda keeps the
      rule of §11.3 (it runs with the capabilities it captured);
      (d) *Opaque types.* `reflect.Value`, `unsafe.Pointer`, `atomic.Value`, `sync.Map` and any type whose closure ends in
      `any`, in a non-enumerable interface or in a type parameter hide their dynamic type, and count as `go`;
      (e) *Per instantiation.* The rule is evaluated for each instantiation of an Égide generic with its type arguments
      substituted (`show[T](x: T)` calling `fmt.Println(x)` is `stdout` for `Int` and `go` for `GoRef[Evil]`); a type
      parameter that is not instantiated counts as `go`.
+     (f) *Receiver.* The receiver of a method call is argument 0 and is classified with the static type of its
+     expression under (a) to (e): `c.Do(req)` with `c` an `http.Client` is classified by the type closure of `c`, not
+     only by `Do`.
+     (g) *Construction.* A Go value built in Égide source (a struct literal, or a composite with Go-typed components,
+     such as `http.Client(Transport: ref)`) is classified at the place where it is built, by the type closure of the
+     components it contains and the function values among them (c), and that class belongs to the function that contains
+     the expression, whether or not the value is ever passed to a call.
      A method of a non-standard type is `go` unless it has a reviewed entry, so `fmt.Sprint(x)`, `fmt.Println(outer)` and
      `Render(x)` with `x` a `GoRef` of a third-party type that has a `String` method, or `outer` a methodless struct
      holding one, are `go`.
