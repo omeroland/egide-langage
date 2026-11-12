@@ -1,0 +1,18 @@
+# spec: LEX-060
+# expect: lex-fail
+# diagnostic: E0051 at 12:11
+# diagnostic: E0051 at 13:11
+# diagnostic: E0051 at 14:11
+# diagnostic: E0051 at 15:11
+# diagnostic: E0051 at 16:11
+# diagnostic: E0051 at 17:11
+# diagnostic: E0051 at 18:11
+# Zs other than U+0020 between tokens is an unexpected character (E0051), not E0004.
+module tests.lexical.forbidden_set_zs_in_code
+let x00 =  1
+let x01 =  1
+let x02 =  1
+let x03 =  1
+let x04 =  1
+let x05 =  1
+let x06 = 　1

@@ -1,0 +1,4 @@
+; T-1033: the independently written LEX-003 oracle, shared by the diagnostics and the lexer tests.
+
+(library
+ (name forbidden_oracle))

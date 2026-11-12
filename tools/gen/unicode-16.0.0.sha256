@@ -1,0 +1,6 @@
+# SHA-256 of the upstream Unicode 16.0.0 UCD files the LEX-003 table is generated from (T-1033, ADR-0017).
+# Changing a digest, or the version, is a specification change (spec/02 LEX-003): it needs an ADR.
+# Format: <sha256>  <file name>  (sha256sum -c compatible, once the files are in one directory).
+39d35161f2954497f69e08bdb9e701493f476a3d30222de20028feda36c1dabd  DerivedCoreProperties.txt
+53d614508e2a0b2305a8aa21cd60d993de9326cdf65993660dfcce4503548583  PropList.txt
+ff58e5823bd095166564a006e47d111130813dcf8bf234ef79fa51a870edb48f  UnicodeData.txt
