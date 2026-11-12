@@ -51,7 +51,7 @@ Thanks to capabilities (chapter 6), a dependency can only do what the code passe
 I/O permissions. It controls only the ways around the model.
 
 - **[PKG-030]** A dependency whose code (transitively) contains `unsafe`, C FFI, impure Go calls or `@go_threadsafe` MUST be listed with
-  the matching `allow` entries: `"unsafe"`, `"ffi:<library>"`, `"go:<module>"`, `"go_init:<module>"` (GO-045), `"go_threadsafe:<go module>"` (GO-032), `"go_override:<import path>.<Func>=<digest>"` (GO-044), `"test-capabilities"`.
+  the matching `allow` entries: `"unsafe"`, `"ffi:<library>"`, `"go:<module>"`, `"go_init:<module>=<classes>"` (GO-045), `"go_threadsafe:<go module>"` (GO-032), `"go_override:<import path>.<Func>=<digest>"` (GO-044), `"test-capabilities"`.
   A dependency update that introduces a new breach fails the build until the manifest is updated.
 - **[PKG-031]** `allow` entries are not transitive: every package that (transitively) depends on a breaching package
   declares it, so the breach is visible at every level. An `allow` list is read only from the manifest of the package that
@@ -67,8 +67,8 @@ I/O permissions. It controls only the ways around the model.
 
 - **[PKG-040]** `egide.lock` records, for every package: exact version, SHA-256 of the source archive, the publisher's
   Sigstore signature bundle, the `allow` breaches found, and for Go modules the `go.sum` lines, the per-function
-  capability classification (GO-042) and the overrides (GO-044) with, for each, the set of discharged findings and its
-  digest. A classification is keyed by (build tuple, Go package, function); an override by (build tuple, Égide package that
+  capability classification (GO-042) and the overrides (GO-044) with, for each, the set of discharged findings per
+  build tuple and the digest of that map. A classification is keyed by (build tuple, Go package, function); an override by (build tuple, Égide package that
   declares it, Go package, function), so that package B never reads the override of package A, even when both depend on the
   same Go module. The build tuple is the set of settings that select Go files (`GOOS`, `GOARCH`, tags and the rest of the Go
   build), so a result computed for one tuple is not reused for another.

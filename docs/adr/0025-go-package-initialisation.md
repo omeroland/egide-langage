@@ -70,6 +70,16 @@ and would be unusable). Run init in a sandbox: not possible in Go's runtime. Do 
   dependency in the rule text: **GO-045 MUST NOT be applied without GO-046.** This ADR stays blocked on ADR-0024.
 - The root case of `go_init:` is given in the text of E0704 (the root lists it in `[package].allow`, PKG-032).
 
+### Fifth-pass review (H-1, reasoned)
+
+GO-045.2/.4 said drift of a `go_init:<module>` grant is "confirmed again by `egide lock`", but the recorded class set lived
+in the lock, which `egide lock` rewrites, so a bot or CI step clears E0704 with no human decision: the defect of ADR-0022 B-3',
+and for initialisers, which nothing but the sandbox can mediate. Fixed in the same way: the entry carries the classes
+(`go_init:<module>=<classes>`; they are few and readable, unlike the override digest); `egide lock` and `egide update` never
+write `allow`; `egide lock --confirm go_init:<module>=<old classes>` does, and prints the difference; an added class fails, a
+removed class need not. The stack is now consistent with ADR-0022. The blank line between the E0611 and E0701 rows of the
+catalogue (it ended the Markdown table) is removed.
+
 ## Decision
 
 Apply the spec diff: GO-045, GO-042 item 4, PKG-030 (`go_init:`), PKG-043 (lock records init classes), GOP-005, GOP-006,

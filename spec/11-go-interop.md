@@ -36,24 +36,36 @@ fn tenant_namespaces(cs: kube.Clientset) -> Result[List[str], GoError] using go:
   closure** is the Go packages of the modules of `[go]` and the non-standard packages they import; the standard library
   belongs to the pinned toolchain and is classified by the reviewed list (GO-041), not by file analysis.
   1. *cgo and its equivalents.* The closure is analysed and built with `CGO_ENABLED=0`. The compiler scans every package of
-     the user-package closure and reports E0706 for: a file of the kinds `.c .cc .cpp .cxx .m .mm .h .S .swig .swigcxx
-     .syso` (Go assembly `.s` is allowed and impure, GO-042.2), whether or not the tuple compiles it, because Go drops a
+     the user-package closure and reports E0706 for: a file of any kind that the file tables of the `go/build` package of the pinned toolchain assign to C, C++, Objective-C,
+     Fortran, SWIG, C-preprocessed assembly or system objects (the set is the toolchain's, not an enumeration here; it
+     includes names that differ only by case) (Go assembly `.s` is allowed and impure, GO-042.2), whether or not the tuple
+     compiles it, because Go drops a
      stray C source silently when cgo is off and fails when it is on; a package that needs cgo to build; and any
      `//go:cgo_*` or `//go:wasmimport` directive in a Go file (`//go:cgo_import_dynamic` is accepted by the Go compiler
-     in an ordinary file under `CGO_ENABLED=0` and makes the binary load a shared library before `main`). On the Go
+     in an ordinary file under `CGO_ENABLED=0` and makes the binary load a shared library before `main`). The scan reads the
+     comments of every Go file of the closure, **including files the tuple ignores**, at the token level (the lexical
+     comments of `go/scanner`), at every position: the compiler honours the directive when it is indented, inside a function
+     body, in a file with CRLF line ends and after a `//line` directive, so a scan of column 1 or of the header of the file
+     is not enough. On the Go
      backend a Go file that imports `"C"` and is excluded by the tuple, with a pure-Go fallback, is never compiled and is not
      an error. As defence in depth the compiler checks the produced binary: it MUST be statically linked (no dynamic
      interpreter, no dynamic-library dependency outside a per-operating-system allow-list), otherwise the build fails
-     (E0710).
+     (E0710), and this check runs before `egide run` or `egide test` executes the artefact.
      *Native backend (GO-003).* The `c-archive` build needs cgo to export symbols, and `//export` works only in a file that
      imports `"C"`. The glue is therefore split into two packages. The **template package** is fixed: its bytes (the only
      file that imports `"C"`, with the preamble) are embedded in the compiler and checked against their hash, and it exports
      only fixed symbols (for example one dispatcher `egide_call(id, buf, len)`). The **program package** holds everything
      derived from the program; it does not import `"C"`, contains no comment produced from program data, and is reached by
-     the template only through a fixed interface. Every identifier in it carries a fixed prefix (`egide_`) and is checked
-     against Go keywords, predeclared identifiers and the prefixes `_C` and `_cgo`, so that it can neither redefine `error`,
-     `nil`, `len` or `true` for the template nor collide with generated code. The hash subject is the template, the
-     interface and this mangling rule. With `CGO_ENABLED=1` the compiler compares every list that the Go tool reports for
+     the template only through **one exported entry point, `Egide_Dispatch`** (Go exports only names that start with an
+     upper-case letter, so this name is the single exception to the prefix). Every other identifier in it is
+     `egide_` followed by the **mangled name** of an Égide item: for each dot-separated segment of its qualified name, the
+     length of the segment in decimal, `_`, and the segment itself, concatenated (`a_b.c` becomes `egide_3_a_b1_c`, `a.b_c`
+     becomes `egide_1_a3_b_c`). The mangling is injective and reversible, since each length says where its segment ends, so two
+     different items never collide and the compiler can recover the item from the name. After the prefix the identifier
+     cannot be a Go keyword, a predeclared identifier or start with `_C` or `_cgo`, so it can neither redefine `error`, `nil`,
+     `len` or `true` for the template nor collide with generated code. The dispatcher decodes its buffer only into plain
+     data: capability and resource types are never decodable from it, so that it cannot forge authority for a sandboxed
+     host. The hash subject is the template, the interface and this mangling rule. With `CGO_ENABLED=1` the compiler compares every list that the Go tool reports for
      each package of the user-package closure (Go, cgo, ignored Go, C-family, assembly, `.syso` and the rest) with the lists at
      `CGO_ENABLED=0`, and requires the cgo list to be empty: a package with an `import "C"` file in it is E0706 even though
      its list of plain Go files is the same in both modes. The pure-Go-fallback exemption does not exist on the native
@@ -74,7 +86,7 @@ fn tenant_namespaces(cs: kube.Clientset) -> Result[List[str], GoError] using go:
      variable not listed here is removed: the pinned `GOROOT`; a private `HOME`, `TMPDIR` and `GOTMPDIR`; a **fresh, empty
      `GOCACHE` for each build** (Go trusts its entries, so a shared cache could make the compiled bytes differ from the
      analysed ones; the cost is that the standard library is recompiled for each build, and a compiler-owned cache that the
-     compiler keys and re-verifies may replace it); `GOMODCACHE` set to the snapshot of item 4; a `PATH` of the pinned
+     compiler keys and re-verifies may replace it); `GOMODCACHE` an empty private directory (modules are not read from it, item 4); a `PATH` of the pinned
      toolchain directories that contains no `git`, `hg`, `svn` or `bzr` (`go build` runs `git status` and `git log` when
      `-buildvcs=auto`, and git honours the configuration of the repository it is run in). `GOENV=off`, `GOFLAGS`
      overwritten, `GOWORK=off`, `GOTOOLCHAIN=local`; `GOPROXY` a fixed proxy of the compiler's trust root (Q-0041) or `off`;
@@ -86,7 +98,10 @@ fn tenant_namespaces(cs: kube.Clientset) -> Result[List[str], GoError] using go:
   4. *Verified bytes.* Go checks `go.sum` when it downloads a module, not each time it reads an extracted cache, and a hash
      checked before a build can be stale when `go` reads the files. The compiler therefore builds an **immutable snapshot**: it
      copies each module into a compiler-owned tree while hashing it, compares the hash with the `go.sum` lines of the lock
-     (PKG-041), and runs both the analysis and the build against that snapshot. Read-only permissions do not bind the owning
+     (PKG-041), and runs both the analysis and the build against that snapshot, through the layout that works without `go.sum` entries
+     for extracted trees: the generated main module (item 5) names every module of the closure with a directory
+     `replace` to its snapshot directory, for which Go does not consult `go.sum` (an extracted-only module cache fails with
+     "missing go.sum entry"), so the compiler's own hash comparison is the only verification and cannot be skipped. Read-only permissions do not bind the owning
      user, so the compiler uses a separate user, a read-only bind mount or a private mount namespace where the operating
      system offers one, and in every case re-hashes the snapshot and the `GOROOT` tree after the build and before it accepts
      any artefact, failing the build on a difference. The bytes analysed, compiled and locked are the same. Trees produced
@@ -187,13 +202,19 @@ types** and **auditable**.
      type, to a package-level variable of function type, to a method of an interface type (also one promoted from an
      embedded local interface or reached through a type parameter), to a function without a Go body, to the standard
      library, to a nested or other module, or to `init` or a variable initialiser, is E0702;
-  2. **what an override discharges.** It discharges only the findings of GO-042 items 1 (a call through a function or
-     interface value) and 3 (a write to an exported package-level variable) in the call graph reachable from the function. The
-     **residual** is everything else that GO-042 finds below the function: every item 2 finding (`unsafe`, cgo, assembly,
-     `reflect`, a body-less function, `go:linkname`) and every call to a function classified other than `pure`
-     (`os.WriteFile` is `Dir`). The residual MUST be `pure`, that is empty; otherwise E0702, which prints it. So a wrapper
-     around an assembly stub or around a classified standard function cannot be overridden, and a version of the function
-     that starts to reach one is rejected, not masked;
+  2. **what an override discharges.** It discharges only findings of GO-042 item 1 (a call through a function or interface
+     value) and item 3 (a write to an exported package-level variable) in the call graph reachable from the function, and only
+     as follows. *Item 1:* before a finding is discharged, the possible targets of the call are resolved inside the
+     user-package closure (class-hierarchy or variable-type analysis), and the classes of the resolved targets enter the
+     residual; a call through a value whose target is statically known (`w := os.Stdout.Write; w(p)`), through a
+     package-level function variable (`hook(p)`) or through an interface with implementations in the closure is therefore
+     not discharged. Only a call whose target set is unbounded because it depends on a value supplied by the Égide caller
+     (a parameter) is discharged. *Item 3:* only writes to exported variables **declared in the overridden function's own
+     module**; a write to a variable of any other package, the standard library included, is residual. The **residual** is
+     everything else GO-042 finds below the function: every item 2 finding (`unsafe`, cgo, assembly, `reflect`, a body-less
+     function, `go:linkname`), every resolved target of item 1 and every call to a function classified other than `pure`
+     (`os.WriteFile` is `Dir`); a callee that is classified `Go` only because of a discharged item 1 finding does not count.
+     The residual MUST be empty, otherwise E0702, which prints it. **`--confirm` can never lift E0702**;
   3. **the override applies only to the edge from Égide source of the declaring Égide package to that exact function.**
      Inside the Go call graph the function keeps the class computed by GO-042, so Go callers of it, and Go functions that
      reach it, are classified as if there were no override. An override is never a pure leaf of the analysis;
@@ -201,19 +222,22 @@ types** and **auditable**.
      reader applies the constraints of SYN-018 itself (single line, 1 to 200 scalar values, no LEX-003 character, no
      `Zs` other than U+0020; E0118), and every tool that prints it (audit, lock, SBOM) passes it through the output
      escaping of LEX-006;
-  5. **the grant names what it grants.** Every package that transitively contains the override MUST list
-     `"go_override:<import path>.<Func>=<digest>"` in the `allow` entries of the dependency edge (PKG-030, PKG-031,
-     PKG-032), where `<digest>` is the SHA-256 of the canonical set of discharged findings (function reached, finding kind,
-     for each instantiation used by Égide source) as computed for each locked build tuple. A missing entry, or a digest that
-     differs from the computed one, fails the build (E0701). The set is printed in full by `egide audit` and by the diff of
-     `egide lock --confirm go_override:<import path>.<Func>`;
+  5. **the grant names what it grants.** The identity of a discharged finding is (enclosing function, kind, the callee's
+     static type or the variable object as package path and name, multiplicity), with no source position, so that a
+     refactor does not change it and a second write of the same kind to another variable does. Every package that
+     transitively contains the override MUST list `"go_override:<import path>.<Func>=<digest>"` in the `allow` entries of the
+     dependency edge (PKG-030, PKG-031, PKG-032), where `<digest>` is the SHA-256 of the canonical map from every locked
+     build tuple to its set of discharged findings (so `x_windows.go` against `x_linux.go` is covered, and `egide lock
+     --target` for a new tuple changes the digest). A missing entry, or a digest that differs from the computed one, fails the
+     build (E0701). `egide audit` and `egide lock --confirm` print the sets in full;
   6. **confirmation is a manifest edit.** `egide lock` and `egide update` never modify `allow`. When a dependency update
-     changes the discharged set (a new dynamic call, a new instantiation) or makes the residual non-empty, the build fails
-     until a person runs `egide lock --confirm` naming the function, which rewrites that one `allow` entry and prints the
-     set difference, so the change appears as a manifest diff in review. `--confirm` refuses to run without naming the
-     function, in any mode. The check of item 2 and the digest are evaluated for every locked build tuple, and
-     `egide lock --target` re-checks them;
-  7. `egide audit` lists every override with its reason and its discharged set; `egide.lock` records them (PKG-040).
+     changes the discharged sets, the build fails (E0701) until a person runs `egide lock --confirm
+     go_override:<import path>.<Func>=<old digest>`, which names the function and the digest it replaces (so a stale script
+     cannot confirm a changed set), rewrites that one entry and prints the difference, so the change appears as a manifest
+     diff in review. `--confirm` refuses to run without both. It does not apply to E0702. The checks of items 1 and 2 and the
+     digest are evaluated for every locked build tuple;
+  7. `egide audit` lists every override with its reason and its discharged sets, and `egide run` of a script prints the
+     `allow` entries the script declares for itself (TOOL-011); `egide.lock` records them (PKG-040).
 
 - **[GO-045] Package initialisation.** Go runs the `init` functions and package-level variable initialisers of every Go
   package linked into the program (the transitive import closure of the packages named by `import go`) before `main`,
@@ -227,9 +251,8 @@ types** and **auditable**.
      the class `forbidden` if A.3 lists it as `forbidden`, otherwise `go`. Only `pure` is accepted: any other class is
      E0705, and no `allow` entry lifts it. The packages the Égide runtime links (A.5) are exempt;
   2. *Third-party modules.* The init set is an additional root of the analysis of GO-042. A package whose init set is
-     impure requires `"go_init:<module>"` in `allow` (E0704), a key distinct from `go:<module>` so that approving the calls
-     of a module does not approve initialisers it gains later. The entry grants the **set of capability classes** the
-     init set has when it is recorded, and that grant holds wherever the callbacks the init set registers are reachable,
+     impure requires `"go_init:<module>=<classes>"` in `allow` (E0704), where `<classes>` is the sorted, comma-separated set of capability classes of the init set (for example `go_init:example.com/m=env,net`); it is a key distinct from `go:<module>` so that approving the calls
+     of a module does not approve initialisers it gains later. The entry grants exactly the **set of capability classes** it names, and that grant holds wherever the callbacks the init set registers are reachable,
      including through dispatchers the list classifies pure (`image.Decode`, `crypto.Hash.New`, `sql.Open` with a registered
      driver), not only at start-up; `egide audit` prints the registered callbacks. A package whose init set is `forbidden` (it imports, by name
      or blank, a standard package of class `forbidden` such as `net/http/pprof` or `expvar`) is E0705;
@@ -237,8 +260,10 @@ types** and **auditable**.
      **because GO-046 rejects them (E0706) and requires a static binary (E0710)**; GO-045 is sound only together with
      GO-046 and MUST NOT be applied without it;
   4. drift detection (GO-043), the lock (PKG-043) and `egide audit` cover init sets. Drift compares the **capability set**,
-     not "impure": a module approved for `env` whose update adds `net` fails the build (E0704) until `go_init:<module>` is
-     confirmed again by `egide lock`. No capability can mediate an
+     not "impure": a module approved for `env` whose update adds `net` fails the build (E0704): an added class always fails, a removed class need not. `egide lock` and `egide update` never
+     modify `allow`; only `egide lock --confirm go_init:<module>=<old classes>` rewrites that entry, prints the difference and
+     refuses to run without the module and the classes it replaces, so the change appears as a manifest diff in review and a bot
+     cannot clear it. No capability can mediate an
      initialiser; the OS sandbox (GO-013) is the only barrier left after these gates.
 
 ## 11.5 Calling Égide from Go
