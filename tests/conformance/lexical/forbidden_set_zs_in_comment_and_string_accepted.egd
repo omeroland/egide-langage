@@ -1,0 +1,6 @@
+# spec: LEX-003
+# expect: lex-pass
+# Zs other than U+0020 is accepted in comments and strings (it is not in the LEX-003 set); in code it is E0051 (see forbidden_set_zs_in_code).
+module tests.lexical.forbidden_set_zs_in_comment_and_string_accepted
+# a a a a a a a　b
+let s = "a a a a a a a　b"
