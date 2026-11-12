@@ -28,6 +28,176 @@ fn tenant_namespaces(cs: kube.Clientset) -> Result[List[str], GoError] using go:
   to them.
 - **[GO-003]** Go interop is available with the Go backend. With the native backend, Go packages are linked through
   Go's `c-archive` mode, at the cost of two runtimes in one process and cgo call overhead; the compiler emits a warning.
+  The cgo this needs is confined to one compiler-generated package (GO-046.1).
+
+- **[GO-046] Go build environment.** Type information, classification (GO-042) and the final build of the Go closure (the
+  Go packages named by `import go` and everything they import) follow these rules, so that no code of a dependency runs
+  during compilation or at load time outside what GO-042 classifies (INT-005, PKG-042). The **user-package
+  closure** is the Go packages of the modules of `[go]` and the non-standard packages they import; the standard library
+  belongs to the pinned toolchain and is classified by the reviewed list (GO-041), not by file analysis.
+  1. *cgo and its equivalents.* The closure is analysed and built with `CGO_ENABLED=0`. The compiler scans every package of
+     the user-package closure and reports E0706 for: a file of any kind that the file tables of the `go/build` package of the pinned toolchain assign to C, C++, Objective-C,
+     Fortran, SWIG, C-preprocessed assembly or system objects (the set is the toolchain's, not an enumeration here; it
+     includes names that differ only by case) (Go assembly `.s` is allowed and impure, GO-042.2), whether or not the tuple
+     compiles it, because Go drops a
+     stray C source silently when cgo is off and fails when it is on; a package that needs cgo to build; and any
+     `//go:cgo_*` or `//go:wasmimport` directive in a Go file (`//go:cgo_import_dynamic` is accepted by the Go compiler
+     in an ordinary file under `CGO_ENABLED=0` and makes the binary load a shared library before `main`). The scan reads the
+     comments of every Go file of the closure, **including files the tuple ignores**, at the token level (the lexical
+     comments of `go/scanner`), at every position: the compiler honours the directive when it is indented, inside a function
+     body, in a file with CRLF line ends and after a `//line` directive, so a scan of column 1 or of the header of the file
+     is not enough. On the Go
+     backend a Go file that imports `"C"` and is excluded by the tuple, with a pure-Go fallback, is never compiled and is not
+     an error. As defence in depth the compiler checks the produced binary: it MUST be statically linked (no dynamic
+     interpreter, no dynamic-library dependency outside a per-operating-system allow-list), otherwise the build fails
+     (E0710), and this check runs before `egide run` or `egide test` executes the artefact.
+     *Native backend (GO-003).* The `c-archive` build needs cgo to export symbols, and `//export` works only in a file that
+     imports `"C"`. The glue is therefore split into two packages. The **template package** is fixed: its bytes (the only
+     file that imports `"C"`, with the preamble) are embedded in the compiler and checked against their hash, and it exports
+     only fixed symbols (for example one dispatcher `egide_call(id, buf, len)`). The **program package** holds everything
+     derived from the program; it does not import `"C"`, contains no comment produced from program data, and is reached by
+     the template only through **one exported entry point, `Egide_Dispatch`** (Go exports only names that start with an
+     upper-case letter, so this name is the single exception to the prefix). Every other identifier in it is
+     `egide_` followed by the **mangled name** of an Égide item: for each dot-separated segment of its qualified name, the
+     length of the segment in decimal, `_`, and the segment itself, concatenated (`a_b.c` becomes `egide_3_a_b1_c`, `a.b_c`
+     becomes `egide_1_a3_b_c`). The mangling is injective and reversible, since each length says where its segment ends, so two
+     different items never collide and the compiler can recover the item from the name. After the prefix the identifier
+     cannot be a Go keyword, a predeclared identifier or start with `_C` or `_cgo`, so it can neither redefine `error`, `nil`,
+     `len` or `true` for the template nor collide with generated code. The dispatcher decodes its buffer only into the
+     **closed list of decodable types**: `bool`, the fixed-width integers, `f32`, `f64`, `str`, `bytes`; `Option[T]`,
+     `List[T]`, `Map[K, V]` and tuples of decodable types; structs and enums, all of whose fields are decodable and that
+     do not implement `Drop`, **and every field of the struct is `pub`** (settable from outside the declaring module,
+     PKG-003 read as applying to fields). A struct with a non-`pub` field is not decodable: the generated dispatcher is
+     outside the module and builds the value field by field, so a private field would let it bypass the type's
+     constructor. This is a decidable test on the declaration. The spec does not yet say whether PKG-003 governs fields
+     or whether a field can be `pub` individually (chapters 4 and 10 are silent): this rule relies on that reading and
+     the gap is flagged for a spec-question. A **validated type** (TYP-031) is
+     decoded only through its constructor, so a buffer cannot produce a value that the type would refuse; the constructor's
+     error is returned to the host. Nothing else is decodable: capability types, resource types, `Secret`, sink types,
+     `std.unsafe.Ptr`, `GoRef`, `Shared`, `Chan`, function values, closures and trait objects cannot be built from bytes,
+     so the dispatcher cannot forge authority, a reference or code for a sandboxed host. Length and depth are bounded by
+     the limits of the host call (an oversized or too deep buffer is an error, never a partial value). The hash subject is the template, the interface and this mangling rule. With `CGO_ENABLED=1` the compiler compares every list that the Go tool reports for
+     each package of the user-package closure (Go, cgo, ignored Go, C-family, assembly, `.syso` and the rest) with the lists at
+     `CGO_ENABLED=0`, and requires the cgo list to be empty: a package with an `import "C"` file in it is E0706 even though
+     its list of plain Go files is the same in both modes. The pure-Go-fallback exemption does not exist on the native
+     backend. The standard library is exempt (with cgo on, `net` and `os/user` select cgo files of the pinned toolchain,
+     which the list classifies per tuple). The C compiler and linker then run, so `CC`, `CXX`, `CGO_CFLAGS`, `CGO_CXXFLAGS`,
+     `CGO_LDFLAGS` and `PKG_CONFIG` are set by the compiler to a pinned compiler (absolute path), fixed flags and a disabled
+     `pkg-config`, and the `PATH` holds only the pinned toolchain directories. The lock records the identity of the C toolchain
+     as the hash of its whole tree (the compiler driver executes `cc1`, `as` and the linker, and reads headers and runtime
+     objects). The C toolchain is part of the trusted computing base. Phase 7 (T-0100) confirms this mechanism or replaces it
+     with a separate process;
+  2. *Toolchain.* `GOTOOLCHAIN=local`: the pinned toolchain is the only one that runs and none is downloaded. *Assumption to verify in T-0100:* the official Go distribution archive contains only regular files and
+     directories within the limits of item 4; if it does not, the limits or the entry kinds for that one archive are changed in an
+     ADR, never relaxed silently. The compiler
+     extracts the verified distribution into its own read-only directory and, before **every** `go` start, recomputes the hash
+     of the installed `GOROOT` tree and compares it with the lock. The tree hash is canonical: sorted relative names, file
+     modes, symlink targets and contents, and no extra file. The lock holds the version, the hash of the archive and the hash
+     of the tree. The source of truth for the first archive hash (the Go checksum database, or the signed hashes published
+     by the Go project) and the pinning policy are Q-0042;
+  3. *Environment and command line.* Every `go` process is started by the compiler with an explicit environment, and every
+     variable not listed here is removed: the pinned `GOROOT`; a private `HOME`, `TMPDIR` and `GOTMPDIR`; a **fresh, empty
+     `GOCACHE` for each build** (Go trusts its entries, so a shared cache could make the compiled bytes differ from the
+     analysed ones; the cost is that the standard library is recompiled for each build, and a compiler-owned cache that the
+     compiler keys and re-verifies may replace it); `GOMODCACHE` an empty private directory (modules are not read from it, item 4); a `PATH` of the pinned
+     toolchain directories that contains no `git`, `hg`, `svn` or `bzr` (`go build` runs `git status` and `git log` when
+     `-buildvcs=auto`, and git honours the configuration of the repository it is run in). `GOENV=off`, `GOFLAGS`
+     overwritten, `GOWORK=off`, `GOTOOLCHAIN=local`; `GOPROXY` a fixed proxy of the compiler's trust root (Q-0041) or `off`;
+     `GOVCS=*:off`; `GOSUMDB` on with its default; `GOAUTH`, `GOCACHEPROG`, `GODEBUG`, `GOPATH`, `GOBIN`, `GOFIPS140`,
+     `GONOSUMDB`, `GOPRIVATE` and `GOINSECURE` are unset. The whole command line is generated by the compiler from a fixed
+     allow-list: `-buildvcs=false`, `-trimpath`, `-mod=readonly` and the tuple. No flag from the user or from `egide.toml`
+     reaches it, which closes `-toolexec`, `-overlay`, `-ldflags`, `-gcflags`, `-asmflags`, `-compiler`, `-modfile`, `-pkgdir`
+     and `-pgo`;
+  4. *Verified bytes.* Go checks `go.sum` when it downloads a module, not each time it reads an extracted cache, and a hash
+     checked before a build can be stale when `go` reads the files. The compiler therefore builds an **immutable snapshot**: it
+     copies each module into a compiler-owned tree while hashing it (the archive is treated as hostile, see below), compares the hash with the `go.sum` lines of the lock
+     (PKG-041), and runs both the analysis and the build against that snapshot, through the layout that works without `go.sum` entries
+     for extracted trees: the generated main module (item 5) names every module of the closure with a directory
+     `replace` to its snapshot directory, for which Go does not consult `go.sum` (an extracted-only module cache fails with
+     "missing go.sum entry"), so the compiler's own hash comparison is the only verification and cannot be skipped. Read-only permissions do not bind the owning
+     user, so the compiler uses a separate user, a read-only bind mount or a private mount namespace where the operating
+     system offers one, and in every case re-hashes the snapshot and the `GOROOT` tree after the build and before it accepts
+     any artefact, failing the build on a difference. The bytes analysed, compiled and locked are the same. **Hostile archives.** Building the
+     snapshot, and extracting any archive of a build (a Go module archive, an Égide package archive, PKG-041, and the
+     toolchain distribution), accepts only regular files and directories, and is bounded.
+     (a) *Entry kinds and names.* An entry is E0711 if it is a symbolic link, a hard link, a device, a FIFO, a sparse entry or
+     any other non-regular file; if its path is absolute, contains a `..` or `.` segment, a NUL or other control
+     character, invalid UTF-8, or a drive or UNC prefix; if it would resolve outside the destination (checked on the
+     resolved path, after the parent directories exist); or if it breaks the **portable-name rules**, applied on every
+     host so that the result does not depend on it: no backslash and no `:` in a name, no segment ending in a dot or a space,
+     no segment that is a Windows device name (`CON`, `PRN`, `AUX`, `NUL`, `COM1` to `COM9`, `LPT1` to `LPT9`, the superscript forms `COM¹`, `COM²`, `COM³` and `LPT¹`, `LPT²`, `LPT³`, `CONIN$`, `CONOUT$`, with or
+     without an extension, in any case) and no segment of the 8.3 short-name form (`NAME~1`); that Windows reserves exactly
+     these names is recalled, not verified against Windows documentation, and is a conformance-test item. Two entries **collide** if their paths are equal after Unicode NFC normalisation
+     and full case folding, and the dotted capital `İ` (U+0130) and dotless `ı` are folded by that same table, not by a
+     host's simple lowercase mapping (that the simple mapping of `İ` differs is recalled, not verified), whatever the host file system does.
+     (b) *Bounds, checked before the first write.* The compiler constants are, for a module or package archive: at most
+     500 MiB uncompressed in total (the cap Go applies to module zips), 100 MiB per file, 100 000 entries, a path depth of
+     32, 255 bytes per segment, 4096 bytes per path, and a compression ratio of at most 100 to 1 per entry; for the
+     toolchain distribution: 2 GiB, 200 000 entries, the same depth and name limits. Sizes declared by the archive are
+     checked first (zip central directory); the bytes actually produced are counted while extracting and the same limits
+     apply to them, since a declared size can lie. A violation is E0711.
+     (c) *Staging.* A streamed archive (tar) cannot be checked before it is read, so extraction goes to a private staging
+     directory on the same file system, with exclusive creation and no following of existing links; only after every check
+     and the hash comparison succeeded is the tree moved into place. On any failure the staging directory is deleted and
+     nothing reaches the snapshot.
+     (d) *Metadata.* Modes, owners, timestamps, extended attributes and ACLs of the archive are discarded: files get a fixed
+     mode (0644, 0755 where the archive marks them executable), directories 0755, no setuid, setgid or sticky bit.
+     Without this, a path-traversal entry writes outside the snapshot, and a link to a host
+     file lets `//go:embed` copy that file into the artefact. Trees produced
+     by `egide vendor` (PKG-052) are verified the same way;
+  5. *Module graph.* The main module of the Go build is generated by the compiler from the `[go]` sections and the lock.
+     Go already ignores `vendor/`, `replace`, `exclude` and `toolchain` directives of dependencies; the live vectors are the
+     main module's `vendor/` and `-mod`, `go.work` and `egide vendor` trees, which items 3 and 4 close;
+  6. *Build tuple.* File selection depends on more than `GOOS` and `GOARCH`. The tuple is the explicit value (never "unset")
+     of: `GOOS`, `GOARCH`, the architecture level that applies (`GOAMD64`, `GOARM`, `GOARM64`, `GO386`, `GOMIPS`,
+     `GOMIPS64`, `GOPPC64`, `GORISCV64`, `GOWASM`), `GOEXPERIMENT`, `CGO_ENABLED`, the Go release tags (the toolchain
+     version), and every build tag including `-tags` and the tags that flags set; `--cover` and `--fuzz` of `egide build` and
+     `egide test` change the tuple. The build modes `-race`, `-msan`, `-asan`, `-buildmode=c-shared` and `plugin` require cgo
+     and are unavailable on the Go backend: E0708. The lock records the classification per (tuple, Go package, function)
+     (PKG-043). A build under a tuple that has no classification in the lock is E0707 until `egide lock --target` has analysed
+     it and the drift check (GO-043) has passed, so cross-compiling needs `egide lock --target` for each target;
+  7. *Diagnostic text derived from untrusted data.* Every string that a diagnostic of the override, initialiser and build-environment
+     rules (E0701 to E0711) copies from data the user does not control (an archive entry name, a Go identifier, an import
+     path, a file name, a module path, a build tag, a registered callback, and any text relayed from a `go`, `git` or C
+     compiler child process) passes through the output escaping of LEX-006 in its **strict mode** (`ascii`). LEX-006 itself
+     leaves printable non-ASCII text alone, because source text is legitimate Unicode; names from outside the
+     user's control are different (a Go identifier may be non-ASCII, so a homoglyph can sit next to the ASCII name), so
+     the strict mode writes every scalar value that is not printable ASCII as `\u{H…}` (canonical form: upper-case
+     hexadecimal digits, no leading zeros, at least one digit, no prefix; two spellings of one scalar value never occur). Both are the same function with
+     one switch, and the switch is on for every string listed here. (a) *Backslash and invalid UTF-8.* `\` is written `\\`
+     (so a name that contains the characters `\u{E9}` never prints like `é`) and each byte of an invalid UTF-8 sequence
+     (the E0711 case) is written `\x{HH}`. The escaping is applied **exactly once**, at the final rendering of a
+     value. A message is built from typed fragments, `Text` (fixed template text, never escaped) and `Raw` (untrusted
+     bytes, escaped when the message is rendered); the output of a child tool is `Raw` too: its bytes are never trusted
+     to be escaped, whatever the tool did, and are escaped once by this compiler when the message is rendered, and a rendered string is not a fragment that can be rendered a second time (a second
+     pass would turn each `\` into `\\` and make two different names print alike). (b) *Truncation is for humans only.* A diagnostic shown to a person may truncate a derived
+     string to 120 characters followed by `…(N more)`. Output that carries identity (`egide.lock`, the SBOM, `egide audit`
+     listings, `--confirm` and its difference) is never truncated, and neither are the machine fields below. Where a human
+     line shortens such a value it also prints its length and the first 16 hexadecimal digits of the SHA-256 of the full
+     escaped value. That digest is **display only**: it is never stored, compared, or used as an identity, and two values
+     are the same only if their full bytes are equal. (c) *Machine formats.* The JSON, SARIF and LSP fields of diagnostics,
+     CycloneDX and the lockfile use the **format's own escape syntax**, such that no raw code point of the LEX-006 set
+     appears in the output bytes, and are not truncated. The lockfile, and the `allow` entries that `--confirm` writes into the manifest, are TOML, which has no `\u{…}`
+     escape: a `"` is written `\"`, a backslash `\\`, a backspace, tab, line feed, form feed and carriage return with `\b`, `\t`, `\n`, `\f`, `\r`, every other control
+     character and DEL with `\u00XX` (one spelling per value), and
+     every other scalar value that is not printable ASCII `\uXXXX` (up to U+FFFF) or `\UXXXXXXXX`, with upper-case
+     hexadecimal digits and the full width; surrogate code points do not exist in the input (they are not scalar
+     values). The readers of the lock and of the manifest decode these escapes and reject a raw LEX-003 character, a raw
+     control character and an escape that spells a LEX-003 character differently than above (E0118, as for `reason`).
+     The dialect is **TOML 1.0.0**. A reader also rejects (E0118) any escape that is not the canonical spelling of its
+     value: an escape of a printable ASCII character other than `\"` and `\\`, lower-case hexadecimal digits, the
+     eight-digit form for a value up to U+FFFF, or a four-digit form where the short escape exists, so that two byte
+     sequences never denote one identity and a lock diff is deterministic. In an **identity-bearing field** (a name, a
+     key, an import path, an `allow` entry; not free text such as `reason`) the reader accepts only a basic string `"…"`
+     with those canonical escapes: a TOML literal string `'…'`, the multi-line forms `'''…'''` and `"""…"""`, and a raw
+     non-ASCII scalar are rejected (E0118), so `é` written raw and `\u00E9` cannot both denote one identity. A **bare** TOML key in a
+     name position (`foo = …` where the key is a name) is E0118 too: a bare key and a quoted key `"foo"` are two
+     spellings of one key, and only the quoted form is accepted. The goal is
+     one spelling per decoded value in these fields; free text keeps TOML's own rules and the checks of SYN-018. A BOM
+     (U+FEFF, category Cf) and a carriage return (Cc) are already in the LEX-003 set and are rejected by it, so the
+     reader has no separate rule for them. (Hand-written `allow` entries use the canonical spelling.)
+     A name that is not valid UTF-8 never reaches the lock: archive entries fail with E0711 first, and Go identifiers
+     and import paths are valid UTF-8 by the Go specification, so no separate byte-string key exists.
 
 ## 11.2 The security boundary
 
@@ -91,7 +261,8 @@ types** and **auditable**.
   everything it may call, bottoming out at standard-library functions classified by GO-041. The analysis is
   conservative:
   1. a call through an interface value or a function value may call anything, unless the value comes from Égide;
-  2. `unsafe`, cgo, `//go:linkname`, assembly and `reflect` calls that can reach unexported state classify as impure;
+  2. `unsafe`, cgo, `//go:linkname`, assembly, `reflect` calls that can reach unexported state, a function without a Go
+     body and any `//go:wasmimport` classify as impure;
   3. writing an exported package-level variable classifies as impure.
   The result is recorded per function in `egide.lock` (PKG-040).
 - **[GO-043] Drift detection.** When a new version of a Go module changes the classification of a function called by

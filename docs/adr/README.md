@@ -39,3 +39,4 @@ requires an accepted ADR.**
 | [0020](0020-lexical-edge-cases.md) | Lexical edge cases of numeric, string and prefix literals | Proposed |
 | [0022](0022-go-overrides-init-comptime-and-unsafe-path.md) | Gate for Go overrides, own-breach declarations, `unsafe` module path | Proposed |
 | [0023](0023-no-go-at-compile-time.md) | No Go code at compile time | Proposed |
+| [0024](0024-go-build-environment.md) | Go build environment: no dependency code runs during compilation | Proposed |
