@@ -117,6 +117,14 @@ ADR-0022 (PKG-040), stated once in PKG-043. Cross-compiling needs `egide lock --
 | Go toolchain tarball must itself pass | stated as an assumption in GO-046.2, to verify in T-0100 (the installed GOROOT was clean, the archive could not be downloaded) |
 | #36 E0006 row will be stale by one code after merge | noted, no action: this PR does not touch that row |
 
+### 9. Eighth-pass review
+
+| Finding | Resolution |
+|---------|------------|
+| B-1: `diag_escape` did not escape `\` (`\u{E9}` printed like `é`), truncated identity-bearing output (lock, SBOM, `--confirm`: names with a common 120-character prefix collide), left invalid UTF-8 undefined, and ignored relayed child output and machine formats | GO-046.7 now aligns with LEX-006 (the one function) and adds: `\` escaped, invalid bytes as `\x{HH}`, truncation only in human diagnostics (or length plus 16 hex digits of the SHA-256 of the full value), no truncation in lock, SBOM, audit, `--confirm` and machine fields, text relayed from go/git/cc children included |
+| B-2: "invariant is a validated-type field" is a convention; a generated dispatcher can build fields one by one | decidable test: a decodable struct has only `pub` fields and no `Drop`; otherwise not decodable. **Gap flagged:** chapters 4 and 10 do not say that PKG-003 governs fields or that a field can be `pub` individually; the rule relies on that reading. Recommended spec-question (not created): "field-level visibility" |
+| non-blocking: simple lowercase of `İ`, Windows `COM¹`, `CONIN$`, 8.3 names | added to the portable-name rules, marked recalled, not verified, conformance-test items |
+
 ## Decision
 
 Apply the spec diff: GO-046, GO-003 (one sentence), PKG-042, PKG-043, diagnostics E0706, E0707, E0708 and E0710 (E07xx; codes are

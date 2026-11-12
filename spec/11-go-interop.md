@@ -66,7 +66,12 @@ fn tenant_namespaces(cs: kube.Clientset) -> Result[List[str], GoError] using go:
      `len` or `true` for the template nor collide with generated code. The dispatcher decodes its buffer only into the
      **closed list of decodable types**: `bool`, the fixed-width integers, `f32`, `f64`, `str`, `bytes`; `Option[T]`,
      `List[T]`, `Map[K, V]` and tuples of decodable types; structs and enums, all of whose fields are decodable and that
-     do not implement `Drop`; an invariant they rely on is expressed as a validated-type field (TYP-031), not as a hidden rule of the type. A **validated type** (TYP-031) is
+     do not implement `Drop`, **and every field of the struct is `pub`** (settable from outside the declaring module,
+     PKG-003 read as applying to fields). A struct with a non-`pub` field is not decodable: the generated dispatcher is
+     outside the module and builds the value field by field, so a private field would let it bypass the type's
+     constructor. This is a decidable test on the declaration. The spec does not yet say whether PKG-003 governs fields
+     or whether a field can be `pub` individually (chapters 4 and 10 are silent): this rule relies on that reading and
+     the gap is flagged for a spec-question. A **validated type** (TYP-031) is
      decoded only through its constructor, so a buffer cannot produce a value that the type would refuse; the constructor's
      error is returned to the host. Nothing else is decodable: capability types, resource types, `Secret`, sink types,
      `std.unsafe.Ptr`, `GoRef`, `Shared`, `Chan`, function values, closures and trait objects cannot be built from bytes,
@@ -120,9 +125,11 @@ fn tenant_namespaces(cs: kube.Clientset) -> Result[List[str], GoError] using go:
      character, invalid UTF-8, or a drive or UNC prefix; if it would resolve outside the destination (checked on the
      resolved path, after the parent directories exist); or if it breaks the **portable-name rules**, applied on every
      host so that the result does not depend on it: no backslash and no `:` in a name, no segment ending in a dot or a space,
-     no segment that is a Windows device name (`CON`, `PRN`, `AUX`, `NUL`, `COM1` to `COM9`, `LPT1` to `LPT9`, with or
-     without an extension, in any case). Two entries **collide** if their paths are equal after Unicode NFC normalisation
-     and full case folding, whatever the host file system does.
+     no segment that is a Windows device name (`CON`, `PRN`, `AUX`, `NUL`, `COM1` to `COM9`, `LPT1` to `LPT9`, the superscript forms `COM¹`, `COM²`, `COM³` and `LPT¹`, `LPT²`, `LPT³`, `CONIN$`, `CONOUT$`, with or
+     without an extension, in any case) and no segment of the 8.3 short-name form (`NAME~1`); that Windows reserves exactly
+     these names is recalled, not verified against Windows documentation, and is a conformance-test item. Two entries **collide** if their paths are equal after Unicode NFC normalisation
+     and full case folding, and the dotted capital `İ` (U+0130) and dotless `ı` are folded by that same table, not by a
+     host's simple lowercase mapping (that the simple mapping of `İ` differs is recalled, not verified), whatever the host file system does.
      (b) *Bounds, checked before the first write.* The compiler constants are, for a module or package archive: at most
      500 MiB uncompressed in total (the cap Go applies to module zips), 100 MiB per file, 100 000 entries, a path depth of
      32, 255 bytes per segment, 4096 bytes per path, and a compression ratio of at most 100 to 1 per entry; for the
@@ -149,12 +156,20 @@ fn tenant_namespaces(cs: kube.Clientset) -> Result[List[str], GoError] using go:
      and are unavailable on the Go backend: E0708. The lock records the classification per (tuple, Go package, function)
      (PKG-043). A build under a tuple that has no classification in the lock is E0707 until `egide lock --target` has analysed
      it and the drift check (GO-043) has passed, so cross-compiling needs `egide lock --target` for each target;
-  7. *Diagnostic text derived from untrusted data.* Every string that a diagnostic of the override, initialiser and build-environment rules (E0701 to
-     E0711) copies from data the user does not control (an archive entry name, a Go identifier, an import path, a file name,
-     a module path, a build tag, a registered callback) is printed through one function, `diag_escape`: each scalar value
-     that is not printable ASCII is written as `\u{HEX}` (the escaping of LEX-006 extended to all non-ASCII scalars, so
-     terminal control sequences, bidirectional overrides and homoglyphs are visible), and the result is truncated to 120
-     characters followed by `…(N more)`. The same function is used by `egide audit`, the lock, the SBOM and `--confirm`.
+  7. *Diagnostic text derived from untrusted data.* Every string that a diagnostic of the override, initialiser and build-environment
+     rules (E0701 to E0711) copies from data the user does not control (an archive entry name, a Go identifier, an import
+     path, a file name, a module path, a build tag, a registered callback, and any text relayed from a `go`, `git` or C
+     compiler child process) passes through the output escaping of LEX-006, which is the one function; this item adds
+     three cases to it. (a) *Backslash and invalid UTF-8.* `\` is written `\\` (so that a name that contains the
+     characters `\u{E9}` never prints like `é`), every scalar value that is not printable ASCII is written `\u{H…}`, and
+     each byte of an invalid UTF-8 sequence (the E0711 case) is written `\x{HH}`. (b) *Truncation is for humans only.* A
+     diagnostic shown to a person may truncate a derived string to 120 characters followed by `…(N more)`. Output that
+     carries identity (`egide.lock`, the SBOM, `egide audit` listings, `--confirm` and its difference) is never
+     truncated; the same applies to the machine fields below. Where a human line must shorten such a value it prints the
+     length and the first 16 hexadecimal digits of the SHA-256 of the full escaped value, so two long names with a common
+     prefix stay distinct. (c) *Machine formats.* The JSON, SARIF and LSP fields of diagnostics, and CycloneDX, use the
+     format's own escape syntax so that no raw code point of the LEX-006 set appears in the output bytes (as LEX-006
+     already requires), applied to the same strings, and are not truncated.
 
 ## 11.2 The security boundary
 
