@@ -139,7 +139,7 @@ whose **baseline is conservative**: a function of a third-party Go module is `go
 that proposes a classification and flags the findings of this PR, instead of the gate. The cost is a human review per
 dependency version (drift detection GO-043 already forces a diff); the gain is that no unforeseen evasion of the
 analysis grants authority, because the gate no longer relies on its completeness. That ADR would carry the rules above
-as the reviewer's checklist, not as normative proof. This is the owner's decision; this PR keeps the analysis as the gate.
+as the reviewer's checklist, not as normative proof. This was the owner's decision; ADR-0026 proposes it (ADR-0025 as it stood kept the analysis as the gate).
 
 ## Decision
 
