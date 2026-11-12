@@ -36,24 +36,36 @@ fn tenant_namespaces(cs: kube.Clientset) -> Result[List[str], GoError] using go:
   closure** is the Go packages of the modules of `[go]` and the non-standard packages they import; the standard library
   belongs to the pinned toolchain and is classified by the reviewed list (GO-041), not by file analysis.
   1. *cgo and its equivalents.* The closure is analysed and built with `CGO_ENABLED=0`. The compiler scans every package of
-     the user-package closure and reports E0706 for: a file of the kinds `.c .cc .cpp .cxx .m .mm .h .S .swig .swigcxx
-     .syso` (Go assembly `.s` is allowed and impure, GO-042.2), whether or not the tuple compiles it, because Go drops a
+     the user-package closure and reports E0706 for: a file of any kind that the file tables of the `go/build` package of the pinned toolchain assign to C, C++, Objective-C,
+     Fortran, SWIG, C-preprocessed assembly or system objects (the set is the toolchain's, not an enumeration here; it
+     includes names that differ only by case) (Go assembly `.s` is allowed and impure, GO-042.2), whether or not the tuple
+     compiles it, because Go drops a
      stray C source silently when cgo is off and fails when it is on; a package that needs cgo to build; and any
      `//go:cgo_*` or `//go:wasmimport` directive in a Go file (`//go:cgo_import_dynamic` is accepted by the Go compiler
-     in an ordinary file under `CGO_ENABLED=0` and makes the binary load a shared library before `main`). On the Go
+     in an ordinary file under `CGO_ENABLED=0` and makes the binary load a shared library before `main`). The scan reads the
+     comments of every Go file of the closure, **including files the tuple ignores**, at the token level (the lexical
+     comments of `go/scanner`), at every position: the compiler honours the directive when it is indented, inside a function
+     body, in a file with CRLF line ends and after a `//line` directive, so a scan of column 1 or of the header of the file
+     is not enough. On the Go
      backend a Go file that imports `"C"` and is excluded by the tuple, with a pure-Go fallback, is never compiled and is not
      an error. As defence in depth the compiler checks the produced binary: it MUST be statically linked (no dynamic
      interpreter, no dynamic-library dependency outside a per-operating-system allow-list), otherwise the build fails
-     (E0710).
+     (E0710), and this check runs before `egide run` or `egide test` executes the artefact.
      *Native backend (GO-003).* The `c-archive` build needs cgo to export symbols, and `//export` works only in a file that
      imports `"C"`. The glue is therefore split into two packages. The **template package** is fixed: its bytes (the only
      file that imports `"C"`, with the preamble) are embedded in the compiler and checked against their hash, and it exports
      only fixed symbols (for example one dispatcher `egide_call(id, buf, len)`). The **program package** holds everything
      derived from the program; it does not import `"C"`, contains no comment produced from program data, and is reached by
-     the template only through a fixed interface. Every identifier in it carries a fixed prefix (`egide_`) and is checked
-     against Go keywords, predeclared identifiers and the prefixes `_C` and `_cgo`, so that it can neither redefine `error`,
-     `nil`, `len` or `true` for the template nor collide with generated code. The hash subject is the template, the
-     interface and this mangling rule. With `CGO_ENABLED=1` the compiler compares every list that the Go tool reports for
+     the template only through **one exported entry point, `Egide_Dispatch`** (Go exports only names that start with an
+     upper-case letter, so this name is the single exception to the prefix). Every other identifier in it is
+     `egide_` followed by the **mangled name** of an Égide item: for each dot-separated segment of its qualified name, the
+     length of the segment in decimal, `_`, and the segment itself, concatenated (`a_b.c` becomes `egide_3_a_b1_c`, `a.b_c`
+     becomes `egide_1_a3_b_c`). The mangling is injective and reversible, since each length says where its segment ends, so two
+     different items never collide and the compiler can recover the item from the name. After the prefix the identifier
+     cannot be a Go keyword, a predeclared identifier or start with `_C` or `_cgo`, so it can neither redefine `error`, `nil`,
+     `len` or `true` for the template nor collide with generated code. The dispatcher decodes its buffer only into plain
+     data: capability and resource types are never decodable from it, so that it cannot forge authority for a sandboxed
+     host. The hash subject is the template, the interface and this mangling rule. With `CGO_ENABLED=1` the compiler compares every list that the Go tool reports for
      each package of the user-package closure (Go, cgo, ignored Go, C-family, assembly, `.syso` and the rest) with the lists at
      `CGO_ENABLED=0`, and requires the cgo list to be empty: a package with an `import "C"` file in it is E0706 even though
      its list of plain Go files is the same in both modes. The pure-Go-fallback exemption does not exist on the native
@@ -74,7 +86,7 @@ fn tenant_namespaces(cs: kube.Clientset) -> Result[List[str], GoError] using go:
      variable not listed here is removed: the pinned `GOROOT`; a private `HOME`, `TMPDIR` and `GOTMPDIR`; a **fresh, empty
      `GOCACHE` for each build** (Go trusts its entries, so a shared cache could make the compiled bytes differ from the
      analysed ones; the cost is that the standard library is recompiled for each build, and a compiler-owned cache that the
-     compiler keys and re-verifies may replace it); `GOMODCACHE` set to the snapshot of item 4; a `PATH` of the pinned
+     compiler keys and re-verifies may replace it); `GOMODCACHE` an empty private directory (modules are not read from it, item 4); a `PATH` of the pinned
      toolchain directories that contains no `git`, `hg`, `svn` or `bzr` (`go build` runs `git status` and `git log` when
      `-buildvcs=auto`, and git honours the configuration of the repository it is run in). `GOENV=off`, `GOFLAGS`
      overwritten, `GOWORK=off`, `GOTOOLCHAIN=local`; `GOPROXY` a fixed proxy of the compiler's trust root (Q-0041) or `off`;
@@ -86,7 +98,10 @@ fn tenant_namespaces(cs: kube.Clientset) -> Result[List[str], GoError] using go:
   4. *Verified bytes.* Go checks `go.sum` when it downloads a module, not each time it reads an extracted cache, and a hash
      checked before a build can be stale when `go` reads the files. The compiler therefore builds an **immutable snapshot**: it
      copies each module into a compiler-owned tree while hashing it, compares the hash with the `go.sum` lines of the lock
-     (PKG-041), and runs both the analysis and the build against that snapshot. Read-only permissions do not bind the owning
+     (PKG-041), and runs both the analysis and the build against that snapshot, through the layout that works without `go.sum` entries
+     for extracted trees: the generated main module (item 5) names every module of the closure with a directory
+     `replace` to its snapshot directory, for which Go does not consult `go.sum` (an extracted-only module cache fails with
+     "missing go.sum entry"), so the compiler's own hash comparison is the only verification and cannot be skipped. Read-only permissions do not bind the owning
      user, so the compiler uses a separate user, a read-only bind mount or a private mount namespace where the operating
      system offers one, and in every case re-hashes the snapshot and the `GOROOT` tree after the build and before it accepts
      any artefact, failing the build on a difference. The bytes analysed, compiled and locked are the same. Trees produced

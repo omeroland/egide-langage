@@ -83,6 +83,19 @@ ADR-0022 (PKG-040), stated once in PKG-043. Cross-compiling needs `egide lock --
 | 5 provenance of the first toolchain archive hash | n/a | kept on Q-0042/Q-0041 |
 | 6 normative text cited ADR numbers | established | the spec text cites rule ids only |
 
+### 6. Fifth-pass review (reproduced by the reviewer with Go 1.24.7 unless marked)
+
+| Finding | Resolution |
+|---------|------------|
+| B-1' closed with a condition: the compiler honours `//go:cgo_import_dynamic` indented, inside a function body, with CRLF, after a `//line` directive and without `import "unsafe"`; it rejects it only as "misplaced" when code trails on the line or after a block comment | GO-046.1: the scan is token-level (`go/scanner` comments) over every position and over files the tuple ignores; the conformance test (follow-up for `test-engineer`) must use these placements. A column-1 regex or a header-only directive list would miss them |
+| G-1 (blocking, reproduced): Go exports only upper-case names, so `prog.egide_dispatch` does not compile | the one exported entry point is `Egide_Dispatch`, the single exception to the prefix; the keyword, predeclared and `_C`/`_cgo` checks are stated to be vacuous after the prefix |
+| G-2 (blocking as a spec gap): the mangling rule is the hash subject but undefined and not injective (`pkg a_b` + `fn c` against `pkg a` + `fn b_c` both give `egide_a_b_c`; Go reports a redeclaration, so a dependency could cause a build failure, or the compiler could resolve the wrong item) | GO-046.1 defines an injective, reversible mangling: for each dot-separated segment, its decimal length, `_`, and the segment (`a_b.c` is `egide_3_a_b1_c`, `a.b_c` is `egide_1_a3_b_c`) |
+| Module-cache layout: with `GOMODCACHE` at extracted directories only and `GOPROXY=off`, `go build` fails ("missing go.sum entry"); directory `replace` builds without consulting `go.sum` | GO-046.4: the generated main module names every module with a directory `replace` to the snapshot; `GOMODCACHE` is an empty private directory; the compiler's own hash comparison is therefore the sole verification (stated) |
+| The extension list drifts from `go/build`: `.sx .hh .hpp .hxx .f .F .for .f90` are missing; `.C` is invisible to `go list` | GO-046.1 derives the set from the file tables of `go/build` of the pinned toolchain, including case variants, instead of enumerating; the diagnostics row no longer enumerates |
+| E0710 must run before `egide run`/`egide test` executes the artefact (note from the #33 review) | stated in GO-046.1 |
+| Dispatcher as a forgery oracle if the host is itself sandboxed (reasoned) | the dispatcher never decodes capability or resource types from its buffer |
+| Cost, not a finding: `.h`, `.S`, body-less functions rule out assembly-accelerated libraries unless they offer a `purego` build | accepted and documented here: the tuple tag `purego` is the way in |
+
 ## Decision
 
 Apply the spec diff: GO-046, GO-003 (one sentence), PKG-042, PKG-043, diagnostics E0706, E0707, E0708 and E0710 (E07xx; codes are
