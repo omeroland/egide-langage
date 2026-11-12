@@ -187,8 +187,13 @@ fn tenant_namespaces(cs: kube.Clientset) -> Result[List[str], GoError] using go:
      The dialect is **TOML 1.0.0**. A reader also rejects (E0118) any escape that is not the canonical spelling of its
      value: an escape of a printable ASCII character other than `\"` and `\\`, lower-case hexadecimal digits, the
      eight-digit form for a value up to U+FFFF, or a four-digit form where the short escape exists, so that two byte
-     sequences never denote one identity and a lock diff is deterministic. (Hand-written `allow` entries use the canonical
-     spelling.)
+     sequences never denote one identity and a lock diff is deterministic. In an **identity-bearing field** (a name, a
+     key, an import path, an `allow` entry; not free text such as `reason`) the reader accepts only a basic string `"…"`
+     with those canonical escapes: a TOML literal string `'…'`, the multi-line forms `'''…'''` and `"""…"""`, and a raw
+     non-ASCII scalar are rejected (E0118), so `é` written raw and `\u00E9` cannot both denote one identity. The goal is
+     one spelling per decoded value in these fields; free text keeps TOML's own rules and the checks of SYN-018. A BOM
+     (U+FEFF, category Cf) and a carriage return (Cc) are already in the LEX-003 set and are rejected by it, so the
+     reader has no separate rule for them. (Hand-written `allow` entries use the canonical spelling.)
      A name that is not valid UTF-8 never reaches the lock: archive entries fail with E0711 first, and Go identifiers
      and import paths are valid UTF-8 by the Go specification, so no separate byte-string key exists.
 
