@@ -10,8 +10,18 @@ val check : file:string -> string -> Egide_diagnostics.Diagnostic.t list
     - each forbidden code point (E0004, LEX-003), with its Unicode name when it is a well-known one,
       else its class.
 
+    Consecutive identical forbidden characters, or consecutive lone CRs, are one diagnostic whose
+    span covers the run and whose message ends the character description with ["repeated N times"]
+    (ADR-0016, T-1080). The result holds at most {!Egide_diagnostics.Diagnostic.Sink.default_limit}
+    diagnostics, plus a final E0006 summary when more were found.
+
     Never raises. HT is not reported here: it is legal in string literals and the lexer reports it
     elsewhere (E0005, LEX-004). *)
+
+val check_into : Egide_diagnostics.Diagnostic.Sink.t -> file:string -> string -> bool
+(** As {!check}, reporting into a shared bounded sink (T-1080). Returns [true] iff the input
+    contains ill-formed UTF-8 (E0001) — the answer does not depend on the sink limit, which may have
+    dropped the diagnostic. *)
 
 val is_forbidden : int -> bool
 (** LEX-003: membership in the property-defined set of ADR-0017

@@ -74,13 +74,33 @@ val to_json : t -> string
     goes through {!Escape.json_safe} (LEX-006). *)
 
 (** A sink accumulating diagnostics in emission order. Passes report and continue
-    (docs/architecture.md §2). *)
+    (docs/architecture.md §2).
+
+    A sink created with [~limit] keeps the first [limit] diagnostics and only counts the rest
+    (T-1080, E0006): a hostile file cannot make the accumulator grow with its size. *)
 module Sink : sig
   type diag := t
   type t
 
-  val create : unit -> t
+  val default_limit : int
+  (** 100 diagnostics per file. *)
+
+  val create : ?limit:int -> unit -> t
+  (** Unbounded unless [limit] is given.
+      @raise Invalid_argument if [limit < 1]. *)
+
   val report : t -> diag -> unit
+  (** O(1). Past the limit the diagnostic is counted and dropped. *)
+
+  val suppressed : t -> int
+  (** Number of diagnostics dropped so far. *)
+
   val to_list : t -> diag list
+  (** The kept diagnostics in emission order, then, if any were dropped, one final E0006 error whose
+      span is that of the first dropped diagnostic and whose message states the count, the limit
+      and, for E0001, E0002, E0003 and E0004, how many dropped diagnostics had that code (fixed
+      text, integers only). Deterministic: the same reports give the same list. *)
+
   val has_errors : t -> bool
+  (** True if any error was reported, kept or dropped. O(1). *)
 end
