@@ -252,8 +252,8 @@ types** and **auditable**.
   2. `unsafe`, cgo, `//go:linkname`, assembly, `reflect` calls that can reach unexported state, a function without a Go
      body and any `//go:wasmimport` classify as impure;
   3. writing an exported package-level variable classifies as impure. **Every use** of an exported package-level variable
-     of the standard library takes the class of its line in the list (`io.ReadFull(rand.Reader, b)` uses
-     `crypto/rand.Reader`, class `rand`; `os.Args` is `env`), and a variable with no line is `go` (GOP-007). **Taking the
+     of the standard library takes the class of its line in the list as refined by its type below (`io.ReadFull(rand.Reader, b)` uses
+     `crypto/rand.Reader`, an interface, hence `go`), and a variable with no line is `go` (GOP-007). **Taking the
      address of such a variable (`&rand.Reader`, `&os.Args`) is a use and also counts as a write**, because the pointer
      allows both reads and writes that the analysis does not see; it is therefore impure. A method value, a slice of the
      variable and an implicit address-of (a call `v.M()` where `M` has a pointer receiver and `v` is the variable) count
