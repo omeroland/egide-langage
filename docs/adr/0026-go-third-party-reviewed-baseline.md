@@ -151,6 +151,32 @@ as the reviewer's checklist, not as normative proof. This was the owner's decisi
 | E0712 and GO-043 still act as gates | the sentence now lists them: they fail closed and grant nothing; GO-043 prints the aid diff and the entry diff, and the class changes only through entries |
 | stale E0701/E0702 rows, "classified other than `pure`", `--confirm` output, class names | rows updated; GO-044.2 says "by the aid"; `--confirm` prints old and new class and every changed module version; GO-040 gets `Stderr` and a mapping of class names to capabilities |
 
+## Twelfth-pass review (blocker N-1; non-blocking points)
+
+**Executive Summary.** Item 5 fired only for "a Go type with methods" or a function value that was itself the argument, so
+types without methods, Égide composites, generics, function values inside composites and opaque types slipped through
+(*verified* by the reviewer on Go 1.24.7 for `[]Evil`, `map[string]Evil`, `[1]*Evil`, `Outer{E Evil}`, a channel receive
+and `reflect.ValueOf(Evil{})`; *reasoned* for the rest). The item now walks the type closure whatever the type's own
+methods.
+
+| Required fix | Resolution |
+|--------------|------------|
+| 1. walk the §11.3-mapped type closure regardless of methods | item 5(a): slices, maps, arrays, channels, pointers, structs with or without methods, and the Égide composites through each component's Go mapping |
+| 2. per instantiation of an Égide generic; an uninstantiated type parameter is `go` | item 5(e) |
+| 3. any Go function value or method value that is not a direct callee counts where it appears, in Égide source too | item 5(c): field, `List`, `Map`, `Chan`, spawned function, stored value |
+| 4. opaque types are `go` | item 5(d): `reflect.Value`, `unsafe.Pointer`, `atomic.Value`, `sync.Map`, closures ending in `any` or a type parameter |
+| 5. "static type" is the argument expression's type; variadics element by element | item 5: `fmt.Printf("%d", n)` stays `stdout`; a real `GoAny` is `go` (accepted fail-closed cost) |
+| 6. (b) only for Go interface-typed expressions | item 5(b): the writer Égide passes is an Égide nominal type, so the rule does not fire; `GoError` and `errors.Is` cost stated |
+| 7. GO-044 intro agrees with item 1 on transitive modules | the intro and the key sentence now say "a non-standard module of the Go closure of the `[go]` section" |
+
+Non-blocking, handled: an aggregate cap (512 modules, 8192 packages, 16 tuples, 1024 overrides per package; E0712);
+`reflect.* pure` removed from the seed list and left to T-0040; the digest against signed intermediate manifests is
+`tasks/blocked/Q-0055-go-override-digest-versus-signed-intermediate-manifests.md` (recommended answer A: check at the root).
+Alternative considered for fix 1: restrict item 5 to Go-declared types and forbid Égide composites in Go calls. Rejected,
+it would make `fmt.Println(list)` impossible, while the closure walk keeps it `stdout` when the elements are plain.
+The caps are *extrapolated* defaults. Acceptance cases for the `security-reviewer` after acceptance (not added here):
+`Outer{E Evil}`, `[]Evil`, `List[GoRef[Evil]]`, a generic wrapper, `net.Dialer{Control: f}`, `reflect.Value`, each expected `go`.
+
 ## Decision
 
 Apply the spec diff: GO-042 rewritten (baseline, review aid, item 5), GO-044 items 1, 2 and 5 amended (capability

@@ -89,7 +89,7 @@ pull request**. Codes are never reused.
 | E0709 | TOOL-010 | the REPL cannot import Go or a package whose closure uses `import go`; use `egide run` | proposed (ADR-0023) |
 | E0710 | GO-046 | the produced binary is not statically linked (dynamic interpreter or library dependency outside the allow-list); checked before the artefact is run | proposed (ADR-0024) |
 | E0711 | GO-046, PKG-041 | archive entry `{path}` is not a regular file or directory, or escapes the destination (`..`, absolute path, link, device, FIFO, name collision); nothing reached the destination; `{path}` is escaped and truncated (GO-046.7) | proposed (ADR-0024) |
-| E0712 | GO-042 | generic function `{fn}` has more than 64 instantiations, the program more than 4096, a type argument is nested more than 16 deep, or the spelling of an instantiation exceeds 1024 bytes (or all lock keys 4 MiB) | proposed (ADR-0026) |
+| E0712 | GO-042 | generic function `{fn}` has more than 64 instantiations, the program more than 4096, a type argument is nested more than 16 deep, or the spelling of an instantiation exceeds 1024 bytes, or the Go closure holds more than 512 modules or 8192 packages, a build locks more than 16 tuples, or a package declares more than 1024 overrides (or all lock keys 4 MiB) | proposed (ADR-0026) |
 | E0713 | GO-042 | type argument `{T}` of `{fn}` has no Go mapping (capability, resource, trait object) | proposed (ADR-0026) |
 | W0001 | LEX-005 | right-to-left text in a string or comment may display the rest of the line in a different order; bind the string with `let` on its own line | allocated |
 | W0002 | LEX-011 | doc comment is not attached to a declaration | allocated |

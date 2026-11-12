@@ -66,7 +66,6 @@ path/filepath.Glob fs
 path/filepath.Walk fs
 path/filepath.WalkDir fs
 plugin.* forbidden
-reflect.* pure
 reflect.NewAt forbidden
 reflect.Value.Call go
 reflect.Value.CallSlice go

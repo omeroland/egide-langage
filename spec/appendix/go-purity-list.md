@@ -73,7 +73,7 @@ os.* go
 | `context` | `pure`; contexts are injected by the runtime (GO-022) |
 | `syscall`, `unsafe`, `plugin`, `runtime/cgo`, `net/http/pprof`, `expvar` | `forbidden` |
 | `flag` | `go` by default; `Parse` `env` (reads `os.Args`) |
-| `reflect` | `pure`, except `NewAt` and `Value.UnsafePointer` `forbidden`, and `Value.Call`, `Value.CallSlice`, `Value.Seq`, `Value.Seq2` (they call function-kinded values), `Value.Method`, `Value.MethodByName` and `Value.Interface` `go` (they invoke code chosen at run time, for example `reflect.ValueOf(os.Stdout).MethodByName("Write").Call(...)` writes to standard output) |
+| `reflect` | seed: `go` by default (T-0040 decides which functions are `pure`; none is in the seed), with `NewAt` and `Value.UnsafePointer` `forbidden`, and `Value.Call`, `Value.CallSlice`, `Value.Seq`, `Value.Seq2` (they call function-kinded values), `Value.Method`, `Value.MethodByName` and `Value.Interface` `go` (they invoke code chosen at run time, for example `reflect.ValueOf(os.Stdout).MethodByName("Write").Call(...)` writes to standard output) |
 
 The authoritative data is `go-purity/go1.25.lst`; task T-0040 generates and reviews the complete file.
 
