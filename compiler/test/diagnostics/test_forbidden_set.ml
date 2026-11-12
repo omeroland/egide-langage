@@ -110,34 +110,40 @@ let codes ds = String.concat "," (List.map (fun (d : D.t) -> d.code) ds)
 
 (* One comment line per scalar value (LF, CR and HT have their own rules: E0004 is not their code), after a first
    line, so that a U+FEFF is mid-file. The set of lines reported E0004 is the set of forbidden scalars. Linear in the
-   size of the input: a quadratic lexer would not finish. *)
+   size of the input: a quadratic lexer would not finish. T-1080: a file reports at most [Sink.default_limit]
+   diagnostics, so the sweep is cut into files of [batch] scalars (< limit, so nothing is suppressed); the property
+   checked is unchanged. *)
 let%test "the lexer reports E0004 for exactly the oracle set, in comments (all scalars)" =
-  let b = Buffer.create (10 * 1024 * 1024) in
+  let batch = 64 in
   let cps = ref [] in
-  Buffer.add_string b "module m\n";
-  all_scalars (fun cp ->
-      if cp <> 0x0A && cp <> 0x0D && cp <> 0x09 then begin
-        cps := cp :: !cps;
-        Buffer.add_string b "# ";
-        Buffer.add_string b (utf8 cp);
-        Buffer.add_char b '\n'
-      end);
+  all_scalars (fun cp -> if cp <> 0x0A && cp <> 0x0D && cp <> 0x09 then cps := cp :: !cps);
   let cps = Array.of_list (List.rev !cps) in
-  let diags = lex (Buffer.contents b) in
   let rejected = Hashtbl.create 8192 in
   let ok = ref true in
-  List.iter
-    (fun (d : D.t) ->
-      if d.code <> "E0004" then begin
-        ok := false;
-        fail "unexpected %s at line %d" d.code d.span.start.line
-      end
-      else if d.span.start.col <> 3 || d.span.stop.col <> 4 then begin
-        ok := false;
-        fail "span of E0004 at line %d" d.span.start.line
-      end
-      else Hashtbl.replace rejected cps.(d.span.start.line - 2) ())
-    diags;
+  let i = ref 0 in
+  while !i < Array.length cps do
+    let m = min batch (Array.length cps - !i) in
+    let b = Buffer.create 1024 in
+    Buffer.add_string b "module m\n";
+    for k = 0 to m - 1 do
+      Buffer.add_string b "# ";
+      Buffer.add_string b (utf8 cps.(!i + k));
+      Buffer.add_char b '\n'
+    done;
+    List.iter
+      (fun (d : D.t) ->
+        if d.code <> "E0004" then begin
+          ok := false;
+          fail "unexpected %s at line %d" d.code d.span.start.line
+        end
+        else if d.span.start.col <> 3 || d.span.stop.col <> 4 then begin
+          ok := false;
+          fail "span of E0004 at line %d" d.span.start.line
+        end
+        else Hashtbl.replace rejected cps.(!i + d.span.start.line - 2) ())
+      (lex (Buffer.contents b));
+    i := !i + m
+  done;
   Array.iter
     (fun cp ->
       let r = Hashtbl.mem rejected cp in
@@ -257,8 +263,10 @@ let%test "a long line of forbidden code points is linear" =
   let n = 1_000_000 in
   let src = "# " ^ String.concat "" (List.init n (fun _ -> "\xE2\x80\xAE")) ^ "\n" in
   let ds = lex src in
-  List.length ds = n
-  && List.for_all (fun (d : D.t) -> d.code = "E0004") ds
+  (* T-1080 (ADR-0016): the run of identical characters is one E0004 spanning all of it *)
+  (match ds with
+    | [ d ] -> d.code = "E0004" && d.span.start.col = 3 && d.span.stop.col = 3 + n
+    | _ -> false)
   && S.check ~file:"t.egd" (String.make 4_000_000 'a') = []
 
 (* ---- the pinned table (LEX-003: Unicode 16.0.0, embedded, never read from the host) ---- *)

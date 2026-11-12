@@ -323,10 +323,49 @@ let to_json d =
 
 module Sink = struct
   type diag = t
-  type nonrec t = { mutable rev : diag list }
 
-  let create () = { rev = [] }
-  let report s d = s.rev <- d :: s.rev
-  let to_list s = List.rev s.rev
-  let has_errors s = List.exists (fun d -> d.severity = Error) s.rev
+  (* T-1080: [limit] bounds what is stored, not only what is printed. Past the limit a report costs O(1)
+     time and memory: a counter, the span of the first dropped diagnostic and the "an error was dropped"
+     flag (so [has_errors] stays true whatever the limit). *)
+  type nonrec t = {
+    limit : int;
+    mutable kept : int;
+    mutable rev : diag list;
+    mutable suppressed : int;
+    mutable first_suppressed : Span.t option;
+    mutable errors : bool;
+  }
+
+  let default_limit = 100
+
+  let create ?(limit = max_int) () =
+    if limit < 1 then invalid_arg "Diagnostic.Sink.create: limit must be at least 1";
+    { limit; kept = 0; rev = []; suppressed = 0; first_suppressed = None; errors = false }
+
+  let report s d =
+    if d.severity = Error then s.errors <- true;
+    if s.kept < s.limit then begin
+      s.rev <- d :: s.rev;
+      s.kept <- s.kept + 1
+    end
+    else begin
+      s.suppressed <- s.suppressed + 1;
+      if s.first_suppressed = None then s.first_suppressed <- Some d.span
+    end
+
+  let suppressed s = s.suppressed
+  let has_errors s = s.errors
+
+  (* E0006 (docs/diagnostics.md): fixed text, counts only, no source echo. *)
+  let summary s =
+    match s.first_suppressed with
+    | None -> []
+    | Some span ->
+        [
+          error ~rule:"TOOL-040" ~code:"E0006" span
+            (Printf.sprintf "%d further diagnostics suppressed (limit %d per file)" s.suppressed
+               s.limit);
+        ]
+
+  let to_list s = List.rev_append s.rev (summary s)
 end

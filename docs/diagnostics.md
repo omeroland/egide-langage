@@ -24,9 +24,10 @@ pull request**. Codes are never reused.
 |------|------|------------------|--------|
 | E0001 | LEX-001 | invalid UTF-8 sequence | allocated |
 | E0002 | LEX-001 | byte-order mark is not allowed | allocated |
-| E0003 | LEX-002 | lone carriage return | allocated |
-| E0004 | LEX-003 | forbidden character U+{cp} ({name}) — risk: hidden or reordered source text (Trojan Source). `{name}` is the Unicode name for the best-known characters, else the class: `control character`, `tag character`, `variation selector`, `noncharacter`, `format or default-ignorable character` (the set is defined by property, LEX-003) | allocated |
+| E0003 | LEX-002 | lone carriage return. Consecutive lone CRs are one diagnostic over the run: `lone carriage return repeated {n} times` | allocated |
+| E0004 | LEX-003 | forbidden character U+{cp} ({name}) — risk: hidden or reordered source text (Trojan Source). `{name}` is the Unicode name for the best-known characters, else the class: `control character`, `tag character`, `variation selector`, `noncharacter`, `format or default-ignorable character` (the set is defined by property, LEX-003). Consecutive occurrences of the same character are one diagnostic over the run: `… ({name}) repeated {n} times — risk: …` | allocated |
 | E0005 | LEX-004 | tab character outside a string literal; indent with 4 spaces. Also: a tab in the margin (or on a blank line) of a triple-quoted string (LEX-051), and a raw tab in a character literal (LEX-054) | allocated |
+| E0006 | TOOL-040 | {n} further diagnostics suppressed (limit {limit} per file). Always the last diagnostic of a file whose front end (raw-text checks, lexer, layout) found more than {limit}; fixed text, counts only, never a source excerpt; its span is that of the first suppressed diagnostic. The first {limit} diagnostics (limit: 100) are kept in emission order; suppression never turns an error into acceptance (the file still fails). Code chosen because E0006 is the first free code in the source-text group E0001–E0005 and is not reserved by any open ADR (#29: E0043, E0045–E0047; #30: E0122; #32–#35: E0422–E0424, E0611, E0701–E0710) | allocated |
 | E0010 | LEX-020 | non-ASCII character in identifier | allocated |
 | E0020 | LEX-032 | unexpected indentation (the previous line does not end with `:`) | allocated |
 | E0021 | LEX-032 | indentation must increase by exactly 4 spaces | allocated |

@@ -105,7 +105,7 @@ let%expect_test "limit boundary" =
   run 101;
   [%expect {|
     100 -> 100, last=E0004
-    101 -> 102, last=E0006
+    101 -> 101, last=E0006
     |}]
 
 (* Language-server stability: the kept diagnostics of a longer flood are the same list as those of a shorter one

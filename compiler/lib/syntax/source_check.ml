@@ -86,28 +86,63 @@ let decode src i cp_out =
     go 1 (b0 land (0xFF lsr (width + 1)))
   end
 
-let check ~file src =
-  let diags = ref [] in
-  let add d = diags := d :: !diags in
+(* T-1080. Diagnostics go to [sink], which keeps the first [limit] and counts the rest, so memory is bounded
+   whatever the input. Consecutive identical forbidden characters (E0004) or lone CRs (E0003) are one diagnostic
+   with a count and a span over the run (ADR-0016, the E0005 model): a run costs one slot of the budget.
+   Returns whether the input has ill-formed UTF-8 (E0001); the caller must not rely on the sink for that, since
+   the diagnostic may have been dropped. *)
+let check_into sink ~file src =
+  let add d = D.Sink.report sink d in
   let len = String.length src in
   let line = ref 1 and col = ref 1 in
   let span c0 c1 =
     Span.make ~file ~start:{ Span.line = !line; col = c0 } ~stop:{ line = !line; col = c1 }
   in
+  let invalid = ref false in
   (* Column where the current run of ill-formed bytes started, or 0. A run is reported once (E0001); each maximal
      subpart counts as one column, as if replaced by U+FFFD. *)
   let bad_start = ref 0 in
   let flush_bad () =
     if !bad_start > 0 then begin
+      invalid := true;
       add (D.error ~rule:"LEX-001" ~code:"E0001" (span !bad_start !col) "invalid UTF-8 sequence");
       bad_start := 0
     end
+  in
+  (* Pending run of identical E0003/E0004 characters: (code point, first column, length). CR is 0x0D, which is
+     never in the forbidden set, so one cp identifies the kind. Flushed before any other diagnostic and at each
+     line end, so emission order is source order. *)
+  let run = ref None in
+  let flush_run () =
+    match !run with
+    | None -> ()
+    | Some (cp, c0, n) ->
+        run := None;
+        let sp = span c0 (c0 + n) in
+        let times = if n = 1 then "" else Printf.sprintf " repeated %d times" n in
+        if cp = 0x0D then
+          add (D.error ~rule:"LEX-002" ~code:"E0003" sp ("lone carriage return" ^ times))
+        else
+          add
+            (D.error ~rule:"LEX-003" ~code:"E0004" sp
+               (Printf.sprintf
+                  "forbidden character U+%04X (%s)%s — risk: hidden or reordered source text (Trojan \
+                   Source)"
+                  cp (name cp) times))
+  in
+  let note_run cp =
+    match !run with
+    | Some (c, c0, n) when c = cp && c0 + n = !col -> run := Some (c, c0, n + 1)
+    | _ ->
+        flush_run ();
+        run := Some (cp, !col, 1)
   in
   let cp_out = [| 0 |] in
   let i = ref 0 in
   while !i < len do
     let w = decode src !i cp_out in
     if w < 0 then begin
+      flush_run ();
       if !bad_start = 0 then bad_start := !col;
       incr col;
       i := !i - w
@@ -116,33 +151,32 @@ let check ~file src =
       flush_bad ();
       let cp = cp_out.(0) in
       if cp = 0x0A then begin
+        flush_run ();
         incr line;
         col := 1
       end
       else begin
         if cp = 0x0D then begin
           (* LEX-002: CR LF is accepted; a lone CR is not. *)
-          if not (!i + 1 < len && src.[!i + 1] = '\n') then
-            add
-              (D.error ~rule:"LEX-002" ~code:"E0003" (span !col (!col + 1)) "lone carriage return")
+          if not (!i + 1 < len && src.[!i + 1] = '\n') then note_run cp else flush_run ()
         end
         else if cp = 0xFEFF && !i = 0 then
           add
             (D.error ~rule:"LEX-001" ~code:"E0002"
                (span !col (!col + 1))
                "byte-order mark is not allowed")
-        else if is_forbidden cp then
-          add
-            (D.error ~rule:"LEX-003" ~code:"E0004"
-               (span !col (!col + 1))
-               (Printf.sprintf
-                  "forbidden character U+%04X (%s) — risk: hidden or reordered source text (Trojan \
-                   Source)"
-                  cp (name cp)));
+        else if is_forbidden cp then note_run cp
+        else flush_run ();
         incr col
       end;
       i := !i + w
     end
   done;
   flush_bad ();
-  List.rev !diags
+  flush_run ();
+  !invalid
+
+let check ~file src =
+  let sink = D.Sink.create ~limit:D.Sink.default_limit () in
+  ignore (check_into sink ~file src);
+  D.Sink.to_list sink

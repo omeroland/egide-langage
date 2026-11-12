@@ -1,0 +1,7 @@
+# spec: LEX-003, TOOL-040
+# expect: lex-fail
+# diagnostic: E0004 at 7:3
+# diagnostic: E0006 at 7:203
+module m
+
+# ​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a​a

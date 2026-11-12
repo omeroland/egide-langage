@@ -463,20 +463,34 @@ let count_lone_cr src =
 
 let count code diags = List.length (List.filter (fun (d : D.t) -> d.code = code) diags)
 
+(* T-1080: a run of identical characters is one diagnostic spanning the run, so the number of characters reported
+   under [code] is the sum of the span widths (single-line spans). *)
+let count_chars code diags =
+  List.fold_left
+    (fun acc (d : D.t) -> if d.code = code then acc + (d.span.stop.col - d.span.start.col) else acc)
+    0 diags
+
 (* Zero-width spans are legitimate (e.g. "unterminated string literal" at end of file). *)
 let well_formed_span (d : D.t) =
   let s = d.span.start and e = d.span.stop in
   s.line >= 1 && s.col >= 1 && (e.line > s.line || (e.line = s.line && e.col >= s.col))
 
 (* The property checked on every input: no exception; E0001 exactly when the input is not UTF-8; on UTF-8
-   input, one E0004 per forbidden code point and one E0003 per lone CR; every span is well formed. *)
+   input, every forbidden code point is in an E0004 and every lone CR in an E0003 (runs collapse, T-1080); every span is well formed. *)
 let property src =
   let toks, diags = lex src in
   let valid = String.is_valid_utf_8 src in
   List.for_all well_formed_span diags
   && count "E0001" diags > 0 = not valid
   && ((not valid)
-     || (count "E0004" diags = count_forbidden src && count "E0003" diags = count_lone_cr src))
+     ||
+     (* below the per-file cap (E0006 absent) every character is accounted for; above it, never more than exist *)
+     if count "E0006" diags = 0 then
+       count_chars "E0004" diags = count_forbidden src && count_chars "E0003" diags = count_lone_cr src
+     else
+       count_chars "E0004" diags <= count_forbidden src
+       && count_chars "E0003" diags <= count_lone_cr src
+       && List.length diags = 101)
   && (valid || toks = [])
 
 let seed = 0x0E61DE
