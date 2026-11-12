@@ -25,7 +25,7 @@ pull request**. Codes are never reused.
 | E0001 | LEX-001 | invalid UTF-8 sequence | allocated |
 | E0002 | LEX-001 | byte-order mark is not allowed | allocated |
 | E0003 | LEX-002 | lone carriage return | allocated |
-| E0004 | LEX-003 | forbidden character U+{cp} ({name}) — risk: hidden or reordered source text (Trojan Source) | allocated |
+| E0004 | LEX-003 | forbidden character U+{cp} ({name}) — risk: hidden or reordered source text (Trojan Source). `{name}` is the Unicode name for the best-known characters, else the class: `control character`, `tag character`, `variation selector`, `noncharacter`, `format or default-ignorable character` (the set is defined by property, LEX-003) | allocated |
 | E0005 | LEX-004 | tab character outside a string literal; indent with 4 spaces. Also: a tab in the margin (or on a blank line) of a triple-quoted string (LEX-051), a tab as the first character after the spaces of a content line or of the closing-delimiter line of a triple-quoted string (LEX-051), and a raw tab in a character literal (LEX-054) | allocated |
 | E0010 | LEX-020 | non-ASCII character in identifier | allocated |
 | E0020 | LEX-032 | unexpected indentation (the previous line does not end with `:`) | allocated |
