@@ -301,7 +301,7 @@ types** and **auditable**.
      is and whatever the callee is, **and of every type in the type closure of that dynamic type**: the types of its
      fields (exported or not), the element types of arrays, slices, channels and maps (keys and values), the pointees of
      pointers, and, for a field or element of interface type, every **implementer** of that
-     interface (the dynamic type is not known, so all possible ones count), each with its pointer and value method sets.
+     interface (the dynamic type is not known, so all possible ones count), each with its pointer and value method sets (generic implementers count once per instantiation, item 4 below).
      The **implementer set** of an interface is defined once, here and for item 5: every type of the Go closure (every
      non-standard package of GO-046's closure) that implements it, together with the standard types of the pinned
      `GOROOT` that implement it, at their classes in the list. The type closure is a **set indexed by type identity**:
@@ -360,7 +360,10 @@ types** and **auditable**.
      with or without methods, and the Égide composites `List`, `Map`, `Option`, tuples and structs through the Go mapping
      of each component (`List[GoRef[Evil]]` is `[]*Evil`), and likewise `Result`, enums (every payload), `Array` and
      `Shared[T]` (through `T`). A type with no Go mapping (a capability, a resource, a trait object `dyn Trait`) passed as
-     an argument is E0713. The class of every method of the method set of every type reached counts;
+     an argument is E0713. For **every type reached**, the methods of both `T` and `*T` count (the value method set and the pointer method set):
+     `json.Marshal([]Evil{…})` and `json.Marshal(&Outer{E: Evil{}})` call the pointer-receiver `(*Evil).MarshalJSON` and
+     `(*Evil).String`, so a type with pointer-only methods held in a `List[Evil]` is as visible as one with value
+     methods. The class of every such method counts;
      (b) *Go interface types.* If the expression's static type is a **Go interface type** (a value that comes from Go),
      every member of its implementer set (item 4) counts, and the result is
      `go` when the implementers cannot be enumerated (`GoAny`, `any`). It does not apply to an Égide nominal type that
@@ -385,7 +388,11 @@ types** and **auditable**.
      (g) *Construction.* A Go value built in Égide source (a struct literal, or a composite with Go-typed components,
      such as `http.Client(Transport: ref)`) is classified at the place where it is built, by the type closure of the
      components it contains and the function values among them (c), and that class belongs to the function that contains
-     the expression, whether or not the value is ever passed to a call.
+     the expression, whether or not the value is ever passed to a call; the type built is classified with both `T` and
+     `*T` method sets, as in (a). In a **compile-time context** (a top-level `let`, a `comptime` argument, a SYN-022
+     default-value expression, an array length or const-generic argument) no Go value may be built: that is E0611 by
+     CT-006 (and E0610 where CT-002 also applies), so (g) never has to classify such an expression. Generic Go
+     implementers and generic Go types in the closure count once per instantiation that the program uses.
      A method of a non-standard type is `go` unless it has a reviewed entry, so `fmt.Sprint(x)`, `fmt.Println(outer)` and
      `Render(x)` with `x` a `GoRef` of a third-party type that has a `String` method, or `outer` a methodless struct
      holding one, are `go`.
