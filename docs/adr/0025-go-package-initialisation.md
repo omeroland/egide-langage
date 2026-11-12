@@ -134,6 +134,28 @@ conformance suite.*
 | instantiation growth unbounded | 64 per generic function, 4096 per program, nesting 16; E0712. The numbers are *extrapolated* defaults |
 | an Égide generic calling a Go generic | analysed per Égide instantiation; the Égide type arguments are mapped by §11.3; a type argument with no mapping is a compile error |
 
+### Tenth-pass review (B-1'' to B-3'' verified or reasoned by the reviewer)
+
+| Finding | Resolution |
+|---------|------------|
+| B-1'': the lock key spells type arguments as a tree, its length is exponential in nesting depth (a 310-byte source gives a 28 MB key with 14 instantiations); the three counts never trigger | cap of 1024 bytes on the readable spelling and 4 MiB on all keys, computed bottom-up on the type graph with saturating arithmetic before any string is built (E0712); the identity of an entry is the SHA-256 over the shared graph (linear), the readable form is display |
+| B-2'': a store through an exported variable is not a write of the variable (`a := os.Args; a[0] = "x"`, `*time.UTC = …`, `unicode.Upper.R16 = nil`); aliasing defeats any syntactic rule | the class is decided by the variable's **type**: pointer, slice, map, function, channel, interface, or struct/array containing one: `go`, unless the line is annotated `immutable` after review. Value types (numbers, strings, booleans and arrays/structs of them) take their line's class. `io.EOF` is `immutable` (justified in GO-042: unexported fields, no mutating method); `os.Args`, `crypto/rand.Reader`, `time.UTC`, `time.Local`, `unicode.*` are `go`. Cost: `time.Date(…, time.UTC)` written in a Go closure is `go`; Égide never touches `time.UTC` (GO-025). Alternative: a per-variable syntactic alias analysis. Rejected, aliasing defeats it |
+| B-3'': local-type spelling not injective (`func (A) String` and `func (B) String` both spell `p.String.t#1`; `init`, closures) | owner path includes the receiver type, `init.<k>` and `.func<k>` ordinals in source order, independent of line numbers |
+| `Time` and the `Local` zone | GO-025: `.UTC()` at the §11.3 boundary, UTC-only Égide constructors. `time.Parse`, `ParseInLocation`, `Time.Unmarshal*`, `GobDecode`, `Time.Local` are `clock` (they select `Local`); the A.3 `time` row no longer says `Unix` or `Parse*` are pure; a conversion of a std type counts its methods with the classes of the list (so `json.Unmarshal(&t)` reaches `UnmarshalJSON`); `flag.Parse` is `env` |
+| implicit address-of, method instantiations, no code for "no Go mapping" | implicit address-of is a use and a write; the bound counts methods of generic types; E0713 |
+
+**Is the Go purity model too intricate for one ADR? Yes, and I recommend a split.** ADR-0025 currently carries GO-045 (package
+initialisation), the GO-042 analysis rules (item 3 variables, item 4 function values, interface conversions, type closure,
+generics, the lock key) and the purity-list reclassification. The analysis rules have grown with every pass because each
+rule is a heuristic over Go semantics (aliasing, reflection, generics, stdlib dispatch) and every pass finds a new
+evasion. Proposal: (1) keep GO-045 and the init classification in ADR-0025; (2) move the GO-042 amendments into a new ADR
+whose **baseline is conservative**: a function of a third-party Go module is `go` unless a reviewed entry names it
+(module, version, function) as `pure` or as a specific class in the lock; the static analysis (GO-042) becomes a **reviewer aid**
+that proposes a classification and flags the findings of this PR, instead of the gate. The cost is a human review per
+dependency version (drift detection GO-043 already forces a diff); the gain is that no unforeseen evasion of the
+analysis grants authority, because the gate no longer relies on its completeness. That ADR would carry the rules above
+as the reviewer's checklist, not as normative proof. This is the owner's decision; this PR keeps the analysis as the gate.
+
 ## Decision
 
 Apply the spec diff: GO-045, GO-042 item 4, PKG-030 (`go_init:`), PKG-043 (lock records init classes), GOP-005, GOP-006,

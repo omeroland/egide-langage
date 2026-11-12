@@ -219,6 +219,7 @@ types** and **auditable**.
 | `func(A) B` | `fn(A) -> B using Go` | Égide lambdas passed to Go run with the capabilities they captured |
 | `context.Context` first parameter | injected | **[GO-022]** the current task's cancellation and deadline (CON-011) |
 | variadic `...T` | trailing `List[T]` or spread `*xs` | — |
+| `time.Time` | an Égide instant | **[GO-025]** a `time.Time` crossing into Égide is converted with `.UTC()` and loses its location: Égide time values carry no zone, so the process-wide `Local` zone (`$TZ`, `/etc/localtime`) never reaches Égide data; the other direction builds `time.Unix(s, ns).UTC()`. The Égide standard library offers UTC constructors only |
 | `panic` | Égide panic | **[GO-024]** `go.recover(() => …)` converts it into `Result[T, GoPanic]` |
 
 - **[GO-030]** Go functions returning `(T, error)` MUST be treated as `Result` even when the Go documentation says the
@@ -254,8 +255,18 @@ types** and **auditable**.
      of the standard library takes the class of its line in the list (`io.ReadFull(rand.Reader, b)` uses
      `crypto/rand.Reader`, class `rand`; `os.Args` is `env`), and a variable with no line is `go` (GOP-007). **Taking the
      address of such a variable (`&rand.Reader`, `&os.Args`) is a use and also counts as a write**, because the pointer
-     allows both reads and writes that the analysis does not see; it is therefore impure. A method value or a
-     slice of the variable counts as a use;
+     allows both reads and writes that the analysis does not see; it is therefore impure. A method value, a slice of the
+     variable and an implicit address-of (a call `v.M()` where `M` has a pointer receiver and `v` is the variable) count
+     as uses, and the last also as a write. **Mutation through a copy or an alias is not visible to any syntactic rule**
+     (`a := os.Args; a[0] = "x"`, `p := time.UTC; *p = *time.FixedZone(…)`, `unicode.Upper.R16 = nil`), so the class of
+     a variable is decided by its **type**: a variable whose type is a pointer, slice, map, function, channel or interface,
+     or a struct or array that contains one, is `go` on any use, whatever its line says, unless the line carries the
+     annotation `immutable` (GOP-007), which the reviewer may add only after showing that nothing reachable from the value
+     can be changed through any exported operation. A variable of value type that contains none of those (a boolean, a
+     number, a string, and arrays and structs of them) takes the class of its line; assigning to it is a write. `io.EOF`
+     is an `error` interface holding a pointer to a struct with unexported fields and no mutating method, and is
+     `immutable`; `os.Args` (a slice), `crypto/rand.Reader` (an interface), `time.UTC` and `time.Local` (pointers to a
+     mutable `Location`) and `unicode.Upper` (a pointer to a table whose slices are exported) are `go`;
   4. **any function value that is not the callee of a direct call counts as called at the expression where it appears**
      (`return map[string]any{"run": evil.Run}`, an argument, a stored value, a method value, a deferred or `go`
      function, a function placed in a composite), and so does a value converted to an interface type, **implicitly as
@@ -277,18 +288,29 @@ types** and **auditable**.
      pure for `Gen[int]` and impure for `Gen[Evil]`), and the classification and the lock entry are those of the
      instantiation the program uses, keyed by its type arguments (PKG-040, PKG-043). *Spelling of a type argument in the
      key:* the string of `go/types.TypeString` after resolving aliases to their targets, with every package written by its
-     full import path (never its name), the arguments in parameter order separated by a comma without a space; a type
-     declared inside a function is `<import path>.<function>.<name>#<n>` where `n` counts the local types of that name
-     in the function in source order from 1; an anonymous struct is spelled with its field names, types and tags in
-     declaration order. *Bound:* at most 64 distinct instantiations of one generic function, 4096 in the whole program,
-     and a type argument nested at most 16 deep; beyond that the build fails with E0712 (the analysis and the lock would
-     otherwise grow without limit). *An Égide generic that calls a Go generic* is analysed per instantiation of the Égide
+     full import path (never its name), the arguments in parameter order separated by a comma without a space; an
+     anonymous struct is spelled with its field names, types and tags in declaration order. A type declared inside a
+     function is `<import path>.<owner>.<name>#<n>`, injective across owners: `<owner>` is the function name, or
+     `<Receiver>.<Method>` with the receiver type spelled as above (so `func (A) String` and `func (B) String` differ), or
+     `init.<k>` for the `k`-th `init` function of the package in the order of the sorted file names and then of the source,
+     and a function literal appends `.func<k>`, where `k` is its ordinal among the literals directly inside the owner in
+     source order (nested literals append again, `func1.func2`); `n` counts the local types of that name in the innermost
+     owner in source order from 1. The ordinals depend on source order only, not on line numbers, so they do not change
+     under an unrelated edit. *Bounds:* at most 64 distinct instantiations of one generic function or of the methods of one
+     generic type, 4096 in the whole program, and a type argument nested at most 16 deep. The **length of the spelling**
+     is at most 1024 bytes, and the total of all lock keys at most 4 MiB. Because the spelling of a nested instantiation
+     repeats its arguments, its length can be exponential in the depth, so it is computed bottom-up on the type graph with
+     saturating arithmetic (the sum of the sizes of the parts, capped at 2^32) **before any string is built**; a
+     spelling over the cap fails the build with E0712 without having been allocated. (The key of an entry is the pair of
+     the tuple and function and the SHA-256 of the full spelling, hashed over the shared type graph, with the readable
+     spelling stored next to it for display; the cap applies to the readable form.) *An Égide generic that calls a Go generic* is analysed per instantiation of the Égide
      function: the Égide type arguments are substituted and mapped to Go types by §11.3, and the Go instantiation is
-     classified as above; a type argument with no Go mapping (a capability, a resource, a trait object) is a compile
-     error at the call. A standard function that the list marks `pure` can invoke such a method without the
+     classified as above; a type argument with no Go mapping (a capability, a resource, a trait object) is E0713 at the call. A standard function that the list marks `pure` can invoke such a method without the
      call graph showing it (`fmt.Sprint(T{})` runs `T.String`, `sort.Sort(x)` runs `x.Less`), so the conversion, not the
      callee, is where the method is reached. Conversions in the standard library are covered by the list (GO-041);
-     conversions in the user-package closure are analysed. Accepted cost: a user type with an impure method reports it
+     conversions in the user-package closure are analysed, and the method set of a standard type that is converted there
+     counts with the classes of its methods in the list (`json.Unmarshal(&t)` with `t` a `time.Time` reaches
+     `Time.UnmarshalJSON`, whose line is `clock`). Accepted cost: a user type with an impure method reports it
      at every conversion to an interface, even to `any`. The same applies to `*os.File`: a conversion of `os.Stdout` to
      `io.Writer` counts the methods of `os.File`, which are `go`, so Go code that writes to `os.Stdout` directly is `go`
      and the `os.var.Stdout` line (GOP-007) does not make it `stdout`. The way to write to the standard output with the

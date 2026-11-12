@@ -11,7 +11,7 @@ context.WithDeadlineCause clock
 context.WithTimeout clock
 context.WithTimeoutCause clock
 crypto/rand.* rand
-crypto/rand.var.Reader rand
+crypto/rand.var.Reader go
 crypto/sha256.* pure
 crypto/sha512.* pure
 crypto/tls.Dial net
@@ -23,6 +23,8 @@ encoding/base64.* pure
 encoding/hex.* pure
 encoding/json.* pure
 errors.* pure
+flag.* go
+flag.Parse env
 fmt.* pure
 fmt.Print stdout
 fmt.Printf stdout
@@ -38,8 +40,8 @@ html/template.Template.ExecuteTemplate go
 html/template.Template.ParseFiles fs
 html/template.Template.ParseGlob fs
 io.* pure
-io.var.Discard pure
-io.var.EOF pure
+io.var.Discard go
+io.var.EOF pure immutable
 maps.* pure
 math.* pure
 mime.* pure
@@ -51,7 +53,7 @@ net/http.* net
 net/netip.* pure
 net/url.* pure
 os.* go
-os.var.Args env
+os.var.Args go
 os.var.Stderr go
 os.var.Stdin go
 os.var.Stdout go
@@ -94,14 +96,21 @@ time.LoadLocation fs   # reads the zoneinfo database
 time.NewTicker clock
 time.NewTimer clock
 time.Now clock
+time.Parse clock
+time.ParseInLocation clock
 time.Since clock
 time.Sleep clock
 time.Tick clock
+time.Time.GobDecode clock
+time.Time.Local clock
+time.Time.UnmarshalBinary clock
+time.Time.UnmarshalJSON clock
+time.Time.UnmarshalText clock
 time.Unix clock
 time.UnixMicro clock
 time.UnixMilli clock
 time.Until clock
-time.var.Local clock
+time.var.Local go
 unicode.* pure
 unicode/utf8.* pure
 unsafe.* forbidden
