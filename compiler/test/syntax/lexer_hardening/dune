@@ -4,6 +4,11 @@
 (library
  (name test_lexer_hardening)
  (inline_tests)
- (libraries egide.syntax egide.diagnostics egide.source qcheck-core)
+ (libraries
+  egide.syntax
+  egide.diagnostics
+  egide.source
+  forbidden_oracle
+  qcheck-core)
  (preprocess
   (pps ppx_expect)))

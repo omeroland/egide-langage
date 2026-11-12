@@ -1,0 +1,6 @@
+# spec: LEX-003
+# expect: lex-pass
+# Neighbours of the set are not forbidden (no 'all Cn' rule): U+00AC, U+00AE, U+0378 (unassigned), U+2027, U+FE10, U+FFEF (unassigned), U+E1000 (unassigned).
+module tests.lexical.forbidden_set_neighbours_accepted
+# a¬b ®b ͸b ‧b ︐b ￯b 󡀀b
+let s = "a¬b ®b ͸b ‧b ︐b ￯b 󡀀b"
