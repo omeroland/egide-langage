@@ -72,9 +72,15 @@ I/O permissions. It controls only the ways around the model.
   declares it, Go package, function), so that package B never reads the override of package A, even when both depend on the
   same Go module. The build tuple is the set of settings that select Go files (`GOOS`, `GOARCH`, tags and the rest of the Go
   build), so a result computed for one tuple is not reused for another.
-- **[PKG-041]** Builds verify every hash and signature. A mismatch is a fatal error; there is no flag to skip it.
+- **[PKG-041]** Builds verify every hash and signature. A mismatch is a fatal error; there is no flag to skip it. Archives of packages are extracted under the hostile-archive rule of GO-046.4 (regular
+  files and directories only; no link, device, FIFO, absolute path or `..`; E0711), before any hash is trusted.
 - **[PKG-042]** Installing or building a package never executes code of that package with authority: there are no
-  build scripts, install hooks or post-install steps (INT-005).
+  build scripts, install hooks or post-install steps (INT-005). The same holds for the Go modules of `[go]`: their analysis
+  and build run under GO-046 (no cgo, no toolchain download, no `go generate`, no inherited environment).
+- **[PKG-043]** For the Go closure `egide.lock` also records the Go toolchain version, the SHA-256 of its distribution
+  archive and of the installed `GOROOT` tree, for the native backend the hash of the C toolchain tree (GO-046.1), the SHA-256
+  of every module directory used (GO-046.4) and the per-function classification, under the keys of PKG-040 ((build tuple, Go package, function); overrides add the declaring
+  Égide package).
 
 ## 10.6 Reproducibility and provenance
 
