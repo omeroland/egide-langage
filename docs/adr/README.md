@@ -37,6 +37,7 @@ requires an accepted ADR.**
 | [0018](0018-surface-syntax-familiarity.md) | Surface syntax familiarity | Proposed (owner confirmation required) |
 | [0019](0019-toolchain-parity.md) | Toolchain parity with the Go toolchain | Proposed |
 | [0020](0020-lexical-edge-cases.md) | Lexical edge cases of numeric, string and prefix literals | Proposed |
+| [0021](0021-attribute-arguments-underscore-bindings-toplevel-let.md) | Attribute arguments, `_x` bindings and unsafe top-level initialisers | Proposed |
 | [0022](0022-go-overrides-init-comptime-and-unsafe-path.md) | Gate for Go overrides, own-breach declarations, `unsafe` module path | Proposed |
 | [0023](0023-no-go-at-compile-time.md) | No Go code at compile time | Proposed |
 | [0024](0024-go-build-environment.md) | Go build environment: no dependency code runs during compilation | Proposed |

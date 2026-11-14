@@ -49,13 +49,13 @@ Verdict per item of the task Context
 |------|---------|-------|
 | `unsafe` as a block-ended expression (SYN-017, MEM-070/071) | accepted | *established*: SYN-015 + grammar; reproduced with Menhir (`1 + unsafe…`, parenthesised `unsafe`, `return unsafe` are REJECT). SYN-018 closes the audit-output channel (S1). |
 | Removal of type-returning comptime functions (CT-011/012) | accepted | Reduces the comptime attack surface; no objection. |
-| `@go_threadsafe` as an attribute (GO-032) | accepted with conditions | B1 closed by E0420/E0421 and the manifest gate (PKG-030/031) *if* the manifest entry is made precise: Q-0022 items 3 and 4 (module name for std types, granularity, root self-allow) and the grammar defect of Q-0022 item 1 (`reason:` cannot be parsed by the EBNF `attribute`). |
-| Sink templates reject `:spec` (LEX-055, E0601) | accepted | E0601 is keyed by result type; `:spec` can never reach a sink in a standard prefix. Residual: "sink type" must be transitive once a spec-grammar registration exists (Q-0022 item 9). |
+| `@go_threadsafe` as an attribute (GO-032) | accepted with conditions | B1 closed by E0420/E0421 and the manifest gate (PKG-030/031) *if* the manifest entry is made precise: Q-0053 items 3 and 4 (module name for std types, granularity, root self-allow) and the grammar defect of Q-0053 item 1 (`reason:` cannot be parsed by the EBNF `attribute`). |
+| Sink templates reject `:spec` (LEX-055, E0601) | accepted | E0601 is keyed by result type; `:spec` can never reach a sink in a standard prefix. Residual: "sink type" must be transitive once a spec-grammar registration exists (Q-0053 item 9). |
 | let-else as pure matching (ERR-012) | accepted | `egide audit` lists every `let … else` on a `Result`; swallow pattern remains a documented residual. |
-| Comptime generic value arguments (SYN-042, CT-001..004, CAP-041) | accepted with conditions | Arguments are evaluated under CAP-040 and E0610. Residuals: E0610 names only top-level `let` and `comptime` arguments (Q-0022 item 7); purity through `dyn`/trait calls is unspecified (item 8); no bound on the number or depth of generic instantiations (availability only). |
+| Comptime generic value arguments (SYN-042, CT-001..004, CAP-041) | accepted with conditions | Arguments are evaluated under CAP-040 and E0610. Residuals: E0610 names only top-level `let` and `comptime` arguments (Q-0053 item 7); purity through `dyn`/trait calls is unspecified (item 8); no bound on the number or depth of generic instantiations (availability only). |
 | No allowlist in LEX-003 | accepted | Closed by property (Cf, DICP, Variation_Selector, noncharacters, U+2028/2029, Cc); *established* against `PropList-15.1.0.txt` (Other_Default_Ignorable_Code_Point lists exactly U+034F, 115F-1160, 17B4-17B5, 2065, 3164, FFA0, FFF0-FFF8, E0000, E0002-E001F, E0080-E00FF, E01F0-E0FFF); Unicode 16.0.0 equality of those ranges is *extrapolated* (the 16.0.0 files were not reachable from the review environment). |
 
-Blockers: S1 closed (LEX-006, SYN-018; residual LEX-006 scope by origin, Q-0022 item 6; `trust` reason literal, item 5). S2 closed (LEX-003 by
+Blockers: S1 closed (LEX-006, SYN-018; residual LEX-006 scope by origin, Q-0053 item 6; `trust` reason literal, item 5). S2 closed (LEX-003 by
 property). #14-B1 closed on paper (GO-032 1-4; residuals above). #14-B2 closed at the head of the initialiser by the
 grammar (`const_decl`/`const_block`, 0 conflicts reproduced; `unsafe`, `given`, `with` after `=` are REJECT) and for
 nested occurrences by E0610 only (the grammar still accepts `unsafe` inside an `if` branch, a lambda body or a trailing
@@ -78,7 +78,7 @@ non-string, duplicated or extra argument; on an alias of a non-Go type, an alias
 `Untrusted.trust(reason: <non-literal>)` and a `trust` reason with a terminal escape; `f(api: c)` for a `using api`
 parameter; `if c: unsafe(…):` (SYN-061 gives no code); a raw tab or NUL escape in a reason; `let` with an irrefutable
 pattern before `else`; an unknown upper-case pattern name. E0420 and a dependency-level E0421 need a package fixture
-that the runner cannot express: task T-1159. All are listed in Q-0022.
+that the runner cannot express: task T-1159. All are listed in Q-0053.
 
-Follow-ups: Q-0022 (spec questions, `tasks/blocked/`), T-1159 (runner: package fixtures).
-Open questions: Q-0022 items 1-9.
+Follow-ups: Q-0053 (spec questions, `tasks/blocked/`), T-1159 (runner: package fixtures).
+Open questions: Q-0053 items 1-9.

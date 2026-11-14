@@ -837,7 +837,7 @@ let rec token st =
 and comment st =
   let buf = st.buf in
   match%sedlex buf with
-  | Plus (Compl ('\n' | '\t')) -> comment st
+  | Rep (Compl ('\n' | '\t'), 1 .. 256) -> comment st
   | Plus '\t' ->
       report_tab st;
       comment st
@@ -1046,15 +1046,17 @@ and interpolation st ~triple t =
       match read_spec spec_pos with Some sp -> finish (Some sp) | None -> unterminated ())
 
 let tokenize ~file src =
-  let pre = Source_check.check ~file src in
-  if List.exists (fun (d : D.t) -> d.code = "E0001") pre then ([], pre)
+  (* T-1080: one bounded sink for the whole file, shared by the raw-text checks and the lexer, so that the
+     accumulator is bounded and the budget is global. Raw-text diagnostics come first (they run first). *)
+  let sink = D.Sink.create ~limit:D.Sink.default_limit () in
+  if Source_check.check_into sink ~file src then ([], D.Sink.to_list sink)
   else begin
     let buf = Sedlexing.Utf8.from_string src in
     Sedlexing.set_filename buf file;
     let st =
       {
         buf;
-        sink = D.Sink.create ();
+        sink;
         src;
         bc = 0;
         bb = 0;
@@ -1073,5 +1075,5 @@ let tokenize ~file src =
           loop ({ tok; startp; endp } :: acc)
     in
     let toks = loop [] in
-    (toks, pre @ D.Sink.to_list st.sink)
+    (toks, D.Sink.to_list sink)
   end

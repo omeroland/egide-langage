@@ -24,9 +24,10 @@ pull request**. Codes are never reused.
 |------|------|------------------|--------|
 | E0001 | LEX-001 | invalid UTF-8 sequence | allocated |
 | E0002 | LEX-001 | byte-order mark is not allowed | allocated |
-| E0003 | LEX-002 | lone carriage return | allocated |
-| E0004 | LEX-003 | forbidden character U+{cp} ({name}) — risk: hidden or reordered source text (Trojan Source). `{name}` is the Unicode name for the best-known characters, else the class: `control character`, `tag character`, `variation selector`, `noncharacter`, `format or default-ignorable character` (the set is defined by property, LEX-003) | allocated |
+| E0003 | LEX-002 | lone carriage return. Consecutive lone CRs are one diagnostic over the run: `lone carriage return repeated {n} times` | allocated |
+| E0004 | LEX-003 | forbidden character U+{cp} ({name}) — risk: hidden or reordered source text (Trojan Source). `{name}` is the Unicode name for the best-known characters, else the class: `control character`, `tag character`, `variation selector`, `noncharacter`, `format or default-ignorable character` (the set is defined by property, LEX-003). Consecutive occurrences of the same character are one diagnostic over the run: `… ({name}) repeated {n} times — risk: …` | allocated |
 | E0005 | LEX-004 | tab character outside a string literal; indent with 4 spaces. Also: a tab in the margin (or on a blank line) of a triple-quoted string (LEX-051), a tab as the first character after the spaces of a content line or of the closing-delimiter line of a triple-quoted string (LEX-051), and a raw tab in a character literal (LEX-054) | allocated |
+| E0006 | TOOL-040 | {n} further diagnostics suppressed (limit {limit} per file{; Ecode: k}…) (`diagnostic` when n = 1). Emitted when the raw-text checks and the lexer together found more than {limit} diagnostics; it is then the last diagnostic of that list. The diagnostics of the layout pass are **not yet counted nor bounded** and follow it (T-1160), so on such a file it is not the last one of the output and its count excludes them. Fixed text, integers only, never a source excerpt. The optional `; Ecode: k` parts give, for the security-relevant codes E0001, E0002, E0003 and E0004 (in that order, only when k > 0), how many of the suppressed diagnostics had that code, so that a reader of the first {limit} lines can see that, say, forbidden characters (Trojan Source) were dropped; a collapsed run counts once. Its span is that of the first suppressed diagnostic. The first {limit} diagnostics (limit: 100) are kept in emission order; suppression never turns an error into acceptance (the file still fails). It is an error even if only warnings were dropped (latent until warnings exist) | allocated |
 | E0010 | LEX-020 | non-ASCII character in identifier | allocated |
 | E0020 | LEX-032 | unexpected indentation (the previous line does not end with `:`) | allocated |
 | E0021 | LEX-032 | indentation must increase by exactly 4 spaces | allocated |
@@ -48,7 +49,7 @@ pull request**. Codes are never reused.
 | E0101 | SYN-001 | missing `module` declaration | allocated |
 | E0102 | SYN-031 | boolean argument must be named: `{param}: {value}` | allocated |
 | E0103 | SYN-101 | mixing bitwise and comparison operators requires parentheses | allocated |
-| E0104 | SYN-015 | this block-ended expression must stand alone; bind it with `let` first | allocated |
+| E0104 | SYN-015 | this block-ended expression must stand alone; bind it with `let` first (also: `unsafe`, `given` or `with` as a top-level `let` initialiser; bind it inside a function) | allocated |
 | E0105 | TYP-006 | parenthesise a function type used as a return type | allocated |
 | E0106 | SYN-012, SYN-033 | cannot assign to this expression / cannot take `&` of this expression (not a place) | allocated |
 | E0107 | SYN-065 | invalid lambda parameter / type annotation outside a lambda parameter list | allocated |
@@ -66,6 +67,7 @@ pull request**. Codes are never reused.
 | E0119 | SYN-006 | nesting too deep (limit 256) | allocated |
 | E0120 | SYN-030 | misplaced or unbound `using` argument: `{name}` | allocated |
 | E0121 | SYN-053 | `{name}` is a binding, not the variant `{Variant}`; write `{Variant}` or `_` | allocated |
+| E0122 | SYN-023 | attribute `@{name}`: missing, extra, repeated, unlabelled or unknown-label argument; expected `{signature}` | proposed (ADR-0021) |
 | E0301 | MEM-021 | `{place}` is passed as inout and also used by another argument of the same call | allocated |
 | E0302 | MEM-023 | use of `{name}` after it was moved by `take` | allocated |
 | E0303 | ERR-032 | resource `{name}` may leak: close it with `with` or move it with `take` | allocated |
