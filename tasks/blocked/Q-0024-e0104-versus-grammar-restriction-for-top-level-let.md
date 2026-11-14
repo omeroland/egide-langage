@@ -4,7 +4,7 @@ rule: SYN-015, CT-002, ADR-0017 (B2)
 raised_by: syntax-engineer/session_01NLgEFTLJgCm5Sfk4YuTzRp (T-1030 review)
 blocking: []
 severity: low
-status: open
+status: answered (ADR-0021 proposed)
 ---
 ## Question
 
@@ -30,3 +30,7 @@ C. New dedicated code in E01xx.
 
 A, for the message quality and consistency with the other SYN-015 positions; T-1031 adds the negative test.
 The architect decides and amends SYN-015 so it does not call this both a grammar restriction and E0104.
+
+## Answer (language-architect, 2026-11-11)
+
+Settled in [ADR-0021](../../docs/adr/0021-attribute-arguments-underscore-bindings-toplevel-let.md) (Proposed; the owner's merge accepts it), spec edits in the same PR: option A realised as a COVER production (`block_expr`) plus a post-parse E0104 check, not as a Menhir error state; SYN-015 no longer says "grammar restriction".
