@@ -24,7 +24,8 @@ import_item     = IDENT [ "as" IDENT ] ;
 top_decl        = { attribute NEWLINE } ( [ visibility ] item_decl | impl_decl ) ;
 item_decl       = fn_decl | struct_decl | enum_decl | trait_decl | type_decl NEWLINE | const_decl ;
 visibility      = "pub" [ "(" IDENT ")" ] ;                 (* the IDENT MUST be `package`, SYN-003 *)
-attribute       = "@" IDENT [ "(" [ expr_list ] ")" ] ;
+attribute       = "@" IDENT [ "(" [ attr_arg { "," attr_arg } [ "," ] ] ")" ] ;
+attr_arg        = [ IDENT ":" ] expr ;                        (* COVER: labels and arity are checked against the SYN-023 table, E0122 *)
 
 fn_decl         = fn_sig ":" suite ;
 fn_sig          = "fn" IDENT [ generics ] "(" [ params ] ")" [ "->" ret_type ] [ using_clause ] ;
@@ -55,8 +56,8 @@ impl_body       = INDENT impl_item { impl_item } DEDENT ;
 impl_item       = { attribute NEWLINE } [ visibility ] fn_decl | "type" IDENT "=" type NEWLINE ;
 
 type_decl       = "type" IDENT [ generics ] "=" ( "new" type [ "where" expr ] | type ) ;
-const_decl      = "let" IDENT [ ":" type ] "=" ( expr NEWLINE | const_block ) ;    (* implicitly comptime, CT-002 *)
-const_block     = if_expr | match_expr | loop_expr | fn_lambda | trailing_call ;     (* never unsafe, given, with: SYN-015 *)
+const_decl      = "let" IDENT [ ":" type ] "=" ( expr NEWLINE | block_expr ) ;    (* implicitly comptime, CT-002 *)
+                                                    (* COVER: a post-parse check rejects unsafe, given and with as E0104, SYN-015 *)
 
 (* ---------- Types (SYN-042, TYP-006) ---------- *)
 

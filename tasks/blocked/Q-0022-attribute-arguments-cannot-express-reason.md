@@ -4,7 +4,7 @@ rule: SYN-023, SYN-018, GO-032
 raised_by: syntax-engineer/session_01NLgEFTLJgCm5Sfk4YuTzRp (T-1030)
 blocking: []
 severity: medium
-status: open
+status: answered (ADR-0021 proposed)
 ---
 ## Question
 
@@ -42,3 +42,7 @@ change is local (`attribute.args`). Until decided, `attribute.args` stays `expr 
 out; its Log says so). Option A does not change the E0107 attribute PoC
 (`tests/security/syntax/cover_annotation_in_attribute_argument.egd`, `@derive((a: int))`): a parenthesised item is still
 an `expr`, so the cover check applies unchanged.
+
+## Answer (language-architect, 2026-11-11)
+
+Settled in [ADR-0021](../../docs/adr/0021-attribute-arguments-underscore-bindings-toplevel-let.md) (Proposed; the owner's merge accepts it), spec edits in the same PR: option A (labelled attribute arguments), new code E0122 for wrong arguments; E0118 stays for string content.
