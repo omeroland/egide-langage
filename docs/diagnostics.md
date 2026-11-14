@@ -79,9 +79,11 @@ pull request**. Codes are never reused.
 | E0601 | LEX-055, CT-041 | template `{prefix}` (result type `{Sink}`) does not accept a format specifier (`:spec`) — sinks take none, risk: unreviewed channel into `{Sink}` | allocated |
 | E0602 | CT-040 | `@template` of the reserved standard prefix `{prefix}` outside `std` | allocated |
 | E0610 | CT-002 | top-level `let` or `comptime` argument must be pure: contains `{what}` | allocated |
+| E0611 | CT-006 | (takes precedence over E0610 when both apply) compile-time code reaches Go code ({a call, a function value, a method or an operation on a Go-typed value}); the compile-time evaluator never runs Go | proposed (ADR-0023) |
 | E0701 | GO-044, PKG-030 | `[go.overrides]` for `{fn}` is not listed as `go_override:{fn}={digest}` in the `allow` of the dependency edge (or, for the root, of `[package]`), or the digest differs from the discharged sets computed for the locked tuples; review, then `egide lock --confirm` | proposed (ADR-0022) |
 | E0702 | GO-044 | override key `{key}` is ambiguous or does not resolve to an exported function or method with a Go body declared in a module of this package's `[go]` section (excluded: promoted methods, aliases of foreign types, function-typed variables, interface methods, body-less functions, the standard library, `init`, nested modules), or the residual below it is not empty (resolved call targets, item 2 findings, classified callees, writes to variables outside the module): {residual}; `--confirm` cannot lift it | proposed (ADR-0022) |
 | E0703 | PKG-032 | breach `{entry}` (`unsafe`, `ffi:`, `go:`, `test-capabilities`) of the root package is not listed in `allow` of its `[package]` table | proposed (ADR-0022) |
+| E0709 | TOOL-010 | the REPL cannot import Go or a package whose closure uses `import go`; use `egide run` | proposed (ADR-0023) |
 | W0001 | LEX-005 | right-to-left text in a string or comment may display the rest of the line in a different order; bind the string with `let` on its own line | allocated |
 | W0002 | LEX-011 | doc comment is not attached to a declaration | allocated |
 
