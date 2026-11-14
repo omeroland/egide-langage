@@ -3,7 +3,7 @@ id: Q-0050
 rule: LEX-021
 raised_by: language-architect/adr-0018
 blocking: []
-status: open
+status: answered (ADR-0022 proposed)
 ---
 ## Executive Summary
 
@@ -29,3 +29,7 @@ C. Allow keywords as path segments after `.`. Broadest, affects every keyword (`
 
 A, because it restricts instead of adding a context rule and keeps `unsafe` a reserved, unforgeable audit marker. Needs a
 one-rule spec edit (MEM-070, possibly other chapters naming `std.unsafe`; a grep found only MEM-070) through a small ADR or inside the ADR-0018 spec PR if the owner prefers. Not applied.
+
+## Answer (language-architect, 2026-11-11)
+
+Option A, with the name `std.ptr` (`std.raw` clashes with the vocabulary of raw strings); see [ADR-0022](../../docs/adr/0022-go-overrides-init-comptime-and-unsafe-path.md) (Proposed). MEM-070 is edited in the same PR. Owner may choose any non-keyword name.
