@@ -43,3 +43,5 @@ requires an accepted ADR.**
 | [0024](0024-go-build-environment.md) | Go build environment: no dependency code runs during compilation | Proposed |
 | [0025](0025-go-package-initialisation.md) | Classification of Go package initialisation (`init`) | Proposed (depends on 0024) |
 | [0026](0026-go-third-party-reviewed-baseline.md) | Third-party Go modules: reviewed baseline, the analysis as a review aid | Proposed |
+| [0027](0027-v1-scope-go-backend-first.md) | Scope of v1.0: Go backend first, native backend and full toolchain parity after | Proposed |
+| [0028](0028-minimal-go-interop-until-phase-5-exit.md) | Minimal Go interop until the exit of phase 5 | Proposed |
